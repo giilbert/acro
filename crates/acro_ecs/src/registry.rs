@@ -2,6 +2,7 @@ use std::{
     any::{Any, TypeId},
     cell::{Ref, RefCell},
     collections::HashMap,
+    rc::Rc,
 };
 
 use crate::storage::Storage;
@@ -9,7 +10,7 @@ use crate::storage::Storage;
 #[derive(Debug, Default)]
 pub struct ComponentRegistry {
     components: HashMap<TypeId, ComponentInfo>,
-    storages: HashMap<TypeId, RefCell<Storage>>,
+    storages: HashMap<TypeId, Rc<RefCell<Storage>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -29,7 +30,7 @@ impl ComponentRegistry {
     pub fn init_component<T: 'static>(&mut self, name: String) {
         self.storages
             .entry(TypeId::of::<T>())
-            .or_insert_with(|| RefCell::new(Storage::new(TypeId::of::<T>())));
+            .or_insert_with(|| Rc::new(RefCell::new(Storage::new(TypeId::of::<T>()))));
         self.components.insert(
             TypeId::of::<T>(),
             ComponentInfo {
@@ -39,7 +40,7 @@ impl ComponentRegistry {
         );
     }
 
-    pub fn storage<T: 'static>(&self) -> Option<&RefCell<Storage>> {
-        self.storages.get(&TypeId::of::<T>())
+    pub fn storage<T: 'static>(&self) -> Option<Rc<RefCell<Storage>>> {
+        self.storages.get(&TypeId::of::<T>()).cloned()
     }
 }

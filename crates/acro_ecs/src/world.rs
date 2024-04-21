@@ -1,7 +1,6 @@
 use std::{
-    any::{Any, TypeId},
     cell::RefCell,
-    collections::HashMap,
+    rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -23,15 +22,13 @@ impl World {
         id
     }
 
-    pub fn storage<T: 'static>(&mut self) -> &RefCell<Storage> {
+    pub fn storage<T: 'static>(&self) -> Rc<RefCell<Storage>> {
         self.components.storage::<T>().unwrap()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::any::{Any, TypeId};
-
     use super::World;
 
     pub struct A {
@@ -47,16 +44,18 @@ mod tests {
         let mut world = World::default();
         world.init_component::<A>("A");
         world.init_component::<B>("B");
+
+        let storage_a = world.storage::<A>();
+        let storage_b = world.storage::<B>();
+
         let entity = world.spawn();
-        world.storage::<A>().borrow_mut().insert(
+
+        storage_a.borrow_mut().insert(
             entity,
             A {
                 text: "hello".to_string(),
             },
         );
-        world
-            .storage::<B>()
-            .borrow_mut()
-            .insert(entity, B { number: 0 });
+        storage_b.borrow_mut().insert(entity, B { number: 0 });
     }
 }
