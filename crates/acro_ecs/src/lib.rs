@@ -1,3 +1,4 @@
+pub mod archetype;
 pub mod entity;
 pub mod registry;
 pub mod storage;

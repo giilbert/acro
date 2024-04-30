@@ -1,61 +1,75 @@
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
+use crate::{
+    archetype::Archetypes,
+    entity::{Entities, EntityId, EntityMeta},
+    registry::{ComponentInfo, ComponentRegistry},
 };
 
-use crate::{entity::EntityId, registry::ComponentRegistry, storage::Storage};
-
-#[derive(Default)]
+#[derive(Debug)]
 pub struct World {
-    next_id: AtomicUsize,
     components: ComponentRegistry,
+    entities: Entities,
+    archetypes: Archetypes,
 }
 
 impl World {
-    pub fn init_component<T: 'static>(&mut self, name: impl ToString) {
-        self.components.init_component::<T>(name.to_string());
+    pub fn new() -> Self {
+        Self {
+            components: ComponentRegistry::new(),
+            entities: Entities::new(),
+            archetypes: Archetypes::new(),
+        }
     }
 
     pub fn spawn(&mut self) -> EntityId {
-        let id = EntityId(self.next_id.fetch_add(1, Ordering::Relaxed));
-        id
+        self.archetypes.push_empty_entity(&mut self.entities)
     }
 
-    pub fn storage<T: 'static>(&self) -> Rc<RefCell<Storage>> {
-        self.components.storage::<T>().unwrap()
+    pub fn entity_meta(&self, entity: EntityId) -> &EntityMeta {
+        self.entities.get(entity).expect("entity not found")
+    }
+
+    pub fn init_component<T: 'static>(&mut self) -> &ComponentInfo {
+        self.components.init::<T>()
+    }
+
+    pub fn insert<T: 'static>(&mut self, entity: EntityId, component: T) {
+        let component_info = self.components.get::<T>().expect("component not found");
+        self.archetypes.add_component(
+            &self.components,
+            &mut self.entities,
+            entity,
+            component_info.id,
+            component,
+        );
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::World;
+    use crate::archetype::ArchetypeId;
 
-    pub struct A {
-        text: String,
-    }
-
-    pub struct B {
-        number: u32,
-    }
+    use super::*;
 
     #[test]
-    pub fn create_world_with_entities() {
-        let mut world = World::default();
-        world.init_component::<A>("A");
-        world.init_component::<B>("B");
+    fn archetype_creation() {
+        let mut world = World::new();
+        world.init_component::<u32>();
 
-        let storage_a = world.storage::<A>();
-        let storage_b = world.storage::<B>();
+        let entity_1 = world.spawn();
+        let entity_2 = world.spawn();
 
-        let entity = world.spawn();
+        let entity_meta_1 = world.entity_meta(entity_1);
+        let entity_meta_2 = world.entity_meta(entity_2);
+        assert_eq!(entity_meta_2.archetype_id, ArchetypeId(0));
+        assert_eq!(entity_meta_1.table_index, 0);
+        assert_eq!(entity_meta_2.table_index, 1);
+        world.insert(entity_1, 42u32);
 
-        storage_a.borrow_mut().insert(
-            entity,
-            A {
-                text: "hello".to_string(),
-            },
-        );
-        storage_b.borrow_mut().insert(entity, B { number: 0 });
+        let entity_meta_1_after_move = world.entity_meta(entity_1);
+        assert_eq!(entity_meta_1_after_move.archetype_id, ArchetypeId(1));
+        assert_eq!(entity_meta_1_after_move.table_index, 0);
+        let entity_meta_2_after_move = world.entity_meta(entity_2);
+        assert_eq!(entity_meta_2_after_move.archetype_id, ArchetypeId(0));
+        assert_eq!(entity_meta_2_after_move.table_index, 0);
     }
 }
