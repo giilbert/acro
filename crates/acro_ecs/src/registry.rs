@@ -73,7 +73,15 @@ impl ComponentRegistry {
             .expect("unable to find component info")
     }
 
-    pub fn get_info(&self, component_id: ComponentId) -> Option<&ComponentInfo> {
+    /// Get the component info for a given component id, panicking if the component is not found
+    #[inline]
+    pub fn get_info(&self, component_id: ComponentId) -> &ComponentInfo {
+        self.try_get_info(component_id)
+            .expect("component not found")
+    }
+
+    #[inline]
+    pub fn try_get_info(&self, component_id: ComponentId) -> Option<&ComponentInfo> {
         self.components.get(&component_id)
     }
 
@@ -91,13 +99,13 @@ impl ComponentRegistry {
 #[derive(Debug, Clone)]
 pub struct ComponentGroup {
     data: Vec<ComponentInfo>,
-    ids: Vec<usize>,
+    ids: Vec<ComponentId>,
 }
 
 impl ComponentGroup {
     pub fn new(mut data: Vec<ComponentInfo>) -> Self {
         data.sort_by(|left, right| left.id.0.cmp(&right.id.0));
-        let ids = data.iter().map(|info| info.id.0).collect();
+        let ids = data.iter().map(|info| info.id).collect();
         Self { data, ids }
     }
 
@@ -106,12 +114,22 @@ impl ComponentGroup {
     }
 
     pub fn contains(&self, component_id: ComponentId) -> bool {
-        self.ids.contains(&component_id.0)
+        self.ids.contains(&component_id)
     }
 
     pub fn extend(&self, component: ComponentInfo) -> Self {
         let mut data = self.data.clone();
         data.push(component);
+        Self::new(data)
+    }
+
+    pub fn remove(&self, component: ComponentInfo) -> Self {
+        let data = self
+            .data
+            .clone()
+            .into_iter()
+            .filter(|info| info.id != component.id)
+            .collect();
         Self::new(data)
     }
 }
