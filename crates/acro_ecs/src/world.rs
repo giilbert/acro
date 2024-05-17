@@ -1,6 +1,7 @@
 use crate::{
     archetype::Archetypes,
     entity::{self, Entities, EntityId, EntityMeta},
+    query::{Query, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
 };
 
@@ -29,7 +30,11 @@ impl World {
     }
 
     pub fn init_component<T: 'static>(&mut self) -> &ComponentInfo {
-        self.components.init::<T>()
+        self.components.init_rust_type::<T>()
+    }
+
+    pub fn get_component_info<T: 'static>(&self) -> &ComponentInfo {
+        self.components.get::<T>().expect("component not found")
     }
 
     pub fn insert<T: 'static>(&mut self, entity: EntityId, component: T) {
@@ -51,6 +56,10 @@ impl World {
             entity,
             component_info.id,
         )
+    }
+
+    pub fn query<T: ToQueryInfo, F>(&mut self) -> Query<T, F> {
+        Query::<T, F>::new(self)
     }
 }
 
