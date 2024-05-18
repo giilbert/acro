@@ -21,6 +21,10 @@ impl World {
         }
     }
 
+    pub fn archetypes(&self) -> &Archetypes {
+        &self.archetypes
+    }
+
     pub fn spawn(&mut self) -> EntityId {
         self.archetypes.push_empty_entity(&mut self.entities)
     }

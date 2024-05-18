@@ -1,16 +1,35 @@
-use crate::{registry::ComponentInfo, world::World};
+use crate::{
+    archetype::ArchetypeId,
+    registry::{ComponentGroup, ComponentInfo},
+    world::World,
+};
 
 use super::utils::QueryInfoUtils;
 
+#[derive(Debug)]
 pub struct QueryInfo {
+    parent_archetype_id: ArchetypeId,
     pub(crate) components: Vec<QueryComponentInfo>,
 }
 
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum QueryComponentInfo {
-    BorrowedComponent(ComponentInfo),
-    BorrowedMutComponent(ComponentInfo),
+    Borrowed(ComponentInfo),
+    BorrowedMut(ComponentInfo),
+    OptionBorrow(ComponentInfo),
+    OptionBorrowMut(ComponentInfo),
+}
+
+impl QueryComponentInfo {
+    pub fn component_info(&self) -> &ComponentInfo {
+        match self {
+            QueryComponentInfo::Borrowed(info) => info,
+            QueryComponentInfo::BorrowedMut(info) => info,
+            QueryComponentInfo::OptionBorrow(info) => info,
+            QueryComponentInfo::OptionBorrowMut(info) => info,
+        }
+    }
 }
 
 pub trait ToQueryInfo {
@@ -19,20 +38,31 @@ pub trait ToQueryInfo {
 
 fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryComponentInfo {
     if T::is_borrowed_mut() {
-        QueryComponentInfo::BorrowedMutComponent(world.get_component_info::<T>().clone())
+        QueryComponentInfo::BorrowedMut(world.get_component_info::<T>().clone())
     } else {
-        QueryComponentInfo::BorrowedComponent(world.get_component_info::<T>().clone())
+        QueryComponentInfo::Borrowed(world.get_component_info::<T>().clone())
     }
+}
+
+fn find_parent_archetype(world: &World, components: &[QueryComponentInfo]) -> ArchetypeId {
+    let component_group = ComponentGroup::new(
+        components
+            .iter()
+            .map(|c| c.component_info().clone())
+            .collect(),
+    );
+
+    todo!();
 }
 
 macro_rules! impl_to_query_info {
     ($($members:ident),+) => {
         impl<$($members: QueryInfoUtils),*> ToQueryInfo for ($($members,)*) {
             fn to_query_info(world: &mut World) -> QueryInfo {
+                let components =vec![$(get_full_component_info::<$members>(world),)*];
                 QueryInfo {
-                    components: vec![
-                        $(get_full_component_info::<$members>(world),)*
-                    ],
+                    parent_archetype_id: find_parent_archetype(world, &components),
+                    components,
                 }
             }
         }

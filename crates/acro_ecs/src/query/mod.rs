@@ -47,10 +47,8 @@ mod tests {
         assert_eq!(
             query.info.components,
             vec![
-                QueryComponentInfo::BorrowedComponent(world.get_component_info::<u32>().clone()),
-                QueryComponentInfo::BorrowedMutComponent(
-                    world.get_component_info::<String>().clone()
-                )
+                QueryComponentInfo::Borrowed(world.get_component_info::<u32>().clone()),
+                QueryComponentInfo::BorrowedMut(world.get_component_info::<String>().clone())
             ]
         );
     }
