@@ -1,3 +1,5 @@
+use std::ptr::NonNull;
+
 use crate::{
     archetype::ArchetypeId,
     registry::{ComponentGroup, ComponentInfo},
@@ -8,8 +10,8 @@ use super::utils::QueryInfoUtils;
 
 #[derive(Debug)]
 pub struct QueryInfo {
-    parent_archetype_id: ArchetypeId,
-    pub(crate) components: Vec<QueryComponentInfo>,
+    pub(super) parent_archetype_id: ArchetypeId,
+    pub(super) components: Vec<QueryComponentInfo>,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +36,7 @@ impl QueryComponentInfo {
 
 pub trait ToQueryInfo {
     fn to_query_info(world: &mut World) -> QueryInfo;
+    unsafe fn from_parts(components: impl Iterator<Item = NonNull<u8>>) -> Self;
 }
 
 fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryComponentInfo {
@@ -44,7 +47,7 @@ fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryCompone
     }
 }
 
-fn find_parent_archetype(world: &World, components: &[QueryComponentInfo]) -> ArchetypeId {
+fn find_parent_archetype(world: &mut World, components: &[QueryComponentInfo]) -> ArchetypeId {
     let component_group = ComponentGroup::new(
         components
             .iter()
@@ -52,18 +55,32 @@ fn find_parent_archetype(world: &World, components: &[QueryComponentInfo]) -> Ar
             .collect(),
     );
 
-    todo!();
+    world.archetypes.find_or_create(&component_group)
 }
 
 macro_rules! impl_to_query_info {
     ($($members:ident),+) => {
         impl<$($members: QueryInfoUtils),*> ToQueryInfo for ($($members,)*) {
             fn to_query_info(world: &mut World) -> QueryInfo {
-                let components =vec![$(get_full_component_info::<$members>(world),)*];
+                let components = vec![$(get_full_component_info::<$members>(world),)*];
                 QueryInfo {
                     parent_archetype_id: find_parent_archetype(world, &components),
                     components,
                 }
+            }
+
+            #[inline]
+            unsafe fn from_parts(mut components: impl Iterator<Item = NonNull<u8>>) -> Self {
+                (
+                    $(
+                        unsafe {
+                            let component =
+                                components.next().expect("unable to find component reference");
+                            // component is a pointer to the data
+                            std::mem::transmute_copy::<_, $members>(&component.as_ptr())
+                        },
+                    )*
+                )
             }
         }
     };
@@ -77,3 +94,7 @@ impl_to_query_info!(T1, T2, T3, T4, T5);
 impl_to_query_info!(T1, T2, T3, T4, T5, T6);
 impl_to_query_info!(T1, T2, T3, T4, T5, T6, T7);
 impl_to_query_info!(T1, T2, T3, T4, T5, T6, T7, T8);
+
+pub trait ToFilterInfo {}
+
+impl ToFilterInfo for () {}

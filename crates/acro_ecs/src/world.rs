@@ -1,7 +1,7 @@
 use crate::{
     archetype::Archetypes,
-    entity::{self, Entities, EntityId, EntityMeta},
-    query::{Query, ToQueryInfo},
+    entity::{Entities, EntityId, EntityMeta},
+    query::{Query, ToFilterInfo, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
 };
 
@@ -9,7 +9,7 @@ use crate::{
 pub struct World {
     components: ComponentRegistry,
     entities: Entities,
-    archetypes: Archetypes,
+    pub(crate) archetypes: Archetypes,
 }
 
 impl World {
@@ -19,10 +19,6 @@ impl World {
             entities: Entities::new(),
             archetypes: Archetypes::new(),
         }
-    }
-
-    pub fn archetypes(&self) -> &Archetypes {
-        &self.archetypes
     }
 
     pub fn spawn(&mut self) -> EntityId {
@@ -62,7 +58,11 @@ impl World {
         )
     }
 
-    pub fn query<T: ToQueryInfo, F>(&mut self) -> Query<T, F> {
+    pub fn query<T, F>(&mut self) -> Query<T, F>
+    where
+        T: ToQueryInfo,
+        F: ToFilterInfo,
+    {
         Query::<T, F>::new(self)
     }
 }

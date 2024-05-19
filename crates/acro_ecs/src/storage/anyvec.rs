@@ -1,9 +1,9 @@
 use std::{
     alloc::{handle_alloc_error, Layout},
-    any::TypeId,
-    ops::Index,
     ptr::NonNull,
 };
+
+pub type Dropper = Option<unsafe fn(NonNull<u8>)>;
 
 #[derive(Debug)]
 pub struct AnyVec {
@@ -11,6 +11,7 @@ pub struct AnyVec {
     length: usize,
     capacity: usize,
     data: NonNull<u8>,
+    dropper: Dropper,
 }
 
 #[derive(Debug)]
@@ -20,30 +21,39 @@ pub struct SwapRemoveResult {
 }
 
 impl AnyVec {
-    pub fn new(layout: Layout, capacity: usize) -> Self {
+    pub fn new(layout: Layout, dropper: Dropper, capacity: usize) -> Self {
         if layout.size() == 0 {
             Self {
                 data: NonNull::dangling(),
                 layout,
                 capacity: usize::MAX,
                 length: 0,
+                dropper,
             }
         } else {
             let initial_allocation = NonNull::new(unsafe {
                 std::alloc::alloc(array_layout(&layout, capacity).expect("error in layout"))
             })
             .expect("allocation failed");
+
             Self {
                 data: initial_allocation,
                 layout,
                 capacity,
                 length: 0,
+                dropper,
             }
         }
     }
 
     pub fn new_of<T: 'static>(capacity: usize) -> Self {
-        Self::new(Layout::new::<T>(), capacity)
+        Self::new(
+            Layout::new::<T>(),
+            Some(|ptr| unsafe {
+                std::ptr::drop_in_place(ptr.as_ptr() as *mut T);
+            }),
+            capacity,
+        )
     }
 
     /// Caller must ensure that the type of `item` matches the type of the vector.
@@ -151,6 +161,13 @@ impl AnyVec {
 
 impl Drop for AnyVec {
     fn drop(&mut self) {
+        // Run Drop::drop for each element in the vector
+        if let Some(drop_fn) = self.dropper {
+            for i in 0..self.length {
+                unsafe { drop_fn(self.get_ptr(i).expect("index out of bounds")) }
+            }
+        }
+
         if self.layout.size() != 0 {
             unsafe {
                 std::alloc::dealloc(

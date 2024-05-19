@@ -1,9 +1,14 @@
-use std::{cell::RefCell, collections::HashMap, ptr::NonNull};
+use std::{
+    cell::{RefCell, UnsafeCell},
+    collections::HashMap,
+    ptr::NonNull,
+    rc::Rc,
+};
 
 use crate::{
     entity::{Entities, EntityId, EntityMeta},
     registry::{ComponentGroup, ComponentId, ComponentRegistry},
-    storage::table::Table,
+    storage::{anyvec::AnyVec, table::Table},
 };
 
 #[derive(Debug)]
@@ -98,7 +103,7 @@ impl Archetypes {
         new_component_data: impl Iterator<Item = (ComponentId, *const u8)>,
     ) {
         let current_meta = entities.get_mut(id).expect("entity not found");
-        let moved_last_entity = from.borrow_mut().remove(current_meta);
+
         unsafe {
             to.borrow_mut().copy_entity_with_components(
                 id,
@@ -107,6 +112,8 @@ impl Archetypes {
                 new_component_data,
             );
         };
+
+        let moved_last_entity = from.borrow_mut().remove(current_meta);
 
         current_meta.archetype_id = to.borrow().id;
         let old_entity_table_index = current_meta.table_index;
@@ -145,6 +152,8 @@ impl Archetypes {
             entities,
             [(new_component, &data as *const T as *const u8)].into_iter(),
         );
+
+        std::mem::forget(data);
     }
 
     pub fn remove_component<T: 'static>(
@@ -167,7 +176,7 @@ impl Archetypes {
 
         let removed_component_data = old_archetype
             .borrow_mut()
-            .pointer_to_entity_component(&meta, remove_component)
+            .pointer_to_entity_component(meta.table_index, remove_component)
             .expect("component data not found")
             .as_ptr() as *const T;
 
@@ -190,6 +199,17 @@ impl Archetypes {
         unsafe { empty_archetype.table.push_row([].into_iter()) };
         entity
     }
+
+    pub fn find_or_create(&mut self, components: &ComponentGroup) -> ArchetypeId {
+        match self.components.get(components) {
+            Some(id) => *id,
+            None => self.new_archetype(components.clone()),
+        }
+    }
+
+    pub fn get_archetype(&self, id: ArchetypeId) -> Option<&RefCell<Archetype>> {
+        self.archetypes.get(&id)
+    }
 }
 
 #[derive(Debug)]
@@ -197,7 +217,7 @@ pub struct Archetype {
     id: ArchetypeId,
     table: Table,
     components: ComponentGroup,
-    entities: Vec<EntityId>,
+    pub(crate) entities: Vec<EntityId>,
 }
 
 impl Archetype {
@@ -214,10 +234,10 @@ impl Archetype {
     #[inline]
     pub fn pointer_to_entity_component(
         &self,
-        entity_meta: &EntityMeta,
+        table_index: usize,
         component: ComponentId,
     ) -> Option<NonNull<u8>> {
-        self.table.columns[&component].get_ptr(entity_meta.table_index)
+        unsafe { (&*self.table.columns[&component].get() as &AnyVec).get_ptr(table_index) }
     }
 
     pub fn remove(&mut self, entity_meta: &EntityMeta) -> Option<EntityId> {
@@ -240,17 +260,28 @@ impl Archetype {
         new_component_data: impl Iterator<Item = (ComponentId, *const u8)>,
     ) {
         self.table.push_row(
-            new_component_data.chain(old_archetype.components.iter().filter_map(|info| {
-                if self.components.contains(info.id) {
-                    None
-                } else {
-                    old_archetype
-                        .pointer_to_entity_component(entity_meta, info.id)
-                        .map(|ptr| (info.id, ptr.as_ptr() as *const u8))
-                }
-            })),
+            new_component_data
+                // Chain an iterator of component pointers from the old archetype
+                .chain(old_archetype.components.iter().filter_map(|info| {
+                    if self.components.contains(info.id) {
+                        Some(
+                            old_archetype
+                                .pointer_to_entity_component(entity_meta.table_index, info.id)
+                                .map(|ptr| (info.id, ptr.as_ptr() as *const u8))
+                                .expect("entity not found in old archetype"),
+                        )
+                    } else {
+                        None
+                    }
+                })),
         );
         self.entities.push(entity_id);
+    }
+
+    pub fn get_columns(&self, ids: &[ComponentId]) -> Vec<Rc<UnsafeCell<AnyVec>>> {
+        ids.iter()
+            .map(|id| Rc::clone(&self.table.columns[id]))
+            .collect()
     }
 }
 

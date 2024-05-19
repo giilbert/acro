@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::HashMap};
+use std::{any::TypeId, cell::UnsafeCell, collections::HashMap, rc::Rc};
 
 use fnv::FnvHashMap;
 
@@ -13,7 +13,7 @@ use super::anyvec::AnyVec;
 pub struct Table {
     length: usize,
     components: ComponentGroup,
-    pub columns: FnvHashMap<ComponentId, AnyVec>,
+    pub columns: FnvHashMap<ComponentId, Rc<UnsafeCell<AnyVec>>>,
 }
 
 impl Table {
@@ -23,7 +23,12 @@ impl Table {
             columns: components
                 .iter()
                 .map(|info| match info.component_type {
-                    ComponentType::Native { layout, .. } => (info.id, AnyVec::new(layout, 1)),
+                    ComponentType::Native {
+                        layout, dropper, ..
+                    } => (
+                        info.id,
+                        Rc::new(UnsafeCell::new(AnyVec::new(layout, dropper, 1))),
+                    ),
                 })
                 .collect(),
             components,
@@ -40,7 +45,7 @@ impl Table {
                 .columns
                 .get_mut(&component_id)
                 .expect("column not found");
-            column.push_from_ptr(data);
+            unsafe { (*column.get()).push_from_ptr(data) };
         }
     }
 
@@ -51,7 +56,7 @@ impl Table {
 
         for column in self.columns.values_mut() {
             unsafe {
-                column.swap_remove(index);
+                (*column.get()).swap_remove(index);
             }
         }
 

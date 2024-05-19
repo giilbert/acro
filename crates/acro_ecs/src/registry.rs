@@ -7,6 +7,8 @@ use std::{
 
 use fnv::FnvHashMap;
 
+use crate::storage::anyvec::Dropper;
+
 #[derive(Debug, Default)]
 pub struct ComponentRegistry {
     current_id: usize,
@@ -31,6 +33,7 @@ pub enum ComponentType {
         name: String,
         layout: Layout,
         type_id: TypeId,
+        dropper: Dropper,
     },
 }
 
@@ -71,6 +74,9 @@ impl ComponentRegistry {
                     name: std::any::type_name::<T>().to_string(),
                     layout: Layout::new::<T>(),
                     type_id: TypeId::of::<T>(),
+                    dropper: Some(|ptr| unsafe {
+                        std::ptr::drop_in_place(ptr.as_ptr() as *mut T);
+                    }),
                 },
             },
         );
@@ -125,7 +131,7 @@ impl ComponentGroup {
     }
 
     pub fn contains(&self, component_id: ComponentId) -> bool {
-        self.ids.contains(&component_id)
+        self.ids.iter().any(|id| *id == component_id)
     }
 
     pub fn extend(&self, component: ComponentInfo) -> Self {
