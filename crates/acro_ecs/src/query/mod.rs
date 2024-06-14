@@ -44,6 +44,7 @@ mod tests {
     fn query() {
         let mut world = World::new();
         world.init_component::<u32>();
+        world.init_component::<bool>();
         world.init_component::<String>();
 
         let entity1 = world.spawn();
@@ -53,27 +54,36 @@ mod tests {
         let entity2 = world.spawn();
         world.insert(entity2, 12u32);
         world.insert(entity2, "bye".to_string());
+        world.insert(entity2, true);
 
-        let query = world.query::<(&u32, &mut String), ()>();
+        let entity3 = world.spawn();
+        world.insert(entity3, 42u32);
+        world.insert(entity3, false);
+
+        let query1 = world.query::<(&u32, &mut String), ()>();
         assert_eq!(
-            query.info.components,
+            query1.info.components,
             vec![
                 QueryComponentInfo::Borrowed(world.get_component_info::<u32>().clone()),
                 QueryComponentInfo::BorrowedMut(world.get_component_info::<String>().clone())
             ]
         );
         assert_eq!(
-            query.info.parent_archetype_id,
+            query1.info.parent_archetype_id,
             world.entity_meta(entity1).archetype_id
         );
 
-        let data = query.exclusive(&mut world).collect::<Vec<_>>();
+        let data1 = query1.exclusive(&mut world).collect::<Vec<_>>();
         assert_eq!(
-            data,
+            data1,
             vec![
                 (&42u32, &mut "hello".to_string()),
                 (&12u32, &mut "bye".to_string())
             ]
         );
+
+        let query2 = world.query::<(&u32, &bool), ()>();
+        let data2 = query2.exclusive(&mut world).collect::<Vec<_>>();
+        assert_eq!(data2, vec![(&12u32, &true), (&42u32, &false)]);
     }
 }

@@ -17,11 +17,11 @@ pub struct Archetypes {
     archetypes: HashMap<ArchetypeId, RefCell<Archetype>>,
     components: HashMap<ComponentGroup, ArchetypeId>,
     // Maps from an old archetype to a set of new archetypes based on components added or removed
-    edges: Edges,
+    pub(crate) edges: Edges,
 }
 
 #[derive(Debug, Clone, Copy)]
-enum ArchetypeOperation {
+pub enum ArchetypeOperation {
     Insert,
     Remove,
 }
@@ -79,16 +79,21 @@ impl Archetypes {
                     }
                 };
 
-                match self.components.get(&new_archetype_components).cloned() {
-                    Some(id) => {
+                let id = match self.components.get(&new_archetype_components).cloned() {
+                    Some(id) => id,
+                    None => self.new_archetype(new_archetype_components.clone()),
+                };
+
+                new_archetype_components
+                    .removal_iter()
+                    .for_each(|(info, group)| {
                         self.edges
                             .create_insert_edge(current_archetype, new_component, id);
                         self.edges
-                            .create_remove_edge(id, new_component, current_archetype);
-                        id
-                    }
-                    None => self.new_archetype(new_archetype_components),
-                }
+                            .create_remove_edge(current_archetype, info.id, id);
+                    });
+
+                id
             }
         }
     }
@@ -214,7 +219,7 @@ impl Archetypes {
 
 #[derive(Debug)]
 pub struct Archetype {
-    id: ArchetypeId,
+    pub(crate) id: ArchetypeId,
     table: Table,
     components: ComponentGroup,
     pub(crate) entities: Vec<EntityId>,
@@ -293,7 +298,7 @@ impl ArchetypeId {
 }
 
 #[derive(Debug, Default)]
-struct Edges {
+pub(crate) struct Edges {
     insert_edges: HashMap<ArchetypeId, HashMap<ComponentId, ArchetypeId>>,
     remove_edges: HashMap<ArchetypeId, HashMap<ComponentId, ArchetypeId>>,
 }
@@ -326,7 +331,13 @@ impl Edges {
         edges[&archetype_id].get(&component_id).cloned()
     }
 
-    #[inline]
+    pub fn get_insert_edges(&self, from: ArchetypeId) -> impl Iterator<Item = ArchetypeId> + '_ {
+        self.insert_edges
+            .get(&from)
+            .into_iter()
+            .flat_map(|edges| edges.values().copied())
+    }
+
     pub fn create_insert_edge(
         &mut self,
         archetype_id: ArchetypeId,
