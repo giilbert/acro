@@ -26,7 +26,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         }
 
         cx.iter(|| {
-            let query = world.query::<(&u32, &String), ()>();
+            let mut query = world.query::<(&u32, &String), ()>();
             for value in query.exclusive(&mut world) {
                 black_box(value);
             }
