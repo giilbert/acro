@@ -13,7 +13,9 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Archetypes {
+    pub(crate) generation: usize,
     current_id: usize,
+    /// The generation is used to know if query archetype ids needs to recomputed
     archetypes: HashMap<ArchetypeId, RefCell<Archetype>>,
     components: HashMap<ComponentGroup, ArchetypeId>,
     // Maps from an old archetype to a set of new archetypes based on components added or removed
@@ -41,6 +43,7 @@ impl Archetypes {
         Self {
             // Skip ArchetypeId(0) because it's reserved for ArchetypeId::NONE
             current_id: 1,
+            generation: 0,
             archetypes,
             components,
             edges: Edges::new(),
@@ -48,6 +51,8 @@ impl Archetypes {
     }
 
     fn new_archetype(&mut self, components: ComponentGroup) -> ArchetypeId {
+        self.generation += 1;
+
         let id = ArchetypeId(self.current_id);
         self.edges.init_archetype(id);
         self.current_id += 1;
@@ -70,6 +75,8 @@ impl Archetypes {
         match self.edges.get(current_archetype, operation, new_component) {
             Some(id) => id,
             None => {
+                self.generation += 1;
+
                 let new_archetype_components = {
                     let old_components = &self.archetypes[&current_archetype].borrow().components;
                     let new_component_info = component_registry.get_info(new_component).clone();
@@ -83,15 +90,6 @@ impl Archetypes {
                     Some(id) => id,
                     None => self.new_archetype(new_archetype_components.clone()),
                 };
-
-                new_archetype_components
-                    .removal_iter()
-                    .for_each(|(info, group)| {
-                        self.edges
-                            .create_insert_edge(current_archetype, new_component, id);
-                        self.edges
-                            .create_remove_edge(current_archetype, info.id, id);
-                    });
 
                 id
             }
@@ -205,15 +203,22 @@ impl Archetypes {
         entity
     }
 
-    pub fn find_or_create(&mut self, components: &ComponentGroup) -> ArchetypeId {
-        match self.components.get(components) {
-            Some(id) => *id,
-            None => self.new_archetype(components.clone()),
-        }
-    }
-
     pub fn get_archetype(&self, id: ArchetypeId) -> Option<&RefCell<Archetype>> {
         self.archetypes.get(&id)
+    }
+
+    pub fn get_archetypes_with<'a>(&'a self, components: &'a ComponentGroup) -> Vec<ArchetypeId> {
+        self.archetypes
+            .values()
+            .filter_map(|archetype| {
+                let archetype = archetype.borrow();
+                if components.is_subset_of(&archetype.components) {
+                    Some(archetype.id)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 

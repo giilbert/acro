@@ -10,8 +10,15 @@ use super::utils::QueryInfoUtils;
 
 #[derive(Debug)]
 pub struct QueryInfo {
-    pub(super) parent_archetype_id: ArchetypeId,
+    pub(super) archetypes_generation: usize,
+    pub(super) archetypes: Vec<ArchetypeId>,
     pub(super) components: Vec<QueryComponentInfo>,
+}
+
+impl QueryInfo {
+    pub fn recompute_archetypes(&mut self, world: &mut World) {
+        self.archetypes = find_archetypes(world, &self.components);
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -47,7 +54,7 @@ fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryCompone
     }
 }
 
-fn find_parent_archetype(world: &mut World, components: &[QueryComponentInfo]) -> ArchetypeId {
+fn find_archetypes(world: &mut World, components: &[QueryComponentInfo]) -> Vec<ArchetypeId> {
     let component_group = ComponentGroup::new(
         components
             .iter()
@@ -55,7 +62,7 @@ fn find_parent_archetype(world: &mut World, components: &[QueryComponentInfo]) -
             .collect(),
     );
 
-    world.archetypes.find_or_create(&component_group)
+    world.archetypes.get_archetypes_with(&component_group)
 }
 
 macro_rules! impl_to_query_info {
@@ -64,7 +71,8 @@ macro_rules! impl_to_query_info {
             fn to_query_info(world: &mut World) -> QueryInfo {
                 let components = vec![$(get_full_component_info::<$members>(world),)*];
                 QueryInfo {
-                    parent_archetype_id: find_parent_archetype(world, &components),
+                    archetypes_generation: world.archetypes.generation,
+                    archetypes: find_archetypes(world, &components),
                     components,
                 }
             }

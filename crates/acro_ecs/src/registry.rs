@@ -155,11 +155,8 @@ impl ComponentGroup {
         Self::new(data)
     }
 
-    pub fn removal_iter<'a>(&'a self) -> ComponentGroupRemovalIter<'a> {
-        ComponentGroupRemovalIter {
-            data: &self.data,
-            index: 0,
-        }
+    pub fn is_subset_of(&self, other: &ComponentGroup) -> bool {
+        self.ids.iter().all(|id| other.contains(*id))
     }
 }
 
@@ -176,32 +173,3 @@ impl PartialEq for ComponentGroup {
 }
 
 impl Eq for ComponentGroup {}
-
-pub struct ComponentGroupRemovalIter<'a> {
-    data: &'a [ComponentInfo],
-    index: usize,
-}
-
-impl Iterator for ComponentGroupRemovalIter<'_> {
-    type Item = (ComponentInfo, ComponentGroup);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.data.len() {
-            return None;
-        }
-
-        let component = self.data[self.index].clone();
-        // The data passed in is guaranteed to be sorted by id
-        let group = ComponentGroup::new_unsorted(
-            self.data
-                .iter()
-                .filter(|info| info.id != component.id)
-                .map(|info| info.clone())
-                .collect(),
-        );
-
-        self.index += 1;
-
-        Some((component, group))
-    }
-}
