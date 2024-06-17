@@ -92,6 +92,16 @@ impl AnyVec {
         }
     }
 
+    unsafe fn copy_within(&mut self, from: usize, to: usize) {
+        debug_assert!(from < self.len(), "index out of bounds");
+        debug_assert!(to < self.len(), "index out of bounds");
+        std::ptr::copy_nonoverlapping(
+            self.data.as_ptr().add(from * self.layout.size()),
+            self.data.as_ptr().add(to * self.layout.size()),
+            self.layout.size(),
+        );
+    }
+
     pub unsafe fn swap_remove(&mut self, index: usize) -> SwapRemoveResult {
         assert!(index < self.len(), "index out of bounds");
 
@@ -105,8 +115,9 @@ impl AnyVec {
             };
         }
 
-        let removed_element = self.get_ptr(index).expect("index out of bounds");
-        self.set_from_ptr(removed_element.as_ptr(), last_index);
+        // Move the last element to the removed element's position
+        self.get_ptr(index).expect("index out of bounds");
+        self.copy_within(last_index, index);
 
         self.length -= 1;
 
