@@ -1,0 +1,8 @@
+[package]
+name = "acro_bin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+acro_ecs = { path = "../acro_ecs" }
+acro_render = { path = "../acro_render" }

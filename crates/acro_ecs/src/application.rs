@@ -11,6 +11,7 @@ struct System {
 pub struct Application {
     world: World,
     systems: Vec<System>,
+    runner: Box<dyn FnOnce(Application)>,
 }
 
 impl Application {
@@ -18,11 +19,13 @@ impl Application {
         Self {
             world: World::new(),
             systems: Vec::new(),
+            runner: Box::new(|_app| panic!("no runner set!")),
         }
     }
 
-    pub fn add_plugin(&mut self, mut plugin: impl Plugin) {
-        plugin.build(self);
+    pub fn add_plugin(mut self, mut plugin: impl Plugin) -> Self {
+        plugin.build(&mut self);
+        self
     }
 
     pub fn world(&mut self) -> &mut World {
@@ -45,13 +48,24 @@ impl Application {
     }
 
     pub fn run_once(&mut self) {
+        // let now = std::time::Instant::now();
         for system in self.systems.iter_mut() {
             (system.run)(&mut self.world, system.parameters.as_mut());
         }
+        // let elapsed = now.elapsed();
+        // println!("run once took {:?}", elapsed);
+    }
+
+    pub fn set_runner(&mut self, runner: impl FnOnce(Application) + 'static) {
+        self.runner = Box::new(runner);
     }
 
     pub fn run(mut self) {
-        self.run_once();
+        let runner = std::mem::replace(
+            &mut self.runner,
+            Box::new(|_app| panic!("runner replaced!")),
+        );
+        runner(self);
     }
 }
 

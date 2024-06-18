@@ -7,3 +7,6 @@ pub mod registry;
 pub mod resource;
 pub mod storage;
 pub mod world;
+
+pub use application::Application;
+pub use plugin::Plugin;

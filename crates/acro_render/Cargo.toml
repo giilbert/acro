@@ -1,0 +1,10 @@
+[package]
+name = "acro_render"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+acro_ecs = { path = "../acro_ecs" }
+pollster = "0.3.0"
+wgpu = "0.20.1"
+winit = "0.30.2"
