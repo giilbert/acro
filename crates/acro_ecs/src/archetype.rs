@@ -336,38 +336,6 @@ impl Edges {
         edges[&archetype_id].get(&component_id).cloned()
     }
 
-    pub fn get_insert_edges(&self, from: ArchetypeId) -> impl Iterator<Item = ArchetypeId> + '_ {
-        self.insert_edges
-            .get(&from)
-            .into_iter()
-            .flat_map(|edges| edges.values().copied())
-    }
-
-    pub fn create_insert_edge(
-        &mut self,
-        archetype_id: ArchetypeId,
-        component_id: ComponentId,
-        new_archetype_id: ArchetypeId,
-    ) {
-        self.insert_edges
-            .entry(archetype_id)
-            .or_insert_with(HashMap::new)
-            .insert(component_id, new_archetype_id);
-    }
-
-    #[inline]
-    pub fn create_remove_edge(
-        &mut self,
-        archetype_id: ArchetypeId,
-        component_id: ComponentId,
-        new_archetype_id: ArchetypeId,
-    ) {
-        self.remove_edges
-            .entry(archetype_id)
-            .or_insert_with(HashMap::new)
-            .insert(component_id, new_archetype_id);
-    }
-
     pub fn init_archetype(&mut self, archetype_id: ArchetypeId) {
         self.insert_edges.insert(archetype_id, HashMap::new());
         self.remove_edges.insert(archetype_id, HashMap::new());
