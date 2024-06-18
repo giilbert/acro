@@ -6,12 +6,13 @@ pub use info::{ToFilterInfo, ToQueryInfo};
 
 use std::marker::PhantomData;
 
-use crate::world::World;
+use crate::{registry::ComponentId, world::World};
 
-use self::{info::QueryInfo, iter::ExclusiveQueryIter};
+use self::{info::QueryInfo, iter::QueryIter};
 
 pub struct Query<T: ToQueryInfo, F: ToFilterInfo> {
     pub(super) info: QueryInfo,
+    pub(super) component_ids: Vec<ComponentId>,
     _phantom: PhantomData<(T, F)>,
 }
 
@@ -25,21 +26,26 @@ where
         TData: ToQueryInfo,
         TFilters: ToFilterInfo,
     {
+        let info = TData::to_query_info(world);
+        let component_ids = info
+            .components
+            .iter()
+            .map(|c| c.component_info().id)
+            .collect::<Vec<ComponentId>>();
+
         Query {
-            info: TData::to_query_info(world),
+            info,
+            component_ids,
             _phantom: PhantomData,
         }
     }
 
-    pub fn exclusive<'w, 'q>(
-        &'q mut self,
-        world: &'w mut World,
-    ) -> ExclusiveQueryIter<'w, 'q, T, F> {
+    pub fn over<'w, 'q>(&'q mut self, world: &'w World) -> QueryIter<'w, 'q, T, F> {
         if self.info.archetypes_generation != world.archetypes.generation {
             self.info.recompute_archetypes(world);
         }
 
-        ExclusiveQueryIter::new(world, self)
+        QueryIter::new(world, self)
     }
 }
 
@@ -85,7 +91,7 @@ mod tests {
             ]
         );
 
-        let data1 = query1.exclusive(&mut world).collect::<Vec<_>>();
+        let data1 = query1.over(&mut world).collect::<Vec<_>>();
         assert_eq_unordered!(
             data1,
             vec![
@@ -95,7 +101,7 @@ mod tests {
         );
 
         let mut query2 = world.query::<(&u32, &bool), ()>();
-        let data2 = query2.exclusive(&mut world).collect::<Vec<_>>();
+        let data2 = query2.over(&mut world).collect::<Vec<_>>();
         assert_eq_unordered!(data2, vec![(&12u32, &true), (&42u32, &false)]);
     }
 
@@ -112,17 +118,17 @@ mod tests {
         world.insert(entity2, 12u32);
 
         let mut query1 = world.query::<(&u32,), ()>();
-        let data1 = query1.exclusive(&mut world).collect::<Vec<_>>();
+        let data1 = query1.over(&mut world).collect::<Vec<_>>();
         assert_eq_unordered!(data1, vec![(&42u32,), (&12u32,)]);
 
         world.insert(entity1, true);
 
-        let data2 = query1.exclusive(&mut world).collect::<Vec<_>>();
+        let data2 = query1.over(&mut world).collect::<Vec<_>>();
         assert_eq_unordered!(data2, vec![(&42u32,), (&12u32,)]);
 
         world.insert(entity2, false);
 
-        let data3 = query1.exclusive(&mut world).collect::<Vec<_>>();
+        let data3 = query1.over(&mut world).collect::<Vec<_>>();
         assert_eq_unordered!(data3, vec![(&42u32,), (&12u32,)]);
     }
 }

@@ -16,7 +16,7 @@ pub struct QueryInfo {
 }
 
 impl QueryInfo {
-    pub fn recompute_archetypes(&mut self, world: &mut World) {
+    pub fn recompute_archetypes(&mut self, world: &World) {
         self.archetypes = find_archetypes(world, &self.components);
     }
 }
@@ -54,7 +54,7 @@ fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryCompone
     }
 }
 
-fn find_archetypes(world: &mut World, components: &[QueryComponentInfo]) -> Vec<ArchetypeId> {
+fn find_archetypes(world: &World, components: &[QueryComponentInfo]) -> Vec<ArchetypeId> {
     let component_group = ComponentGroup::new(
         components
             .iter()

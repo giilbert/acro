@@ -1,3 +1,4 @@
+pub mod application;
 pub mod archetype;
 pub mod entity;
 pub mod query;
