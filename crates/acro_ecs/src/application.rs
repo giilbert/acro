@@ -4,7 +4,7 @@ use crate::world::World;
 
 struct System {
     pub name: String,
-    pub run: Box<dyn Fn(&World, &mut dyn Any)>,
+    pub run: Box<dyn Fn(&mut World, &mut dyn Any)>,
     pub parameters: Box<dyn Any>,
 }
 
@@ -28,7 +28,7 @@ impl Application {
     pub fn add_system<T: Any>(
         &mut self,
         system_init: impl FnOnce(&mut Application) -> T,
-        system: impl Fn(&World, &mut T) -> () + 'static,
+        system: impl Fn(&mut World, &mut T) -> () + 'static,
     ) {
         let parameters = system_init(self);
         self.systems.push(System {
@@ -42,7 +42,7 @@ impl Application {
 
     pub fn run_once(&mut self) {
         for system in self.systems.iter_mut() {
-            (system.run)(&self.world, system.parameters.as_mut());
+            (system.run)(&mut self.world, system.parameters.as_mut());
         }
     }
 
@@ -61,6 +61,8 @@ mod tests {
         app.world().init_component::<u32>();
         app.world().init_component::<String>();
 
+        app.world().resources.insert(4u32);
+
         let entity1 = app.world().spawn();
         app.world().insert(entity1, 42u32);
 
@@ -74,7 +76,9 @@ mod tests {
                     app.world.query::<(&String,), ()>(),
                 )
             },
-            |world: &World, (number_query, string_query)| {
+            |world: &mut World, (number_query, string_query)| {
+                *world.resources.get_mut::<u32>() += 1;
+
                 for (value,) in number_query.over(world) {
                     assert_eq!(value, &42);
                 }

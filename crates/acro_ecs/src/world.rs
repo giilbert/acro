@@ -3,12 +3,14 @@ use crate::{
     entity::{Entities, EntityId, EntityMeta},
     query::{Query, ToFilterInfo, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
+    resource::ResourceRegistry,
 };
 
 #[derive(Debug)]
 pub struct World {
     components: ComponentRegistry,
     entities: Entities,
+    pub(crate) resources: ResourceRegistry,
     pub(crate) archetypes: Archetypes,
 }
 
@@ -17,6 +19,7 @@ impl World {
         Self {
             components: ComponentRegistry::new(),
             entities: Entities::new(),
+            resources: ResourceRegistry::new(),
             archetypes: Archetypes::new(),
         }
     }
