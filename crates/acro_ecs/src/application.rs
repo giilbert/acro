@@ -1,6 +1,6 @@
 use std::{any::Any, cell::UnsafeCell};
 
-use crate::world::World;
+use crate::{plugin::Plugin, world::World};
 
 struct System {
     pub name: String,
@@ -19,6 +19,10 @@ impl Application {
             world: World::new(),
             systems: Vec::new(),
         }
+    }
+
+    pub fn add_plugin(&mut self, mut plugin: impl Plugin) {
+        plugin.build(self);
     }
 
     pub fn world(&mut self) -> &mut World {
