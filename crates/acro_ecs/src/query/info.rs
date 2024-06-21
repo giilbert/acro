@@ -1,12 +1,12 @@
-use std::ptr::NonNull;
+use std::{process::Output, ptr::NonNull};
 
 use crate::{
-    archetype::ArchetypeId,
-    registry::{ComponentGroup, ComponentInfo},
+    archetype::{Archetype, ArchetypeId},
+    registry::{ComponentGroup, ComponentId, ComponentInfo},
     world::World,
 };
 
-use super::utils::QueryInfoUtils;
+use super::{transform::QueryTransform, utils::QueryInfoUtils};
 
 #[derive(Debug)]
 pub struct QueryInfo {
@@ -41,9 +41,16 @@ impl QueryComponentInfo {
     }
 }
 
-pub trait ToQueryInfo {
+pub trait ToQueryInfo<'w> {
+    type Output;
+
     fn to_query_info(world: &mut World) -> QueryInfo;
-    unsafe fn from_parts(components: impl Iterator<Item = NonNull<u8>>) -> Self;
+    unsafe fn from_parts(
+        world: &'w World,
+        current_archetype: &Archetype,
+        entity_index: usize,
+        components: impl Iterator<Item = (ComponentId, NonNull<u8>)>,
+    ) -> Self::Output;
 }
 
 fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryComponentInfo {
@@ -67,7 +74,12 @@ fn find_archetypes(world: &World, components: &[QueryComponentInfo]) -> Vec<Arch
 
 macro_rules! impl_to_query_info {
     ($($members:ident),+) => {
-        impl<$($members: QueryInfoUtils),*> ToQueryInfo for ($($members,)*) {
+        impl<
+            'w,
+            $($members: QueryInfoUtils + QueryTransform<'w, Input = $members>),*
+        > ToQueryInfo<'w> for ($($members,)*) {
+            type Output = ($(<$members as QueryTransform<'w>>::Output,)*);
+
             fn to_query_info(world: &mut World) -> QueryInfo {
                 let components = vec![$(get_full_component_info::<$members>(world),)*];
                 QueryInfo {
@@ -78,20 +90,32 @@ macro_rules! impl_to_query_info {
             }
 
             #[inline]
-            unsafe fn from_parts(mut components: impl Iterator<Item = NonNull<u8>>) -> Self {
+            unsafe fn from_parts(
+                world: &'w World,
+                current_archetype: &Archetype,
+                entity_index: usize,
+                mut components: impl Iterator<Item = (ComponentId, NonNull<u8>)>,
+            ) -> Self::Output {
                 (
                     $(
-                        unsafe {
-                            let component =
-                                components.next().expect("unable to find component reference");
-                            // component is a pointer to the data
-                            std::mem::transmute_copy::<_, $members>(&component.as_ptr())
+                        {
+                            let (component_id, component) = components
+                                .next()
+                                .expect("unable to find component reference");
+
+                            <$members as QueryTransform>::transform(
+                                world,
+                                current_archetype,
+                                entity_index,
+                                component_id,
+                                std::mem::transmute_copy::<_, $members>(&component.as_ptr()),
+                            )
                         },
                     )*
                 )
             }
         }
-    };
+    }
 }
 
 impl_to_query_info!(T1);

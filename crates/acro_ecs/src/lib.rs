@@ -2,6 +2,7 @@ pub mod application;
 pub mod archetype;
 pub mod entity;
 pub mod plugin;
+pub mod pointer;
 pub mod query;
 pub mod registry;
 pub mod resource;

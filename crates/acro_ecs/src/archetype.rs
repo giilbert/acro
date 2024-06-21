@@ -7,6 +7,7 @@ use std::{
 
 use crate::{
     entity::{Entities, EntityId, EntityMeta},
+    pointer::change_detection::ChangeDetectionContext,
     registry::{ComponentGroup, ComponentId, ComponentRegistry},
     storage::{anyvec::AnyVec, table::Table},
 };
@@ -225,7 +226,7 @@ impl Archetypes {
 #[derive(Debug)]
 pub struct Archetype {
     pub(crate) id: ArchetypeId,
-    table: Table,
+    pub(crate) table: Table,
     components: ComponentGroup,
     pub(crate) entities: Vec<EntityId>,
 }
@@ -247,7 +248,7 @@ impl Archetype {
         table_index: usize,
         component: ComponentId,
     ) -> Option<NonNull<u8>> {
-        unsafe { (&*self.table.columns[&component].get() as &AnyVec).get_ptr(table_index) }
+        unsafe { (&*self.table.columns[&component].data.get() as &AnyVec).get_ptr(table_index) }
     }
 
     pub fn remove(&mut self, entity_meta: &EntityMeta) -> Option<EntityId> {
@@ -288,7 +289,7 @@ impl Archetype {
         self.entities.push(entity_id);
     }
 
-    pub fn get_columns(&self, ids: &[ComponentId]) -> Vec<Rc<UnsafeCell<AnyVec>>> {
+    pub fn get_columns(&self, ids: &[ComponentId]) -> Vec<Rc<Column>> {
         ids.iter()
             .map(|id| Rc::clone(&self.table.columns[id]))
             .collect()
@@ -300,6 +301,21 @@ pub struct ArchetypeId(pub usize);
 
 impl ArchetypeId {
     pub const EMPTY: Self = ArchetypeId(0);
+}
+
+#[derive(Debug)]
+pub struct Column {
+    pub(crate) data: UnsafeCell<AnyVec>,
+    pub(crate) change_detection: &'static UnsafeCell<ChangeDetectionContext>,
+}
+
+impl Column {
+    pub fn new(data: UnsafeCell<AnyVec>) -> Self {
+        Self {
+            data,
+            change_detection: Box::leak(Box::new(UnsafeCell::default())),
+        }
+    }
 }
 
 #[derive(Debug, Default)]

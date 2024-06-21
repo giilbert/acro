@@ -1,5 +1,6 @@
 mod info;
 mod iter;
+mod transform;
 mod utils;
 
 pub use info::{ToFilterInfo, ToQueryInfo};
@@ -10,7 +11,7 @@ use crate::{registry::ComponentId, world::World};
 
 use self::{info::QueryInfo, iter::QueryIter};
 
-pub struct Query<T: ToQueryInfo, F: ToFilterInfo> {
+pub struct Query<T: for<'w> ToQueryInfo<'w>, F: ToFilterInfo> {
     pub(super) info: QueryInfo,
     pub(super) component_ids: Vec<ComponentId>,
     _phantom: PhantomData<(T, F)>,
@@ -18,12 +19,12 @@ pub struct Query<T: ToQueryInfo, F: ToFilterInfo> {
 
 impl<T, F> Query<T, F>
 where
-    T: ToQueryInfo,
+    T: for<'w> ToQueryInfo<'w>,
     F: ToFilterInfo,
 {
     pub fn new<TData, TFilters>(world: &mut World) -> Query<TData, TFilters>
     where
-        TData: ToQueryInfo,
+        TData: for<'w> ToQueryInfo<'w>,
         TFilters: ToFilterInfo,
     {
         let info = TData::to_query_info(world);
@@ -91,13 +92,13 @@ mod tests {
             ]
         );
 
-        let data1 = query1.over(&mut world).collect::<Vec<_>>();
+        let data1 = query1
+            .over(&mut world)
+            .map(|(x, y)| (x, y.clone()))
+            .collect::<Vec<_>>();
         assert_eq_unordered!(
             data1,
-            vec![
-                (&42u32, &mut "hello".to_string()),
-                (&12u32, &mut "bye".to_string())
-            ]
+            vec![(&42u32, "hello".to_string()), (&12u32, "bye".to_string())]
         );
 
         let mut query2 = world.query::<(&u32, &bool), ()>();

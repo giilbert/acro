@@ -5,24 +5,24 @@ use std::{
 };
 
 use crate::{
-    archetype::{Archetype, ArchetypeId, ArchetypeOperation},
+    archetype::{Archetype, ArchetypeId, ArchetypeOperation, Column},
     registry::ComponentId,
     storage::anyvec::AnyVec,
     world::World,
 };
 
-use super::{info::ToFilterInfo, Query, ToQueryInfo};
+use super::{info::ToFilterInfo, transform::QueryTransform, Query, ToQueryInfo};
 
 struct QueryState<'w> {
     pub current_entity_index: usize,
     pub current_archetype_index: usize,
     pub current_archetype: &'w RefCell<Archetype>,
-    pub columns: Vec<Rc<UnsafeCell<AnyVec>>>,
+    pub columns: Vec<Rc<Column>>,
 }
 
 pub struct QueryIter<'w, 'q, T, F>
 where
-    T: ToQueryInfo,
+    T: for<'a> ToQueryInfo<'a>,
     F: ToFilterInfo,
 {
     pub(super) world: &'w World,
@@ -32,7 +32,7 @@ where
 
 impl<'w, 'q, T, F> QueryIter<'w, 'q, T, F>
 where
-    T: ToQueryInfo,
+    T: for<'a> ToQueryInfo<'a>,
     F: ToFilterInfo,
 {
     pub fn new(world: &'w World, query: &'q Query<T, F>) -> Self {
@@ -54,12 +54,12 @@ where
     }
 }
 
-impl<T, F> Iterator for QueryIter<'_, '_, T, F>
+impl<'w, T, F> Iterator for QueryIter<'w, '_, T, F>
 where
-    T: ToQueryInfo,
+    T: for<'a> ToQueryInfo<'a>,
     F: ToFilterInfo,
 {
-    type Item = T;
+    type Item = <T as ToQueryInfo<'w>>::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
         let archetype = self.state.current_archetype.borrow();
@@ -96,13 +96,25 @@ where
         let index = self.state.current_entity_index;
         let current_columns = &self.state.columns;
 
-        let ret = Some(unsafe {
-            T::from_parts(current_columns.iter().map(|c| {
-                (&*c.get())
-                    .get_ptr(index)
-                    .expect("column index out of range")
-            }))
-        });
+        let ret =
+            Some(unsafe {
+                T::from_parts(
+                    self.world,
+                    &*self.state.current_archetype.borrow(),
+                    self.state.current_entity_index,
+                    self.query.component_ids.iter().zip(current_columns).map(
+                        |(&component_id, c)| {
+                            let column_data = &*c.data.get();
+                            (
+                                component_id,
+                                (column_data)
+                                    .get_ptr(index)
+                                    .expect("column index out of range"),
+                            )
+                        },
+                    ),
+                )
+            });
 
         self.state.current_entity_index += 1;
 

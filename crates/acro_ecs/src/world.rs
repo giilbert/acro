@@ -1,6 +1,9 @@
+use std::cell::UnsafeCell;
+
 use crate::{
     archetype::Archetypes,
     entity::{Entities, EntityId, EntityMeta},
+    pointer::change_detection::ChangeDetectionContext,
     query::{Query, ToFilterInfo, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,
@@ -61,9 +64,9 @@ impl World {
         )
     }
 
-    pub fn query<T, F>(&mut self) -> Query<T, F>
+    pub fn query<'w, T, F>(&mut self) -> Query<T, F>
     where
-        T: ToQueryInfo,
+        T: for<'a> ToQueryInfo<'a>,
         F: ToFilterInfo,
     {
         Query::<T, F>::new(self)
