@@ -180,8 +180,6 @@ mod tests {
         let mut query1 = world.query::<(EntityId, Option<&bool>), ()>();
         let data1 = query1.over(&world).collect::<Vec<_>>();
 
-        println!("{:#?}", query1.info);
-
         assert_eq_unordered!(
             data1,
             vec![
@@ -191,7 +189,5 @@ mod tests {
                 (entity4, None)
             ]
         );
-
-        panic!();
     }
 }
