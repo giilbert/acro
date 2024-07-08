@@ -79,10 +79,6 @@ where
                 .get_archetype(self.query.info.archetypes[self.state.current_archetype_index])
                 .expect("query archetype not found");
 
-            if self.state.current_archetype.borrow().entities.is_empty() {
-                return None;
-            }
-
             // Update the columns information to be from the new archetype
             self.state.columns = self
                 .state
@@ -91,6 +87,8 @@ where
                 .get_columns(&self.query.component_ids);
 
             self.state.current_entity_index = 0;
+
+            return self.next();
         };
 
         let index = self.state.current_entity_index;
