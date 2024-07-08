@@ -1,24 +1,73 @@
-use std::any::Any;
+use std::any::{Any, TypeId};
+
+use crate::entity::EntityId;
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum QueryBorrowType {
+    Unknown,
+    Borrow,
+    BorrowMut,
+    OptionBorrow,
+    OptionBorrowMut,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum QueryFetchType {
+    Unknown,
+    EntityId,
+    Component,
+}
 
 #[allow(unused)]
 pub(crate) trait QueryInfoUtils: Any {
-    fn is_borrowed() -> bool {
-        false
-    }
+    const BORROW: QueryBorrowType = QueryBorrowType::Unknown;
+    const FETCH: QueryFetchType = QueryFetchType::Unknown;
 
-    fn is_borrowed_mut() -> bool {
-        false
-    }
+    #[inline]
+    fn type_id() -> TypeId;
 }
 
 impl<T: 'static> QueryInfoUtils for &'static T {
-    fn is_borrowed() -> bool {
-        true
+    const BORROW: QueryBorrowType = QueryBorrowType::Borrow;
+    const FETCH: QueryFetchType = QueryFetchType::Component;
+
+    fn type_id() -> TypeId {
+        TypeId::of::<T>()
     }
 }
 
 impl<T: 'static> QueryInfoUtils for &'static mut T {
-    fn is_borrowed_mut() -> bool {
-        true
+    const BORROW: QueryBorrowType = QueryBorrowType::BorrowMut;
+    const FETCH: QueryFetchType = QueryFetchType::Component;
+
+    fn type_id() -> TypeId {
+        TypeId::of::<T>()
+    }
+}
+
+impl<T: 'static> QueryInfoUtils for Option<&'static T> {
+    const BORROW: QueryBorrowType = QueryBorrowType::OptionBorrow;
+    const FETCH: QueryFetchType = QueryFetchType::Component;
+
+    fn type_id() -> TypeId {
+        TypeId::of::<T>()
+    }
+}
+
+impl<T: 'static> QueryInfoUtils for Option<&'static mut T> {
+    const BORROW: QueryBorrowType = QueryBorrowType::OptionBorrowMut;
+    const FETCH: QueryFetchType = QueryFetchType::Component;
+
+    fn type_id() -> TypeId {
+        TypeId::of::<T>()
+    }
+}
+
+impl QueryInfoUtils for EntityId {
+    const BORROW: QueryBorrowType = QueryBorrowType::Unknown;
+    const FETCH: QueryFetchType = QueryFetchType::EntityId;
+
+    fn type_id() -> TypeId {
+        panic!("invalid type_id for EntityId")
     }
 }

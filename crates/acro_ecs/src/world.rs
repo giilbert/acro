@@ -1,4 +1,4 @@
-use std::cell::UnsafeCell;
+use std::{any::TypeId, cell::UnsafeCell};
 
 use crate::{
     archetype::Archetypes,
@@ -41,6 +41,10 @@ impl World {
 
     pub fn get_component_info<T: 'static>(&self) -> &ComponentInfo {
         self.components.get::<T>().expect("component not found")
+    }
+
+    pub fn get_component_info_id(&self, id: TypeId) -> &ComponentInfo {
+        self.components.get_by_id(id).expect("component not found")
     }
 
     pub fn insert<T: 'static>(&mut self, entity: EntityId, component: T) {

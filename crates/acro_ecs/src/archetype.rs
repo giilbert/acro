@@ -289,9 +289,9 @@ impl Archetype {
         self.entities.push(entity_id);
     }
 
-    pub fn get_columns(&self, ids: &[ComponentId]) -> Vec<Rc<Column>> {
+    pub fn get_columns(&self, ids: &[ComponentId]) -> Vec<Option<Rc<Column>>> {
         ids.iter()
-            .map(|id| Rc::clone(&self.table.columns[id]))
+            .map(|id| self.table.columns.get(id).map(Rc::clone))
             .collect()
     }
 }

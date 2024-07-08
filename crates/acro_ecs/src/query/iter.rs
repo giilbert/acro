@@ -1,23 +1,17 @@
-use std::{
-    cell::{Ref, RefCell, UnsafeCell},
-    collections::HashSet,
-    rc::{Rc, Weak},
-};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    archetype::{Archetype, ArchetypeId, ArchetypeOperation, Column},
-    registry::ComponentId,
-    storage::anyvec::AnyVec,
+    archetype::{Archetype, Column},
     world::World,
 };
 
-use super::{info::ToFilterInfo, transform::QueryTransform, Query, ToQueryInfo};
+use super::{info::ToFilterInfo, Query, ToQueryInfo};
 
 struct QueryState<'w> {
     pub current_entity_index: usize,
     pub current_archetype_index: usize,
     pub current_archetype: &'w RefCell<Archetype>,
-    pub columns: Vec<Rc<Column>>,
+    pub columns: Vec<Option<Rc<Column>>>,
 }
 
 pub struct QueryIter<'w, 'q, T, F>
@@ -61,6 +55,7 @@ where
 {
     type Item = <T as ToQueryInfo<'w>>::Output;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let archetype = self.state.current_archetype.borrow();
 
@@ -102,12 +97,11 @@ where
                     self.state.current_entity_index,
                     self.query.component_ids.iter().zip(current_columns).map(
                         |(&component_id, c)| {
-                            let column_data = &*c.data.get();
                             (
                                 component_id,
-                                (column_data)
-                                    .get_ptr(index)
-                                    .expect("column index out of range"),
+                                c.as_ref()
+                                    .map(|column| (&*column.data.get()).get_ptr(index))
+                                    .flatten(),
                             )
                         },
                     ),

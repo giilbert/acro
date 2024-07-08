@@ -1,4 +1,6 @@
-use std::{process::Output, ptr::NonNull};
+use std::{collections::HashSet, option, process::Output, ptr::NonNull};
+
+use itertools::Itertools;
 
 use crate::{
     archetype::{Archetype, ArchetypeId},
@@ -6,7 +8,10 @@ use crate::{
     world::World,
 };
 
-use super::{transform::QueryTransform, utils::QueryInfoUtils};
+use super::{
+    transform::QueryTransform,
+    utils::{QueryBorrowType, QueryFetchType, QueryInfoUtils},
+};
 
 #[derive(Debug)]
 pub struct QueryInfo {
@@ -24,6 +29,7 @@ impl QueryInfo {
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum QueryComponentInfo {
+    EntityId,
     Borrowed(ComponentInfo),
     BorrowedMut(ComponentInfo),
     OptionBorrow(ComponentInfo),
@@ -31,12 +37,29 @@ pub enum QueryComponentInfo {
 }
 
 impl QueryComponentInfo {
+    pub fn is_component(&self) -> bool {
+        match self {
+            QueryComponentInfo::EntityId => false,
+            _ => true,
+        }
+    }
+
+    pub fn is_required(&self) -> bool {
+        match self {
+            QueryComponentInfo::Borrowed(_) => true,
+            QueryComponentInfo::BorrowedMut(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
     pub fn component_info(&self) -> &ComponentInfo {
         match self {
             QueryComponentInfo::Borrowed(info) => info,
             QueryComponentInfo::BorrowedMut(info) => info,
             QueryComponentInfo::OptionBorrow(info) => info,
             QueryComponentInfo::OptionBorrowMut(info) => info,
+            QueryComponentInfo::EntityId => panic!("EntityId has no component info"),
         }
     }
 }
@@ -49,34 +72,77 @@ pub trait ToQueryInfo<'w> {
         world: &'w World,
         current_archetype: &Archetype,
         entity_index: usize,
-        components: impl Iterator<Item = (ComponentId, NonNull<u8>)>,
+        components: impl Iterator<Item = (ComponentId, Option<NonNull<u8>>)>,
     ) -> Self::Output;
 }
 
 fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryComponentInfo {
-    if T::is_borrowed_mut() {
-        QueryComponentInfo::BorrowedMut(world.get_component_info::<T>().clone())
-    } else {
-        QueryComponentInfo::Borrowed(world.get_component_info::<T>().clone())
+    match (T::BORROW, T::FETCH) {
+        (_, QueryFetchType::EntityId) => return QueryComponentInfo::EntityId,
+        _ => (),
+    }
+
+    let component_info = world
+        .get_component_info_id(<T as QueryInfoUtils>::type_id())
+        .clone();
+
+    match (T::BORROW, T::FETCH) {
+        (QueryBorrowType::Borrow, QueryFetchType::Component) => {
+            QueryComponentInfo::Borrowed(component_info)
+        }
+        (QueryBorrowType::BorrowMut, QueryFetchType::Component) => {
+            QueryComponentInfo::BorrowedMut(component_info)
+        }
+        (QueryBorrowType::OptionBorrow, QueryFetchType::Component) => {
+            QueryComponentInfo::OptionBorrow(component_info)
+        }
+        (QueryBorrowType::OptionBorrowMut, QueryFetchType::Component) => {
+            QueryComponentInfo::OptionBorrowMut(component_info)
+        }
+        _ => unimplemented!(
+            "unsupported component query type: {:?} {:?}",
+            T::BORROW,
+            T::FETCH
+        ),
     }
 }
 
 fn find_archetypes(world: &World, components: &[QueryComponentInfo]) -> Vec<ArchetypeId> {
-    let component_group = ComponentGroup::new(
-        components
+    let required_components = components
+        .iter()
+        .filter(|c| c.is_component() && c.is_required())
+        .collect_vec();
+    let optional_components = components
+        .iter()
+        .filter(|c| c.is_component() && !c.is_required())
+        .collect_vec();
+
+    let set: HashSet<ArchetypeId> = HashSet::from_iter(
+        optional_components
             .iter()
-            .map(|c| c.component_info().clone())
-            .collect(),
+            .powerset()
+            .map(|c| {
+                let component_group = ComponentGroup::new(
+                    c.into_iter()
+                        .chain(required_components.iter())
+                        .map(|c| c.component_info().clone())
+                        .collect(),
+                );
+
+                world.archetypes.get_archetypes_with(&component_group)
+            })
+            .flatten()
+            .collect_vec(),
     );
 
-    world.archetypes.get_archetypes_with(&component_group)
+    set.into_iter().collect()
 }
 
 macro_rules! impl_to_query_info {
     ($($members:ident),+) => {
         impl<
             'w,
-            $($members: QueryInfoUtils + QueryTransform<'w, Input = $members>),*
+            $($members: QueryInfoUtils + QueryTransform<'w, InputOrCreate = $members>),*
         > ToQueryInfo<'w> for ($($members,)*) {
             type Output = ($(<$members as QueryTransform<'w>>::Output,)*);
 
@@ -94,21 +160,27 @@ macro_rules! impl_to_query_info {
                 world: &'w World,
                 current_archetype: &Archetype,
                 entity_index: usize,
-                mut components: impl Iterator<Item = (ComponentId, NonNull<u8>)>,
+                mut components: impl Iterator<Item = (ComponentId, Option<NonNull<u8>>)>,
             ) -> Self::Output {
                 (
                     $(
-                        {
+                        if <$members as QueryTransform>::IS_CREATE {
+                            <$members as QueryTransform>::create(
+                                world,
+                                current_archetype,
+                                entity_index,
+                            )
+                        } else {
                             let (component_id, component) = components
                                 .next()
-                                .expect("unable to find component reference");
+                                .expect("unable to find componet reference");
 
-                            <$members as QueryTransform>::transform(
+                            <$members as QueryTransform>::transform_component(
                                 world,
                                 current_archetype,
                                 entity_index,
                                 component_id,
-                                std::mem::transmute_copy::<_, $members>(&component.as_ptr()),
+                                std::mem::transmute_copy::<_, $members>(&component),
                             )
                         },
                     )*

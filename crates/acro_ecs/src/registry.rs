@@ -13,8 +13,6 @@ use crate::storage::anyvec::Dropper;
 pub struct ComponentRegistry {
     current_id: usize,
     native_components: FnvHashMap<TypeId, ComponentId>,
-    borrowed_ids: FnvHashMap<TypeId, ComponentId>,
-    borrowed_mut_ids: FnvHashMap<TypeId, ComponentId>,
     components: FnvHashMap<ComponentId, ComponentInfo>,
 }
 
@@ -42,8 +40,6 @@ impl ComponentRegistry {
         Self {
             current_id: 0,
             native_components: HashMap::default(),
-            borrowed_ids: HashMap::default(),
-            borrowed_mut_ids: HashMap::default(),
             components: HashMap::default(),
         }
     }
@@ -55,12 +51,13 @@ impl ComponentRegistry {
     }
 
     pub fn get<T: 'static>(&self) -> Option<&ComponentInfo> {
-        self.components.get(
-            self.native_components
-                .get(&TypeId::of::<T>())
-                .or_else(|| self.borrowed_ids.get(&TypeId::of::<T>()))
-                .or_else(|| self.borrowed_mut_ids.get(&TypeId::of::<T>()))?,
-        )
+        self.get_by_id(TypeId::of::<T>())
+    }
+
+    pub fn get_by_id(&self, id: TypeId) -> Option<&ComponentInfo> {
+        self.native_components
+            .get(&id)
+            .and_then(|id| self.components.get(id))
     }
 
     pub fn init_rust_type<T: 'static>(&mut self) -> &ComponentInfo {
@@ -82,8 +79,6 @@ impl ComponentRegistry {
         );
 
         self.native_components.insert(TypeId::of::<T>(), id);
-        self.borrowed_ids.insert(TypeId::of::<&T>(), id);
-        self.borrowed_mut_ids.insert(TypeId::of::<&mut T>(), id);
 
         self.components
             .get(&id)
