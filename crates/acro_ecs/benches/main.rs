@@ -14,12 +14,12 @@ fn criterion_benchmark(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("query 1000", |cx| {
+    c.bench_function("query 1_000_000", |cx| {
         let mut world = World::new();
         world.init_component::<u32>();
         world.init_component::<String>();
 
-        for i in 0..1000 {
+        for i in 0..1_000_000 {
             let entity = world.spawn();
             world.insert(entity, i as u32);
             world.insert(entity, i.to_string());
@@ -29,6 +29,43 @@ fn criterion_benchmark(c: &mut Criterion) {
             let mut query = world.query::<(&u32, &String), ()>();
             for value in query.over(&mut world) {
                 black_box(value);
+            }
+        });
+    });
+
+    c.bench_function("prepare queries 1_000", |cx| {
+        // create a bunch of archetypes
+        let mut world = World::new();
+        world.init_component::<u32>();
+        world.init_component::<i8>();
+        world.init_component::<bool>();
+        world.init_component::<String>();
+
+        for i in 0..120 {
+            let entity = world.spawn();
+            if i % 2 == 0 {
+                world.insert(entity, i as u32);
+            }
+            if i % 3 == 0 {
+                world.insert(entity, i as i8);
+            }
+            if i % 4 == 0 {
+                world.insert(entity, i % 2 == 0);
+            }
+            if i % 5 == 0 {
+                world.insert(entity, i.to_string());
+            }
+        }
+
+        cx.iter(|| {
+            for _ in 0..1_000 {
+                let _query1 = world.query::<(&u32, &i8), ()>();
+                let _query2 = world.query::<(&u32, &bool), ()>();
+                let _query3 = world.query::<(&i8, &bool), ()>();
+                let _query4 = world.query::<(&u32, &bool, &String), ()>();
+                let _query5 = world.query::<(&i8, &bool, &String), ()>();
+                let _query6 = world.query::<(&bool, &u32), ()>();
+                black_box((_query1, _query2, _query3, _query4, _query5, _query6));
             }
         });
     });

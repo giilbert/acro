@@ -5,7 +5,7 @@ use crate::{
     world::World,
 };
 
-use super::{info::ToFilterInfo, Query, ToQueryInfo};
+use super::{filters::QueryFilter, Query, ToQueryInfo};
 
 struct QueryState<'w> {
     pub current_entity_index: usize,
@@ -17,7 +17,7 @@ struct QueryState<'w> {
 pub struct QueryIter<'w, 'q, T, F>
 where
     T: for<'a> ToQueryInfo<'a>,
-    F: ToFilterInfo,
+    F: for<'a> QueryFilter<'a>,
 {
     pub(super) world: &'w World,
     pub(super) query: &'q Query<T, F>,
@@ -27,7 +27,7 @@ where
 impl<'w, 'q, T, F> QueryIter<'w, 'q, T, F>
 where
     T: for<'a> ToQueryInfo<'a>,
-    F: ToFilterInfo,
+    F: for<'a> QueryFilter<'a>,
 {
     pub fn new(world: &'w World, query: &'q Query<T, F>) -> Self {
         let current_archetype = world
@@ -51,7 +51,7 @@ where
 impl<'w, T, F> Iterator for QueryIter<'w, '_, T, F>
 where
     T: for<'a> ToQueryInfo<'a>,
-    F: ToFilterInfo,
+    F: for<'a> QueryFilter<'a>,
 {
     type Item = <T as ToQueryInfo<'w>>::Output;
 

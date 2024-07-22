@@ -90,8 +90,8 @@ mod tests {
         app.add_system(
             |app| {
                 (
-                    app.world.query::<(&u32,), ()>(),
-                    app.world.query::<(&String,), ()>(),
+                    app.world.query::<&u32, ()>(),
+                    app.world.query::<&String, ()>(),
                 )
             },
             |world: &mut World, (number_query, string_query)| {

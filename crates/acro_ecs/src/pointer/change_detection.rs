@@ -54,8 +54,6 @@ impl<'v, T> DerefMut for Mut<'v, T> {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::DerefMut;
-
     use crate::{
         archetype::ArchetypeId, pointer::change_detection::ChangeDetectionId,
         registry::ComponentId, world::World, Application,
@@ -73,7 +71,7 @@ mod tests {
         app.world().insert(entity2, 42u32);
 
         app.add_system(
-            |app| (app.world().query::<(&mut u32,), ()>(),),
+            |app| (app.world().query::<&mut u32, ()>(),),
             |world: &mut World, (number_query,)| {
                 for (mut value,) in number_query.over(world) {
                     if value == 42 {

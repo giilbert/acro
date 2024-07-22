@@ -1,9 +1,11 @@
+mod filters;
 mod info;
 mod iter;
 mod transform;
 mod utils;
 
-pub use info::{ToFilterInfo, ToQueryInfo};
+pub use filters::QueryFilter;
+pub use info::ToQueryInfo;
 
 use std::marker::PhantomData;
 
@@ -12,7 +14,7 @@ use crate::{registry::ComponentId, world::World};
 use self::{info::QueryInfo, iter::QueryIter};
 
 #[derive(Debug)]
-pub struct Query<T: for<'w> ToQueryInfo<'w>, F: ToFilterInfo> {
+pub struct Query<T: for<'w> ToQueryInfo<'w>, F: for<'w> QueryFilter<'w> = ()> {
     pub(super) info: QueryInfo,
     pub(super) component_ids: Vec<ComponentId>,
     _phantom: PhantomData<(T, F)>,
@@ -21,14 +23,14 @@ pub struct Query<T: for<'w> ToQueryInfo<'w>, F: ToFilterInfo> {
 impl<T, F> Query<T, F>
 where
     T: for<'w> ToQueryInfo<'w>,
-    F: ToFilterInfo,
+    F: for<'w> QueryFilter<'w>,
 {
     pub fn new<TData, TFilters>(world: &mut World) -> Query<TData, TFilters>
     where
         TData: for<'w> ToQueryInfo<'w>,
-        TFilters: ToFilterInfo,
+        TFilters: for<'w> QueryFilter<'w>,
     {
-        let info = TData::to_query_info(world);
+        let info = TData::to_query_info::<TFilters>(world);
         let component_ids = info
             .components
             .iter()
@@ -45,7 +47,7 @@ where
 
     pub fn over<'w, 'q>(&'q mut self, world: &'w World) -> QueryIter<'w, 'q, T, F> {
         if self.info.archetypes_generation != world.archetypes.generation {
-            self.info.recompute_archetypes(world);
+            self.info.recompute_archetypes::<F>(world);
         }
 
         QueryIter::new(world, self)
@@ -122,7 +124,7 @@ mod tests {
         let entity2 = world.spawn();
         world.insert(entity2, 12u32);
 
-        let mut query1 = world.query::<(&u32,), ()>();
+        let mut query1 = world.query::<&u32, ()>();
         let data1 = query1.over(&mut world).collect::<Vec<_>>();
         assert_eq_unordered!(data1, vec![(&42u32,), (&12u32,)]);
 

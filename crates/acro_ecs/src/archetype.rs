@@ -227,7 +227,7 @@ impl Archetypes {
 pub struct Archetype {
     pub(crate) id: ArchetypeId,
     pub(crate) table: Table,
-    components: ComponentGroup,
+    pub(crate) components: ComponentGroup,
     pub(crate) entities: Vec<EntityId>,
 }
 

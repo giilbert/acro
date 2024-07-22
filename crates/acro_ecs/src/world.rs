@@ -4,7 +4,7 @@ use crate::{
     archetype::Archetypes,
     entity::{Entities, EntityId, EntityMeta},
     pointer::change_detection::ChangeDetectionContext,
-    query::{Query, ToFilterInfo, ToQueryInfo},
+    query::{Query, QueryFilter, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,
 };
@@ -68,10 +68,10 @@ impl World {
         )
     }
 
-    pub fn query<'w, T, F>(&mut self) -> Query<T, F>
+    pub fn query<T, F>(&mut self) -> Query<T, F>
     where
         T: for<'a> ToQueryInfo<'a>,
-        F: ToFilterInfo,
+        F: for<'a> QueryFilter<'a>,
     {
         Query::<T, F>::new(self)
     }

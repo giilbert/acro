@@ -1,4 +1,4 @@
-use std::{collections::HashSet, option, process::Output, ptr::NonNull};
+use std::{collections::HashSet, option, process::Output, ptr::NonNull, sync::Arc};
 
 use itertools::Itertools;
 
@@ -11,6 +11,7 @@ use crate::{
 use super::{
     transform::QueryTransform,
     utils::{QueryBorrowType, QueryFetchType, QueryInfoUtils},
+    QueryFilter,
 };
 
 #[derive(Debug)]
@@ -21,8 +22,8 @@ pub struct QueryInfo {
 }
 
 impl QueryInfo {
-    pub fn recompute_archetypes(&mut self, world: &World) {
-        self.archetypes = find_archetypes(world, &self.components);
+    pub fn recompute_archetypes<F: for<'w> QueryFilter<'w>>(&mut self, world: &World) {
+        self.archetypes = find_archetypes::<F>(world, &self.components);
     }
 }
 
@@ -67,7 +68,7 @@ impl QueryComponentInfo {
 pub trait ToQueryInfo<'w> {
     type Output;
 
-    fn to_query_info(world: &mut World) -> QueryInfo;
+    fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &mut World) -> QueryInfo;
     unsafe fn from_parts(
         world: &'w World,
         current_archetype: &Archetype,
@@ -76,7 +77,7 @@ pub trait ToQueryInfo<'w> {
     ) -> Self::Output;
 }
 
-fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryComponentInfo {
+pub fn get_full_component_info<T: QueryInfoUtils>(world: &World) -> QueryComponentInfo {
     match (T::BORROW, T::FETCH) {
         (_, QueryFetchType::EntityId) => return QueryComponentInfo::EntityId,
         _ => (),
@@ -107,7 +108,10 @@ fn get_full_component_info<T: QueryInfoUtils>(world: &mut World) -> QueryCompone
     }
 }
 
-fn find_archetypes(world: &World, components: &[QueryComponentInfo]) -> Vec<ArchetypeId> {
+fn find_archetypes<F: for<'w> QueryFilter<'w>>(
+    world: &World,
+    components: &[QueryComponentInfo],
+) -> Vec<ArchetypeId> {
     let required_components = components
         .iter()
         .filter(|c| c.is_component() && c.is_required())
@@ -135,7 +139,18 @@ fn find_archetypes(world: &World, components: &[QueryComponentInfo]) -> Vec<Arch
             .collect_vec(),
     );
 
-    set.into_iter().collect()
+    F::filter_archetype(
+        world,
+        set.into_iter().map(|id| {
+            world
+                .archetypes
+                .get_archetype(id)
+                .expect("archetype does not exist")
+                .borrow()
+        }),
+    )
+    .map(|archetype| archetype.id)
+    .collect()
 }
 
 macro_rules! impl_to_query_info {
@@ -146,11 +161,11 @@ macro_rules! impl_to_query_info {
         > ToQueryInfo<'w> for ($($members,)*) {
             type Output = ($(<$members as QueryTransform<'w>>::Output,)*);
 
-            fn to_query_info(world: &mut World) -> QueryInfo {
+            fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &mut World) -> QueryInfo {
                 let components = vec![$(get_full_component_info::<$members>(world),)*];
                 QueryInfo {
                     archetypes_generation: world.archetypes.generation,
-                    archetypes: find_archetypes(world, &components),
+                    archetypes: find_archetypes::<F>(world, &components),
                     components,
                 }
             }
@@ -190,7 +205,42 @@ macro_rules! impl_to_query_info {
     }
 }
 
-impl_to_query_info!(T1);
+impl<'w, T1: QueryInfoUtils + QueryTransform<'w, InputOrCreate = T1>> ToQueryInfo<'w> for T1 {
+    type Output = (<T1 as QueryTransform<'w>>::Output,);
+
+    fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &mut World) -> QueryInfo {
+        let components = vec![get_full_component_info::<T1>(world)];
+        QueryInfo {
+            archetypes_generation: world.archetypes.generation,
+            archetypes: find_archetypes::<F>(world, &components),
+            components,
+        }
+    }
+
+    #[inline]
+    unsafe fn from_parts(
+        world: &'w World,
+        current_archetype: &Archetype,
+        entity_index: usize,
+        mut components: impl Iterator<Item = (ComponentId, Option<NonNull<u8>>)>,
+    ) -> Self::Output {
+        (if <T1 as QueryTransform>::IS_CREATE {
+            <T1 as QueryTransform>::create(world, current_archetype, entity_index)
+        } else {
+            let (component_id, component) = components
+                .next()
+                .expect("unable to find componet reference");
+            <T1 as QueryTransform>::transform_component(
+                world,
+                current_archetype,
+                entity_index,
+                component_id,
+                std::mem::transmute_copy::<_, T1>(&component),
+            )
+        },)
+    }
+}
+
 impl_to_query_info!(T1, T2);
 impl_to_query_info!(T1, T2, T3);
 impl_to_query_info!(T1, T2, T3, T4);
@@ -198,7 +248,3 @@ impl_to_query_info!(T1, T2, T3, T4, T5);
 impl_to_query_info!(T1, T2, T3, T4, T5, T6);
 impl_to_query_info!(T1, T2, T3, T4, T5, T6, T7);
 impl_to_query_info!(T1, T2, T3, T4, T5, T6, T7, T8);
-
-pub trait ToFilterInfo {}
-
-impl ToFilterInfo for () {}
