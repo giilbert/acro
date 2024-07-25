@@ -14,8 +14,8 @@ pub trait QueryFilter<'w> {
 
     fn filter_archetype<'a>(
         world: &'w World,
-        components: impl Iterator<Item = Ref<'a, Archetype>>,
-    ) -> impl Iterator<Item = Ref<'a, Archetype>>;
+        components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
+    ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone;
     // fn filter_test(&self, world: &'w World, entity: EntityId, archetype_id: ArchetypeId) -> bool;
 }
 
@@ -24,8 +24,8 @@ impl<'w> QueryFilter<'w> for () {
 
     fn filter_archetype<'a>(
         _world: &'w World,
-        components: impl Iterator<Item = Ref<'a, Archetype>>,
-    ) -> impl Iterator<Item = Ref<'a, Archetype>> {
+        components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
+    ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
         components
     }
 }
@@ -43,12 +43,34 @@ where
 
     fn filter_archetype<'a>(
         world: &'w World,
-        components: impl Iterator<Item = Ref<'a, Archetype>>,
-    ) -> impl Iterator<Item = Ref<'a, Archetype>> {
+        components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
+    ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
         let full = get_full_component_info::<&T>(world);
         let component_info = full.component_info().clone();
 
         components.filter(move |archetype| archetype.components.contains(component_info.id))
+    }
+}
+
+#[derive(Debug)]
+pub struct Without<T> {
+    _phantom: PhantomData<T>,
+}
+
+impl<'w, T> QueryFilter<'w> for Without<T>
+where
+    T: Any,
+{
+    const IS_STRICTLY_ARCHETYPAL: bool = true;
+
+    fn filter_archetype<'a>(
+        world: &'w World,
+        components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
+    ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
+        let full = get_full_component_info::<&T>(world);
+        let component_info = full.component_info().clone();
+
+        components.filter(move |archetype| !archetype.components.contains(component_info.id))
     }
 }
 
@@ -72,8 +94,8 @@ macro_rules! impl_to_filter_info_and {
 
             fn filter_archetype<'a>(
                 world: &'w World,
-                components: impl Iterator<Item = Ref<'a, Archetype>>,
-            ) -> impl Iterator<Item = Ref<'a, Archetype>> {
+                components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
+            ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
                 expand_filter_archetype!(world, components, $($members),+)
             }
         }
@@ -88,55 +110,60 @@ impl_to_filter_info_and!(T1, T2, T3, T4, T5, T6);
 impl_to_filter_info_and!(T1, T2, T3, T4, T5, T6, T7);
 impl_to_filter_info_and!(T1, T2, T3, T4, T5, T6, T7, T8);
 
-// pub struct Or<T1, T2, T3 = (), T4 = (), T5 = (), T6 = (), T7 = (), T8 = ()>
-// where
-//     T1: ToFilterInfo,
-//     T2: ToFilterInfo,
-//     T3: ToFilterInfo,
-//     T4: ToFilterInfo,
-//     T5: ToFilterInfo,
-//     T6: ToFilterInfo,
-//     T7: ToFilterInfo,
-//     T8: ToFilterInfo,
-// {
-//     _phantom: PhantomData<(T1, T2, T3, T4, T5, T6, T7, T8)>,
-// }
+pub struct Or<T1, T2, T3 = (), T4 = (), T5 = (), T6 = (), T7 = (), T8 = ()>
+where
+    T1: for<'a> QueryFilter<'a>,
+    T2: for<'a> QueryFilter<'a>,
+    T3: for<'a> QueryFilter<'a>,
+    T4: for<'a> QueryFilter<'a>,
+    T5: for<'a> QueryFilter<'a>,
+    T6: for<'a> QueryFilter<'a>,
+    T7: for<'a> QueryFilter<'a>,
+    T8: for<'a> QueryFilter<'a>,
+{
+    _phantom: PhantomData<(T1, T2, T3, T4, T5, T6, T7, T8)>,
+}
 
-// impl<T1, T2, T3, T4, T5, T6, T7, T8> ToFilterInfo for Or<T1, T2, T3, T4, T5, T6, T7, T8>
-// where
-//     T1: ToFilterInfo,
-//     T2: ToFilterInfo,
-//     T3: ToFilterInfo,
-//     T4: ToFilterInfo,
-//     T5: ToFilterInfo,
-//     T6: ToFilterInfo,
-//     T7: ToFilterInfo,
-//     T8: ToFilterInfo,
-// {
-//     fn to_filter_info() -> Filter {
-//         Filter::Or(
-//             [
-//                 T1::to_filter_info(),
-//                 T2::to_filter_info(),
-//                 T3::to_filter_info(),
-//                 T4::to_filter_info(),
-//                 T5::to_filter_info(),
-//                 T6::to_filter_info(),
-//                 T7::to_filter_info(),
-//                 T8::to_filter_info(),
-//             ]
-//             .into_iter()
-//             .filter(|f| f != &Filter::None)
-//             .collect(),
-//         )
-//     }
-// }
+impl<'w, T1, T2, T3, T4, T5, T6, T7, T8> QueryFilter<'w> for Or<T1, T2, T3, T4, T5, T6, T7, T8>
+where
+    T1: for<'a> QueryFilter<'a>,
+    T2: for<'a> QueryFilter<'a>,
+    T3: for<'a> QueryFilter<'a>,
+    T4: for<'a> QueryFilter<'a>,
+    T5: for<'a> QueryFilter<'a>,
+    T6: for<'a> QueryFilter<'a>,
+    T7: for<'a> QueryFilter<'a>,
+    T8: for<'a> QueryFilter<'a>,
+{
+    const IS_STRICTLY_ARCHETYPAL: bool = T1::IS_STRICTLY_ARCHETYPAL
+        && T2::IS_STRICTLY_ARCHETYPAL
+        && T3::IS_STRICTLY_ARCHETYPAL
+        && T4::IS_STRICTLY_ARCHETYPAL
+        && T5::IS_STRICTLY_ARCHETYPAL
+        && T6::IS_STRICTLY_ARCHETYPAL
+        && T7::IS_STRICTLY_ARCHETYPAL
+        && T8::IS_STRICTLY_ARCHETYPAL;
+
+    fn filter_archetype<'a>(
+        world: &'w World,
+        components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
+    ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
+        T1::filter_archetype(world, components.clone())
+            .chain(T2::filter_archetype(world, components.clone()))
+            .chain(T3::filter_archetype(world, components.clone()))
+            .chain(T4::filter_archetype(world, components.clone()))
+            .chain(T5::filter_archetype(world, components.clone()))
+            .chain(T6::filter_archetype(world, components.clone()))
+            .chain(T7::filter_archetype(world, components.clone()))
+            .chain(T8::filter_archetype(world, components))
+    }
+}
 
 #[cfg(test)]
 mod test {
     use assert_unordered::assert_eq_unordered;
 
-    use crate::world::World;
+    use crate::{entity::EntityId, query::filters::Or, world::World};
 
     use super::With;
 
@@ -160,13 +187,25 @@ mod test {
         world.insert(entity3, 22u32);
         world.insert(entity3, false);
 
-        let mut query = world.query::<&u32, With<String>>();
+        let mut query = world.query::<EntityId, With<String>>();
         assert_eq_unordered!(
             &query.over(&mut world).collect::<Vec<_>>(),
-            &vec![
-                (&42u32,), // entity1
-                (&12u32,), // entity2
-            ]
+            &vec![entity1, entity2]
+        );
+
+        let mut query = world.query::<EntityId, (With<String>, With<bool>)>();
+        assert_eq_unordered!(&query.over(&mut world).collect::<Vec<_>>(), &vec![entity2]);
+
+        let mut query = world.query::<EntityId, Or<With<String>, With<bool>>>();
+        assert_eq_unordered!(
+            &query.over(&mut world).collect::<Vec<_>>(),
+            &vec![entity1, entity2, entity3]
+        );
+
+        let mut query = world.query::<EntityId, Or<With<String>, With<u32>>>();
+        assert_eq_unordered!(
+            &query.over(&mut world).collect::<Vec<_>>(),
+            &vec![entity1, entity2, entity3]
         );
     }
 }

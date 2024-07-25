@@ -97,11 +97,11 @@ mod tests {
             |world: &mut World, (number_query, string_query)| {
                 *world.resources.get_mut::<u32>() += 1;
 
-                for (value,) in number_query.over(world) {
+                for value in number_query.over(world) {
                     assert_eq!(value, &42);
                 }
 
-                for (value,) in string_query.over(world) {
+                for value in string_query.over(world) {
                     assert_eq!(value, &"hello".to_string());
                 }
             },

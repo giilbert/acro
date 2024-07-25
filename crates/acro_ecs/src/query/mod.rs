@@ -126,17 +126,17 @@ mod tests {
 
         let mut query1 = world.query::<&u32, ()>();
         let data1 = query1.over(&mut world).collect::<Vec<_>>();
-        assert_eq_unordered!(data1, vec![(&42u32,), (&12u32,)]);
+        assert_eq_unordered!(data1, vec![&42u32, &12u32]);
 
         world.insert(entity1, true);
 
         let data2 = query1.over(&mut world).collect::<Vec<_>>();
-        assert_eq_unordered!(data2, vec![(&42u32,), (&12u32,)]);
+        assert_eq_unordered!(data2, vec![&42u32, &12u32]);
 
         world.insert(entity2, false);
 
         let data3 = query1.over(&mut world).collect::<Vec<_>>();
-        assert_eq_unordered!(data3, vec![(&42u32,), (&12u32,)]);
+        assert_eq_unordered!(data3, vec![&42u32, &12u32]);
     }
 
     #[test]

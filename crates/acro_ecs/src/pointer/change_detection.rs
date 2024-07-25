@@ -73,7 +73,7 @@ mod tests {
         app.add_system(
             |app| (app.world().query::<&mut u32, ()>(),),
             |world: &mut World, (number_query,)| {
-                for (mut value,) in number_query.over(world) {
+                for mut value in number_query.over(world) {
                     if value == 42 {
                         *value = 20;
                     }
