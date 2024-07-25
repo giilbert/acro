@@ -122,35 +122,36 @@ fn find_archetypes<F: for<'w> QueryFilter<'w>>(
         .collect_vec();
 
     let set: HashSet<ArchetypeId> = HashSet::from_iter(
-        optional_components
-            .iter()
-            .powerset()
-            .map(|c| {
-                let component_group = ComponentGroup::new(
-                    c.into_iter()
-                        .chain(required_components.iter())
-                        .map(|c| c.component_info().clone())
-                        .collect(),
-                );
+        F::filter_archetype(
+            world,
+            optional_components
+                .iter()
+                .powerset()
+                .map(|c| {
+                    let component_group = ComponentGroup::new(
+                        c.into_iter()
+                            .chain(required_components.iter())
+                            .map(|c| c.component_info().clone())
+                            .collect(),
+                    );
 
-                world.archetypes.get_archetypes_with(&component_group)
-            })
-            .flatten()
-            .collect_vec(),
+                    world.archetypes.get_archetypes_with(&component_group)
+                })
+                .flatten()
+                .collect_vec()
+                .iter()
+                .map(|&id| {
+                    world
+                        .archetypes
+                        .get_archetype(id)
+                        .expect("archetype does not exist")
+                        .borrow()
+                }),
+        )
+        .map(|archetype| archetype.id),
     );
 
-    F::filter_archetype(
-        world,
-        set.into_iter().map(|id| {
-            world
-                .archetypes
-                .get_archetype(id)
-                .expect("archetype does not exist")
-                .borrow()
-        }),
-    )
-    .map(|archetype| archetype.id)
-    .collect()
+    set.into_iter().collect()
 }
 
 macro_rules! impl_to_query_info {
@@ -206,7 +207,7 @@ macro_rules! impl_to_query_info {
 }
 
 impl<'w, T1: QueryInfoUtils + QueryTransform<'w, InputOrCreate = T1>> ToQueryInfo<'w> for T1 {
-    type Output = (<T1 as QueryTransform<'w>>::Output,);
+    type Output = <T1 as QueryTransform<'w>>::Output;
 
     fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &mut World) -> QueryInfo {
         let components = vec![get_full_component_info::<T1>(world)];
@@ -224,7 +225,7 @@ impl<'w, T1: QueryInfoUtils + QueryTransform<'w, InputOrCreate = T1>> ToQueryInf
         entity_index: usize,
         mut components: impl Iterator<Item = (ComponentId, Option<NonNull<u8>>)>,
     ) -> Self::Output {
-        (if <T1 as QueryTransform>::IS_CREATE {
+        if <T1 as QueryTransform>::IS_CREATE {
             <T1 as QueryTransform>::create(world, current_archetype, entity_index)
         } else {
             let (component_id, component) = components
@@ -237,7 +238,7 @@ impl<'w, T1: QueryInfoUtils + QueryTransform<'w, InputOrCreate = T1>> ToQueryInf
                 component_id,
                 std::mem::transmute_copy::<_, T1>(&component),
             )
-        },)
+        }
     }
 }
 
