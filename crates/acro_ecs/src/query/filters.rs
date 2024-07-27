@@ -1,4 +1,4 @@
-use std::{any::Any, cell::Ref, marker::PhantomData};
+use std::{any::Any, cell::Ref, fmt::Debug, marker::PhantomData};
 
 use crate::{archetype::Archetype, registry::ComponentGroup, world::World};
 
@@ -9,18 +9,31 @@ use super::{
 };
 
 pub trait QueryFilter<'w> {
+    type Init: Debug + Any;
+
     // If true, this filter only acts on archetypes, and filter_test will never be called.
     const IS_STRICTLY_ARCHETYPAL: bool;
+
+    fn init(world: &'w World) -> Self::Init;
 
     fn filter_archetype<'a>(
         world: &'w World,
         components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
     ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone;
-    // fn filter_test(&self, world: &'w World, entity: EntityId, archetype_id: ArchetypeId) -> bool;
+
+    // If the filter is strictly archetypal, calling filter_test is unnecessary because the filter
+    // will be applied to the archetypes directly.
+    fn filter_test(_init: &Self::Init) -> bool {
+        Self::IS_STRICTLY_ARCHETYPAL
+    }
 }
 
 impl<'w> QueryFilter<'w> for () {
+    type Init = ();
+
     const IS_STRICTLY_ARCHETYPAL: bool = true;
+
+    fn init(_world: &'w World) -> Self::Init {}
 
     fn filter_archetype<'a>(
         _world: &'w World,
@@ -39,7 +52,10 @@ impl<'w, T> QueryFilter<'w> for With<T>
 where
     T: Any,
 {
+    type Init = ();
     const IS_STRICTLY_ARCHETYPAL: bool = true;
+
+    fn init(_world: &'w World) -> Self::Init {}
 
     fn filter_archetype<'a>(
         world: &'w World,
@@ -61,7 +77,10 @@ impl<'w, T> QueryFilter<'w> for Without<T>
 where
     T: Any,
 {
+    type Init = ();
     const IS_STRICTLY_ARCHETYPAL: bool = true;
+
+    fn init(_world: &'w World) -> Self::Init {}
 
     fn filter_archetype<'a>(
         world: &'w World,
@@ -90,13 +109,25 @@ macro_rules! impl_to_filter_info_and {
     ($($members:ident),+) => {
         impl<'w, $($members: QueryFilter<'w>),*> QueryFilter<'w> for ($($members,)*)
         {
+            // The Init type is a tuple of the Init types of each member.
+            type Init = ($($members::Init,)*);
+
             const IS_STRICTLY_ARCHETYPAL: bool = $($members::IS_STRICTLY_ARCHETYPAL &&)+ true;
+
+            fn init(world: &'w World) -> Self::Init {
+                ($($members::init(world),)*)
+            }
 
             fn filter_archetype<'a>(
                 world: &'w World,
                 components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
             ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
                 expand_filter_archetype!(world, components, $($members),+)
+            }
+
+
+            fn filter_test(_init: &Self::Init) -> bool {
+                todo!();
             }
         }
     }
@@ -124,17 +155,28 @@ where
     _phantom: PhantomData<(T1, T2, T3, T4, T5, T6, T7, T8)>,
 }
 
-impl<'w, T1, T2, T3, T4, T5, T6, T7, T8> QueryFilter<'w> for Or<T1, T2, T3, T4, T5, T6, T7, T8>
+impl<'w, T1, T2, T3, T4, T5, T6, T7, T8, I1, I2, I3, I4, I5, I6, I7, I8> QueryFilter<'w>
+    for Or<T1, T2, T3, T4, T5, T6, T7, T8>
 where
-    T1: for<'a> QueryFilter<'a>,
-    T2: for<'a> QueryFilter<'a>,
-    T3: for<'a> QueryFilter<'a>,
-    T4: for<'a> QueryFilter<'a>,
-    T5: for<'a> QueryFilter<'a>,
-    T6: for<'a> QueryFilter<'a>,
-    T7: for<'a> QueryFilter<'a>,
-    T8: for<'a> QueryFilter<'a>,
+    T1: for<'a> QueryFilter<'a, Init = I1>,
+    T2: for<'a> QueryFilter<'a, Init = I2>,
+    T3: for<'a> QueryFilter<'a, Init = I3>,
+    T4: for<'a> QueryFilter<'a, Init = I4>,
+    T5: for<'a> QueryFilter<'a, Init = I5>,
+    T6: for<'a> QueryFilter<'a, Init = I6>,
+    T7: for<'a> QueryFilter<'a, Init = I7>,
+    T8: for<'a> QueryFilter<'a, Init = I8>,
+    I1: Debug + Any,
+    I2: Debug + Any,
+    I3: Debug + Any,
+    I4: Debug + Any,
+    I5: Debug + Any,
+    I6: Debug + Any,
+    I7: Debug + Any,
+    I8: Debug + Any,
 {
+    type Init = (I1, I2, I3, I4, I5, I6, I7, I8);
+
     const IS_STRICTLY_ARCHETYPAL: bool = T1::IS_STRICTLY_ARCHETYPAL
         && T2::IS_STRICTLY_ARCHETYPAL
         && T3::IS_STRICTLY_ARCHETYPAL
@@ -143,6 +185,19 @@ where
         && T6::IS_STRICTLY_ARCHETYPAL
         && T7::IS_STRICTLY_ARCHETYPAL
         && T8::IS_STRICTLY_ARCHETYPAL;
+
+    fn init(world: &'w World) -> Self::Init {
+        (
+            T1::init(world),
+            T2::init(world),
+            T3::init(world),
+            T4::init(world),
+            T5::init(world),
+            T6::init(world),
+            T7::init(world),
+            T8::init(world),
+        )
+    }
 
     fn filter_archetype<'a>(
         world: &'w World,
@@ -156,6 +211,10 @@ where
             .chain(T6::filter_archetype(world, components.clone()))
             .chain(T7::filter_archetype(world, components.clone()))
             .chain(T8::filter_archetype(world, components))
+    }
+
+    fn filter_test(init: &Self::Init) -> bool {
+        todo!()
     }
 }
 

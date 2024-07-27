@@ -7,7 +7,7 @@ mod utils;
 pub use filters::QueryFilter;
 pub use info::ToQueryInfo;
 
-use std::marker::PhantomData;
+use std::{any::Any, marker::PhantomData};
 
 use crate::{
     registry::ComponentId,
@@ -21,6 +21,7 @@ use self::{info::QueryInfo, iter::QueryIter};
 pub struct Query<T: for<'w> ToQueryInfo<'w>, F: for<'w> QueryFilter<'w> = ()> {
     pub(super) info: QueryInfo,
     pub(super) component_ids: Vec<ComponentId>,
+    filter_init: Box<dyn Any>,
     _phantom: PhantomData<(T, F)>,
 }
 
@@ -42,9 +43,13 @@ where
             .map(|c| c.component_info().id)
             .collect::<Vec<ComponentId>>();
 
+        // TODO: is there a way to type this without boxing it?
+        let filter_init: Box<dyn Any> = Box::new(TFilters::init(world));
+
         Query {
             info,
             component_ids,
+            filter_init,
             _phantom: PhantomData,
         }
     }

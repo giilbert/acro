@@ -54,7 +54,7 @@ where
 impl<'w, T, F> Iterator for QueryIter<'w, '_, T, F>
 where
     T: for<'a> ToQueryInfo<'a>,
-    F: for<'a> QueryFilter<'a>,
+    F: for<'a> QueryFilter<'a> + 'static,
 {
     type Item = <T as ToQueryInfo<'w>>::Output;
 
@@ -92,6 +92,18 @@ where
 
         let index = self.state.current_entity_index;
         let current_columns = &self.state.columns;
+
+        let does_filter_pass = if F::IS_STRICTLY_ARCHETYPAL {
+            true
+        } else {
+            let filter_init = self.query.filter_init.downcast_ref::<F::Init>().unwrap();
+            F::filter_test(filter_init)
+        };
+
+        if !does_filter_pass {
+            self.state.current_entity_index += 1;
+            return self.next();
+        }
 
         let ret =
             Some(unsafe {
