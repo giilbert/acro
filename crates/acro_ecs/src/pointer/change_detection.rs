@@ -4,16 +4,23 @@ use std::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ChangeDetectionId(pub usize);
+pub struct Tick(u32);
+
+impl Tick {
+    pub fn new(tick: u32) -> Self {
+        Self(tick)
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct ChangeDetectionContext {
-    pub changes: Vec<ChangeDetectionId>,
+    pub changed_ticks: Vec<Tick>,
 }
 
 #[derive(Debug)]
 pub struct Mut<'v, T> {
-    id: ChangeDetectionId,
+    current_tick: Tick,
+    index: usize,
     context: &'static UnsafeCell<ChangeDetectionContext>,
     value: &'v mut T,
 }
@@ -21,10 +28,16 @@ pub struct Mut<'v, T> {
 impl<'v, T> Mut<'v, T> {
     pub fn new(
         context: &'static UnsafeCell<ChangeDetectionContext>,
-        id: ChangeDetectionId,
+        current_tick: Tick,
+        index: usize,
         value: &'v mut T,
     ) -> Self {
-        Self { id, context, value }
+        Self {
+            current_tick,
+            index,
+            context,
+            value,
+        }
     }
 }
 
@@ -46,7 +59,7 @@ impl<'v, T> DerefMut for Mut<'v, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe {
             let context = &mut *self.context.get();
-            context.changes.push(self.id);
+            context.changed_ticks[self.index] = self.current_tick;
         }
         self.value
     }
@@ -55,8 +68,8 @@ impl<'v, T> DerefMut for Mut<'v, T> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        archetype::ArchetypeId, pointer::change_detection::ChangeDetectionId,
-        registry::ComponentId, world::World, Application,
+        archetype::ArchetypeId, pointer::change_detection::Tick, registry::ComponentId,
+        systems::SystemRunContext, world::World, Application,
     };
 
     #[test]
@@ -72,8 +85,8 @@ mod tests {
 
         app.add_system(
             |app| (app.world().query::<&mut u32, ()>(),),
-            |world: &mut World, (number_query,)| {
-                for mut value in number_query.over(world) {
+            |ctx: SystemRunContext, (number_query,)| {
+                for mut value in number_query.over(&ctx) {
                     if value == 42 {
                         *value = 20;
                     }
@@ -98,8 +111,8 @@ mod tests {
                     .change_detection
                     .get()
             }
-            .changes,
-            vec![ChangeDetectionId(1)]
+            .changed_ticks,
+            vec![Tick(0), Tick(1)]
         );
     }
 }

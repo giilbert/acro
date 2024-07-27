@@ -7,6 +7,7 @@ pub mod query;
 pub mod registry;
 pub mod resource;
 pub mod storage;
+pub mod systems;
 pub mod world;
 
 pub use application::Application;

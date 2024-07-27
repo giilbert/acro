@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     entity::{Entities, EntityId, EntityMeta},
-    pointer::change_detection::ChangeDetectionContext,
+    pointer::change_detection::{ChangeDetectionContext, Tick},
     registry::{ComponentGroup, ComponentId, ComponentRegistry},
     storage::{anyvec::AnyVec, table::Table},
 };
@@ -315,6 +315,20 @@ impl Column {
             data,
             change_detection: Box::leak(Box::new(UnsafeCell::default())),
         }
+    }
+
+    pub unsafe fn push_from_ptr(&self, ptr: *const u8) {
+        (&mut *self.data.get()).push_from_ptr(ptr);
+        (*self.change_detection.get())
+            .changed_ticks
+            .push(Tick::new(0));
+    }
+
+    pub unsafe fn remove(&self, index: usize) {
+        (*self.data.get()).swap_remove(index);
+        (*self.change_detection.get())
+            .changed_ticks
+            .swap_remove(index);
     }
 }
 

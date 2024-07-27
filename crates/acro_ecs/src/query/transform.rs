@@ -3,7 +3,7 @@ use std::{cell::UnsafeCell, os::unix::thread};
 use crate::{
     archetype::Archetype,
     entity::EntityId,
-    pointer::change_detection::{self, ChangeDetectionContext, ChangeDetectionId, Mut},
+    pointer::change_detection::{self, ChangeDetectionContext, Mut, Tick},
     registry::ComponentId,
     world::World,
 };
@@ -86,11 +86,8 @@ impl<'w, 'v, T> QueryTransform<'w> for &'v mut T {
             .columns
             .get(&component)
             .expect("component not found");
-        Mut::new(
-            column.change_detection,
-            ChangeDetectionId(entity_index),
-            input,
-        )
+
+        Mut::new(column.change_detection, Tick::new(0), entity_index, input)
     }
 }
 
@@ -113,11 +110,7 @@ impl<'w, 'v, T> QueryTransform<'w> for Option<&'v mut T> {
                 .get(&component)
                 .expect("component not found");
 
-            Mut::new(
-                column.change_detection,
-                ChangeDetectionId(entity_index),
-                input,
-            )
+            Mut::new(column.change_detection, Tick::new(0), entity_index, input)
         })
     }
 }

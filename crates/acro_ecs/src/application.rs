@@ -1,6 +1,8 @@
 use std::{any::Any, cell::UnsafeCell};
 
-use crate::{plugin::Plugin, world::World};
+use crate::{
+    plugin::Plugin, pointer::change_detection::Tick, systems::SystemRunContext, world::World,
+};
 
 struct System {
     pub name: String,
@@ -35,13 +37,17 @@ impl Application {
     pub fn add_system<T: Any>(
         &mut self,
         system_init: impl FnOnce(&mut Application) -> T,
-        system: impl Fn(&mut World, &mut T) -> () + 'static,
+        system: impl Fn(SystemRunContext, &mut T) -> () + 'static,
     ) {
         let parameters = system_init(self);
         self.systems.push(System {
             name: std::any::type_name_of_val(&system).to_string(),
             run: Box::new(move |world, parameters| {
-                system(world, parameters.downcast_mut().unwrap())
+                system(
+                    // TODO: Make tick work
+                    SystemRunContext::new(world, Tick::new(0)),
+                    parameters.downcast_mut().unwrap(),
+                )
             }),
             parameters: Box::new(parameters),
         });
@@ -94,14 +100,14 @@ mod tests {
                     app.world.query::<&String, ()>(),
                 )
             },
-            |world: &mut World, (number_query, string_query)| {
-                *world.resources.get_mut::<u32>() += 1;
+            |ctx, (number_query, string_query)| {
+                *ctx.world.resources.get_mut::<u32>() += 1;
 
-                for value in number_query.over(world) {
+                for value in number_query.over(&ctx) {
                     assert_eq!(value, &42);
                 }
 
-                for value in string_query.over(world) {
+                for value in string_query.over(&ctx) {
                     assert_eq!(value, &"hello".to_string());
                 }
             },

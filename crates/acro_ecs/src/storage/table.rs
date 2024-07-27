@@ -48,7 +48,8 @@ impl Table {
                 .columns
                 .get_mut(&component_id)
                 .expect("column not found");
-            unsafe { (*column.data.get()).push_from_ptr(data) };
+            // unsafe { (*column.data.get()).push_from_ptr(data) };
+            unsafe { (*column).push_from_ptr(data) };
         }
     }
 
@@ -59,7 +60,7 @@ impl Table {
 
         for column in self.columns.values_mut() {
             unsafe {
-                (*column.data.get()).swap_remove(index);
+                (*column).remove(index);
             }
         }
 

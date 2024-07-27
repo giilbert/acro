@@ -163,7 +163,7 @@ where
 mod test {
     use assert_unordered::assert_eq_unordered;
 
-    use crate::{entity::EntityId, query::filters::Or, world::World};
+    use crate::{entity::EntityId, query::filters::Or, systems::SystemRunContext, world::World};
 
     use super::With;
 
@@ -189,22 +189,26 @@ mod test {
 
         let mut query = world.query::<EntityId, With<String>>();
         assert_eq_unordered!(
-            &query.over(&mut world).collect::<Vec<_>>(),
+            &query.over(&world).collect::<Vec<_>>(),
             &vec![entity1, entity2]
         );
 
         let mut query = world.query::<EntityId, (With<String>, With<bool>)>();
-        assert_eq_unordered!(&query.over(&mut world).collect::<Vec<_>>(), &vec![entity2]);
+        assert_eq_unordered!(&query.over(&world).collect::<Vec<_>>(), &vec![entity2]);
 
         let mut query = world.query::<EntityId, Or<With<String>, With<bool>>>();
         assert_eq_unordered!(
-            &query.over(&mut world).collect::<Vec<_>>(),
+            &query
+                .over(SystemRunContext::ignore_changes(&mut world))
+                .collect::<Vec<_>>(),
             &vec![entity1, entity2, entity3]
         );
 
         let mut query = world.query::<EntityId, Or<With<String>, With<u32>>>();
         assert_eq_unordered!(
-            &query.over(&mut world).collect::<Vec<_>>(),
+            &query
+                .over(SystemRunContext::ignore_changes(&mut world))
+                .collect::<Vec<_>>(),
             &vec![entity1, entity2, entity3]
         );
     }

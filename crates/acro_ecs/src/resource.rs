@@ -1,4 +1,7 @@
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    cell::{Ref, RefCell, RefMut},
+};
 
 use fnv::FnvHashMap;
 
@@ -7,7 +10,7 @@ pub struct ResourceId(pub usize);
 
 #[derive(Debug)]
 pub struct ResourceRegistry {
-    data: Vec<Box<dyn Any>>,
+    data: Vec<RefCell<Box<dyn Any>>>,
     types: FnvHashMap<TypeId, ResourceId>,
 }
 
@@ -21,28 +24,32 @@ impl ResourceRegistry {
 
     pub fn insert<T: 'static>(&mut self, resource: T) -> ResourceId {
         let id = ResourceId(self.data.len());
-        self.data.push(Box::new(resource));
+        self.data.push(RefCell::new(Box::new(resource)));
         self.types.insert(TypeId::of::<T>(), id);
         id
     }
 
-    pub fn get<T: 'static>(&self) -> &T {
-        self.data[self
-            .types
-            .get(&TypeId::of::<T>())
-            .expect("resource not found")
-            .0]
-            .downcast_ref()
-            .unwrap()
+    pub fn get<T: 'static>(&self) -> Ref<T> {
+        Ref::map(
+            self.data[self
+                .types
+                .get(&TypeId::of::<T>())
+                .expect("resource not found")
+                .0]
+                .borrow(),
+            |r| r.downcast_ref().unwrap(),
+        )
     }
 
-    pub fn get_mut<T: 'static>(&mut self) -> &mut T {
-        self.data[self
-            .types
-            .get(&TypeId::of::<T>())
-            .expect("resource not found")
-            .0]
-            .downcast_mut()
-            .unwrap()
+    pub fn get_mut<T: 'static>(&self) -> RefMut<T> {
+        RefMut::map(
+            self.data[self
+                .types
+                .get(&TypeId::of::<T>())
+                .expect("resource not found")
+                .0]
+                .borrow_mut(),
+            |r| r.downcast_mut().unwrap(),
+        )
     }
 }
