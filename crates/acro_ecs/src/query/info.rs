@@ -1,4 +1,4 @@
-use std::{collections::HashSet, option, process::Output, ptr::NonNull, sync::Arc};
+use std::{cell::RefCell, collections::HashSet, option, process::Output, ptr::NonNull, sync::Arc};
 
 use itertools::Itertools;
 
@@ -18,13 +18,14 @@ use super::{
 #[derive(Debug)]
 pub struct QueryInfo {
     pub(super) archetypes_generation: usize,
-    pub(super) archetypes: Vec<ArchetypeId>,
+    pub(super) archetypes: RefCell<Vec<ArchetypeId>>,
     pub(super) components: Vec<QueryComponentInfo>,
+    pub(super) component_ids: Vec<ComponentId>,
 }
 
 impl QueryInfo {
-    pub fn recompute_archetypes<F: for<'w> QueryFilter<'w>>(&mut self, world: &World) {
-        self.archetypes = find_archetypes::<F>(world, &self.components);
+    pub fn recompute_archetypes<F: for<'w> QueryFilter<'w>>(&self, world: &World) {
+        *self.archetypes.borrow_mut() = find_archetypes::<F>(world, &self.components);
     }
 }
 
@@ -69,7 +70,7 @@ impl QueryComponentInfo {
 pub trait ToQueryInfo<'w> {
     type Output;
 
-    fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &mut World) -> QueryInfo;
+    fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &World) -> QueryInfo;
     unsafe fn from_parts(
         ctx: &SystemRunContext<'w>,
         current_archetype: &Archetype,
@@ -163,11 +164,15 @@ macro_rules! impl_to_query_info {
         > ToQueryInfo<'w> for ($($members,)*) {
             type Output = ($(<$members as QueryTransform<'w>>::Output,)*);
 
-            fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &mut World) -> QueryInfo {
+            fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &World) -> QueryInfo {
                 let components = vec![$(get_full_component_info::<$members>(world),)*];
                 QueryInfo {
                     archetypes_generation: world.archetypes.generation,
-                    archetypes: find_archetypes::<F>(world, &components),
+                    archetypes: RefCell::new(find_archetypes::<F>(world, &components)),
+                    component_ids: components.iter()
+                        .filter(|c| c.is_component())
+                        .map(|c| c.component_info().id)
+                        .collect(),
                     components,
                 }
             }
@@ -210,11 +215,16 @@ macro_rules! impl_to_query_info {
 impl<'w, T1: QueryInfoUtils + QueryTransform<'w, InputOrCreate = T1>> ToQueryInfo<'w> for T1 {
     type Output = <T1 as QueryTransform<'w>>::Output;
 
-    fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &mut World) -> QueryInfo {
+    fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &World) -> QueryInfo {
         let components = vec![get_full_component_info::<T1>(world)];
         QueryInfo {
             archetypes_generation: world.archetypes.generation,
-            archetypes: find_archetypes::<F>(world, &components),
+            archetypes: RefCell::new(find_archetypes::<F>(world, &components)),
+            component_ids: components
+                .iter()
+                .filter(|c| c.is_component())
+                .map(|c| c.component_info().id)
+                .collect(),
             components,
         }
     }

@@ -5,9 +5,9 @@ mod transform;
 mod utils;
 
 pub use filters::QueryFilter;
-pub use info::ToQueryInfo;
+pub use info::{QueryInfo, ToQueryInfo};
 
-use std::{any::Any, fmt::Debug, marker::PhantomData};
+use std::{any::Any, fmt::Debug, marker::PhantomData, rc::Rc};
 
 use crate::{
     registry::ComponentId,
@@ -15,13 +15,12 @@ use crate::{
     world::World,
 };
 
-use self::{info::QueryInfo, iter::QueryIter};
+use self::iter::QueryIter;
 
 #[derive(Debug)]
 pub struct Query<T: for<'w> ToQueryInfo<'w>, F: for<'w> QueryFilter<'w> = ()> {
-    pub(super) info: QueryInfo,
-    pub(super) component_ids: Vec<ComponentId>,
-    _phantom: PhantomData<(T, F)>,
+    pub(super) info: Rc<QueryInfo>,
+    pub(super) _phantom: PhantomData<(T, F)>,
 }
 
 impl<T, F> Query<T, F>
@@ -29,24 +28,15 @@ where
     T: for<'w> ToQueryInfo<'w>,
     F: for<'w> QueryFilter<'w>,
 {
-    pub fn new<TData, TFilters>(world: &mut World) -> Query<TData, TFilters>
+    pub fn new<TData, TFilters>(world: &World) -> Query<TData, TFilters>
     where
         TData: for<'w> ToQueryInfo<'w>,
         TFilters: for<'w> QueryFilter<'w>,
     {
         let info = TData::to_query_info::<TFilters>(world);
-        let component_ids = info
-            .components
-            .iter()
-            .filter(|c| c.is_component())
-            .map(|c| c.component_info().id)
-            .collect::<Vec<ComponentId>>();
-
-        // TODO: is there a way to type this without boxing it?
 
         Query {
-            info,
-            component_ids,
+            info: Rc::new(info),
             _phantom: PhantomData,
         }
     }
@@ -64,7 +54,6 @@ where
         QueryIter::new(ctx, self)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use assert_unordered::assert_eq_unordered;
@@ -103,7 +92,7 @@ mod tests {
             ]
         );
         assert_eq_unordered!(
-            &query1.info.archetypes,
+            &*query1.info.archetypes.borrow(),
             &vec![
                 world.entity_meta(entity2).archetype_id,
                 world.entity_meta(entity1).archetype_id

@@ -1,7 +1,10 @@
 use std::{any::Any, cell::UnsafeCell};
 
 use crate::{
-    plugin::Plugin, pointer::change_detection::Tick, systems::SystemRunContext, world::World,
+    plugin::Plugin,
+    pointer::change_detection::Tick,
+    systems::{IntoSystem, SystemRunContext},
+    world::World,
 };
 
 struct System {

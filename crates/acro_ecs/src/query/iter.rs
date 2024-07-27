@@ -36,7 +36,7 @@ where
         let current_archetype = ctx
             .world
             .archetypes
-            .get_archetype(query.info.archetypes[0])
+            .get_archetype(query.info.archetypes.borrow()[0])
             .expect("query parent archetype not found");
 
         let mut filter_init = Box::new(F::init(&ctx.world));
@@ -47,7 +47,9 @@ where
             state: QueryState {
                 current_entity_index: 0,
                 current_archetype_index: 0,
-                columns: current_archetype.borrow().get_columns(&query.component_ids),
+                columns: current_archetype
+                    .borrow()
+                    .get_columns(&query.info.component_ids),
                 current_archetype,
                 filter_init,
             },
@@ -70,7 +72,7 @@ where
         // If the current archetype has ended, loop through the next archetype
         if self.state.current_entity_index == archetype.entities.len() {
             // If we are at the last archetype, return None to end the iterator
-            if self.state.current_archetype_index == self.query.info.archetypes.len() - 1 {
+            if self.state.current_archetype_index == self.query.info.archetypes.borrow().len() - 1 {
                 return None;
             }
 
@@ -80,7 +82,9 @@ where
                 .ctx
                 .world
                 .archetypes
-                .get_archetype(self.query.info.archetypes[self.state.current_archetype_index])
+                .get_archetype(
+                    self.query.info.archetypes.borrow()[self.state.current_archetype_index],
+                )
                 .expect("query archetype not found");
 
             // Update the columns information to be from the new archetype
@@ -88,7 +92,7 @@ where
                 .state
                 .current_archetype
                 .borrow()
-                .get_columns(&self.query.component_ids);
+                .get_columns(&self.query.info.component_ids);
 
             F::update_columns(
                 &mut self.state.filter_init.downcast_mut().unwrap(),
@@ -115,24 +119,26 @@ where
             return self.next();
         }
 
-        let ret =
-            Some(unsafe {
-                T::from_parts(
-                    &self.ctx,
-                    &*self.state.current_archetype.borrow(),
-                    self.state.current_entity_index,
-                    self.query.component_ids.iter().zip(current_columns).map(
-                        |(&component_id, c)| {
-                            (
-                                component_id,
-                                c.as_ref()
-                                    .map(|column| (&*column.data.get()).get_ptr(index))
-                                    .flatten(),
-                            )
-                        },
-                    ),
-                )
-            });
+        let ret = Some(unsafe {
+            T::from_parts(
+                &self.ctx,
+                &*self.state.current_archetype.borrow(),
+                self.state.current_entity_index,
+                self.query
+                    .info
+                    .component_ids
+                    .iter()
+                    .zip(current_columns)
+                    .map(|(&component_id, c)| {
+                        (
+                            component_id,
+                            c.as_ref()
+                                .map(|column| (&*column.data.get()).get_ptr(index))
+                                .flatten(),
+                        )
+                    }),
+            )
+        });
 
         self.state.current_entity_index += 1;
 
