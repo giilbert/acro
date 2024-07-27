@@ -144,6 +144,7 @@ macro_rules! expand_filter_archetype {
 
 macro_rules! impl_to_filter_info_and {
     ($($members:ident),+) => {
+        #[allow(non_snake_case)]
         impl<'w, $($members: QueryFilter<'w>),*> QueryFilter<'w> for ($($members,)*)
         {
             // The Init type is a tuple of the Init types of each member.
@@ -155,7 +156,6 @@ macro_rules! impl_to_filter_info_and {
                 ($($members::init(world),)*)
             }
 
-            #[allow(non_snake_case)]
             fn update_columns(init: &mut Self::Init, new_archetype: &Archetype) {
                 let ($($members,)*) = init;
                 $(<$members as QueryFilter<'w>>::update_columns($members, new_archetype);)*
@@ -169,8 +169,9 @@ macro_rules! impl_to_filter_info_and {
             }
 
 
-            fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
-                todo!();
+            fn filter_test(init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
+                let ($($members,)*) = init;
+                $($members::filter_test($members, _ctx, _entity_index) &&)+ true
             }
         }
     }
@@ -285,8 +286,15 @@ where
             .chain(T8::filter_archetype(world, components))
     }
 
-    fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
-        todo!()
+    fn filter_test(init: &Self::Init, ctx: &SystemRunContext<'w>, entity_index: usize) -> bool {
+        T1::filter_test(&init.0, ctx, entity_index)
+            || T2::filter_test(&init.1, ctx, entity_index)
+            || T3::filter_test(&init.2, ctx, entity_index)
+            || T4::filter_test(&init.3, ctx, entity_index)
+            || T5::filter_test(&init.4, ctx, entity_index)
+            || T6::filter_test(&init.5, ctx, entity_index)
+            || T7::filter_test(&init.6, ctx, entity_index)
+            || T8::filter_test(&init.7, ctx, entity_index)
     }
 }
 
@@ -337,7 +345,7 @@ mod test {
     use crate::{
         entity::EntityId,
         pointer::change_detection::Tick,
-        query::filters::{Changed, Or},
+        query::filters::{Changed, Or, Without},
         systems::SystemRunContext,
         world::World,
     };
@@ -421,6 +429,96 @@ mod test {
                 .over(SystemRunContext::new(&world, Tick::new(2)))
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2]
+        );
+    }
+
+    #[test]
+    fn complex_non_change_detection() {
+        let mut world = World::new();
+        world.init_component::<u32>();
+        world.init_component::<bool>();
+        world.init_component::<String>();
+
+        let entity1 = world.spawn();
+        world.insert(entity1, "hello".to_string());
+
+        let entity2 = world.spawn();
+        world.insert(entity2, 12u32);
+        world.insert(entity2, true);
+
+        let entity3 = world.spawn();
+        world.insert(entity3, false);
+
+        let mut query = world.query::<EntityId, Or<With<String>, With<u32>>>();
+        assert_eq_unordered!(
+            &query.over(&world).collect::<Vec<_>>(),
+            &vec![entity1, entity2]
+        );
+
+        let mut query = world.query::<EntityId, (Without<String>, With<u32>)>();
+        assert_eq_unordered!(&query.over(&world).collect::<Vec<_>>(), &vec![entity2]);
+
+        let mut query = world.query::<EntityId, (Without<String>, Without<u32>)>();
+        assert_eq_unordered!(&query.over(&world).collect::<Vec<_>>(), &vec![entity3]);
+    }
+
+    #[test]
+    fn complex_change_detection() {
+        let mut world = World::new();
+        world.init_component::<u32>();
+        world.init_component::<bool>();
+        world.init_component::<String>();
+
+        let entity1 = world.spawn();
+        world.insert(entity1, 42u32);
+        world.insert(entity1, "hello".to_string());
+
+        let entity2 = world.spawn();
+        world.insert(entity2, 12u32);
+        world.insert(entity2, "bye".to_string());
+        world.insert(entity2, true);
+
+        let entity3 = world.spawn();
+        world.insert(entity3, 22u32);
+        world.insert(entity3, false);
+
+        let mut query = world.query::<&mut String, ()>();
+        for mut value in query.over(SystemRunContext::new(&world, Tick::new(1))) {
+            *value = "changed".to_string();
+        }
+
+        let mut changed_strings_with_bool =
+            world.query::<EntityId, (Changed<String>, With<bool>)>();
+        assert_eq_unordered!(
+            &changed_strings_with_bool
+                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .collect::<Vec<_>>(),
+            &vec![entity2]
+        );
+
+        let mut changed_strings_with_u32 = world.query::<EntityId, (Changed<String>, With<u32>)>();
+        assert_eq_unordered!(
+            &changed_strings_with_u32
+                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .collect::<Vec<_>>(),
+            &vec![entity1, entity2]
+        );
+
+        let mut changed_strings_with_bool_or_u32 = world
+            .query::<EntityId, Or<(Changed<String>, With<bool>), (Changed<String>, With<u32>)>>();
+        assert_eq_unordered!(
+            &changed_strings_with_bool_or_u32
+                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .collect::<Vec<_>>(),
+            &vec![entity1, entity2]
+        );
+
+        let mut changed_or_with_bool = world.query::<EntityId, Or<Changed<String>, With<bool>>>();
+        assert_eq_unordered!(
+            &changed_or_with_bool
+                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .collect::<Vec<_>>(),
+            &vec![entity1, entity2, entity3]
         );
     }
 }
