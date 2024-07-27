@@ -55,6 +55,29 @@ impl<'w> QueryFilter<'w> for () {
     }
 }
 
+// This filter filters out all archetypes regardless of their contents.
+pub struct Nothing;
+
+impl<'w> QueryFilter<'w> for Nothing {
+    type Init = ();
+
+    const IS_STRICTLY_ARCHETYPAL: bool = true;
+
+    fn init(_world: &'w World) -> Self::Init {}
+    fn update_columns(_init: &mut Self::Init, _new_archetype: &Archetype) {}
+
+    fn filter_archetype<'a>(
+        _world: &'w World,
+        _components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
+    ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
+        std::iter::empty()
+    }
+
+    fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
+        false
+    }
+}
+
 #[derive(Debug)]
 pub struct With<T> {
     _phantom: PhantomData<T>,
@@ -161,8 +184,16 @@ impl_to_filter_info_and!(T1, T2, T3, T4, T5, T6);
 impl_to_filter_info_and!(T1, T2, T3, T4, T5, T6, T7);
 impl_to_filter_info_and!(T1, T2, T3, T4, T5, T6, T7, T8);
 
-pub struct Or<T1, T2, T3 = (), T4 = (), T5 = (), T6 = (), T7 = (), T8 = ()>
-where
+pub struct Or<
+    T1,
+    T2,
+    T3 = Nothing,
+    T4 = Nothing,
+    T5 = Nothing,
+    T6 = Nothing,
+    T7 = Nothing,
+    T8 = Nothing,
+> where
     T1: for<'a> QueryFilter<'a>,
     T2: for<'a> QueryFilter<'a>,
     T3: for<'a> QueryFilter<'a>,
