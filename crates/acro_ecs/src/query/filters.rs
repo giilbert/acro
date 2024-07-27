@@ -15,11 +15,16 @@ pub trait QueryFilter<'w> {
     const IS_STRICTLY_ARCHETYPAL: bool;
 
     fn init(world: &'w World) -> Self::Init;
+    // When a query moves between archetypes, Self::Init needs to be updated to reflect the
+    // structure of the new archetype.
+    fn update_columns(init: &mut Self::Init, new_archetype: &Archetype);
 
     fn filter_archetype<'a>(
-        world: &'w World,
+        _world: &'w World,
         components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
-    ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone;
+    ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
+        components
+    }
 
     // If the filter is strictly archetypal, calling filter_test is unnecessary because the filter
     // will be applied to the archetypes directly.
@@ -34,6 +39,7 @@ impl<'w> QueryFilter<'w> for () {
     const IS_STRICTLY_ARCHETYPAL: bool = true;
 
     fn init(_world: &'w World) -> Self::Init {}
+    fn update_columns(_init: &mut Self::Init, _new_archetype: &Archetype) {}
 
     fn filter_archetype<'a>(
         _world: &'w World,
@@ -56,6 +62,7 @@ where
     const IS_STRICTLY_ARCHETYPAL: bool = true;
 
     fn init(_world: &'w World) -> Self::Init {}
+    fn update_columns(_init: &mut Self::Init, _new_archetype: &Archetype) {}
 
     fn filter_archetype<'a>(
         world: &'w World,
@@ -81,6 +88,7 @@ where
     const IS_STRICTLY_ARCHETYPAL: bool = true;
 
     fn init(_world: &'w World) -> Self::Init {}
+    fn update_columns(_init: &mut Self::Init, _new_archetype: &Archetype) {}
 
     fn filter_archetype<'a>(
         world: &'w World,
@@ -116,6 +124,12 @@ macro_rules! impl_to_filter_info_and {
 
             fn init(world: &'w World) -> Self::Init {
                 ($($members::init(world),)*)
+            }
+
+            #[allow(non_snake_case)]
+            fn update_columns(init: &mut Self::Init, new_archetype: &Archetype) {
+                let ($($members,)*) = init;
+                $(<$members as QueryFilter<'w>>::update_columns($members, new_archetype);)*
             }
 
             fn filter_archetype<'a>(
@@ -199,6 +213,27 @@ where
         )
     }
 
+    fn update_columns(init: &mut Self::Init, new_archetype: &Archetype) {
+        let (
+            ref mut i1,
+            ref mut i2,
+            ref mut i3,
+            ref mut i4,
+            ref mut i5,
+            ref mut i6,
+            ref mut i7,
+            ref mut i8,
+        ) = init;
+        T1::update_columns(i1, new_archetype);
+        T2::update_columns(i2, new_archetype);
+        T3::update_columns(i3, new_archetype);
+        T4::update_columns(i4, new_archetype);
+        T5::update_columns(i5, new_archetype);
+        T6::update_columns(i6, new_archetype);
+        T7::update_columns(i7, new_archetype);
+        T8::update_columns(i8, new_archetype);
+    }
+
     fn filter_archetype<'a>(
         world: &'w World,
         components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
@@ -214,6 +249,30 @@ where
     }
 
     fn filter_test(init: &Self::Init) -> bool {
+        todo!()
+    }
+}
+
+pub struct Changed<T> {
+    _phantom: PhantomData<T>,
+}
+
+impl<'w> QueryFilter<'w> for Changed<()> {
+    type Init = ();
+
+    const IS_STRICTLY_ARCHETYPAL: bool = true;
+
+    fn init(_world: &World) -> Self::Init {
+        // TODO: Allocate here
+        todo!()
+    }
+
+    fn update_columns(init: &mut Self::Init, new_archetype: &Archetype) {
+        // TODO: Update the existing allocation to which column corresponds to this component
+        todo!();
+    }
+
+    fn filter_test(_init: &Self::Init) -> bool {
         todo!()
     }
 }
