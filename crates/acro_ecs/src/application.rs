@@ -7,6 +7,7 @@ use crate::{
 struct System {
     pub name: String,
     pub run: Box<dyn Fn(&mut World, Tick, &mut dyn Any)>,
+    pub last_run_tick: Tick,
     pub parameters: Box<dyn Any>,
 }
 
@@ -50,6 +51,7 @@ impl Application {
                     parameters.downcast_mut().unwrap(),
                 )
             }),
+            last_run_tick: Tick::new(0),
             parameters: Box::new(parameters),
         });
     }
@@ -63,6 +65,7 @@ impl Application {
                 self.current_tick,
                 system.parameters.as_mut(),
             );
+            system.last_run_tick = self.current_tick;
         }
         // let elapsed = now.elapsed();
         // println!("run once took {:?}", elapsed);

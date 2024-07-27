@@ -294,6 +294,10 @@ impl Archetype {
             .map(|id| self.table.columns.get(id).map(Rc::clone))
             .collect()
     }
+
+    pub fn get_column(&self, id: ComponentId) -> Option<Rc<Column>> {
+        self.table.columns.get(&id).map(Rc::clone)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -329,6 +333,10 @@ impl Column {
         (*self.change_detection.get())
             .changed_ticks
             .swap_remove(index);
+    }
+
+    pub fn get_changed_tick(&self, index: usize) -> Tick {
+        unsafe { (*self.change_detection.get()).changed_ticks[index] }
     }
 }
 

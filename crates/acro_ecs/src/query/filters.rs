@@ -1,6 +1,12 @@
-use std::{any::Any, cell::Ref, fmt::Debug, marker::PhantomData};
+use std::{any::Any, cell::Ref, fmt::Debug, marker::PhantomData, rc::Rc};
 
-use crate::{archetype::Archetype, registry::ComponentGroup, world::World};
+use crate::{
+    archetype::{Archetype, Column},
+    entity,
+    registry::{ComponentGroup, ComponentId},
+    systems::SystemRunContext,
+    world::World,
+};
 
 use super::{
     info::{get_full_component_info, QueryComponentInfo},
@@ -28,7 +34,7 @@ pub trait QueryFilter<'w> {
 
     // If the filter is strictly archetypal, calling filter_test is unnecessary because the filter
     // will be applied to the archetypes directly.
-    fn filter_test(_init: &Self::Init) -> bool {
+    fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
         Self::IS_STRICTLY_ARCHETYPAL
     }
 }
@@ -140,7 +146,7 @@ macro_rules! impl_to_filter_info_and {
             }
 
 
-            fn filter_test(_init: &Self::Init) -> bool {
+            fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
                 todo!();
             }
         }
@@ -248,7 +254,7 @@ where
             .chain(T8::filter_archetype(world, components))
     }
 
-    fn filter_test(init: &Self::Init) -> bool {
+    fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
         todo!()
     }
 }
@@ -257,31 +263,53 @@ pub struct Changed<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<'w> QueryFilter<'w> for Changed<()> {
-    type Init = ();
+#[derive(Debug)]
+pub struct ChangeInit {
+    pub component_id: ComponentId,
+    pub column: Option<Rc<Column>>,
+}
 
-    const IS_STRICTLY_ARCHETYPAL: bool = true;
+impl<'w, T: 'static> QueryFilter<'w> for Changed<T> {
+    type Init = ChangeInit;
 
-    fn init(_world: &World) -> Self::Init {
-        // TODO: Allocate here
-        todo!()
+    const IS_STRICTLY_ARCHETYPAL: bool = false;
+
+    fn init(world: &World) -> Self::Init {
+        ChangeInit {
+            component_id: world.get_component_info::<T>().id,
+            column: None,
+        }
     }
 
     fn update_columns(init: &mut Self::Init, new_archetype: &Archetype) {
-        // TODO: Update the existing allocation to which column corresponds to this component
-        todo!();
+        init.column = new_archetype.get_column(init.component_id);
     }
 
-    fn filter_test(_init: &Self::Init) -> bool {
-        todo!()
+    fn filter_test(init: &Self::Init, ctx: &SystemRunContext<'w>, entity_index: usize) -> bool {
+        init.column
+            .as_ref()
+            .map(|column| {
+                column
+                    .get_changed_tick(entity_index)
+                    .is_newer_than(&ctx.last_run_tick)
+            })
+            .unwrap_or(false)
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
     use assert_unordered::assert_eq_unordered;
 
-    use crate::{entity::EntityId, query::filters::Or, systems::SystemRunContext, world::World};
+    use crate::{
+        entity::EntityId,
+        pointer::change_detection::Tick,
+        query::filters::{Changed, Or},
+        systems::SystemRunContext,
+        world::World,
+    };
 
     use super::With;
 
@@ -329,5 +357,42 @@ mod test {
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2, entity3]
         );
+    }
+
+    #[test]
+    fn basic_change_detection_filter() {
+        let mut world = World::new();
+        world.init_component::<u32>();
+        world.init_component::<bool>();
+        world.init_component::<String>();
+
+        let entity1 = world.spawn();
+        world.insert(entity1, 42u32);
+        world.insert(entity1, "hello".to_string());
+
+        let entity2 = world.spawn();
+        world.insert(entity2, 12u32);
+        world.insert(entity2, "bye".to_string());
+        world.insert(entity2, true);
+
+        let entity3 = world.spawn();
+        world.insert(entity3, 22u32);
+        world.insert(entity3, false);
+
+        let mut query = world.query::<&mut String, ()>();
+        println!("{:?}", query.info.archetypes);
+        for mut value in query.over(SystemRunContext::new(&world, Tick::new(1))) {
+            *value = "changed".to_string();
+        }
+
+        let mut changed_strings = world.query::<EntityId, Changed<String>>();
+        assert_eq_unordered!(
+            &changed_strings
+                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .collect::<Vec<_>>(),
+            &vec![entity1, entity2]
+        );
+
+        panic!();
     }
 }

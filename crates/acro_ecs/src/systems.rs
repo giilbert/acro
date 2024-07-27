@@ -4,11 +4,16 @@ use crate::{pointer::change_detection::Tick, world::World};
 pub struct SystemRunContext<'w> {
     pub world: &'w World,
     pub tick: Tick,
+    pub last_run_tick: Tick,
 }
 
 impl SystemRunContext<'_> {
     pub fn new(world: &World, tick: Tick) -> SystemRunContext {
-        SystemRunContext { world, tick }
+        SystemRunContext {
+            world,
+            tick,
+            last_run_tick: Tick::new(0),
+        }
     }
 
     pub fn ignore_changes(world: &World) -> SystemRunContext {

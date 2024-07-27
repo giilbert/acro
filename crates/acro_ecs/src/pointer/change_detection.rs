@@ -14,6 +14,10 @@ impl Tick {
     pub fn next(&self) -> Self {
         Self(self.0 + 1)
     }
+
+    pub fn is_newer_than(&self, other: &Self) -> bool {
+        self.0 > other.0
+    }
 }
 
 #[derive(Debug, Default)]

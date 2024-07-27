@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{any::Any, cell::RefCell, rc::Rc};
 
 use crate::{
     archetype::{Archetype, Column},
@@ -13,6 +13,7 @@ struct QueryState<'w> {
     pub current_archetype_index: usize,
     pub current_archetype: &'w RefCell<Archetype>,
     pub columns: Vec<Option<Rc<Column>>>,
+    pub filter_init: Box<dyn Any>,
 }
 
 pub struct QueryIter<'w, 'q, T, F>
@@ -39,14 +40,15 @@ where
             .expect("query parent archetype not found");
 
         Self {
-            ctx,
             query,
             state: QueryState {
                 current_entity_index: 0,
                 current_archetype_index: 0,
                 columns: current_archetype.borrow().get_columns(&query.component_ids),
                 current_archetype,
+                filter_init: Box::new(F::init(&ctx.world)),
             },
+            ctx,
         }
     }
 }
@@ -85,6 +87,11 @@ where
                 .borrow()
                 .get_columns(&self.query.component_ids);
 
+            F::update_columns(
+                &mut self.state.filter_init.downcast_mut().unwrap(),
+                &self.state.current_archetype.borrow(),
+            );
+
             self.state.current_entity_index = 0;
 
             return self.next();
@@ -96,8 +103,8 @@ where
         let does_filter_pass = if F::IS_STRICTLY_ARCHETYPAL {
             true
         } else {
-            let filter_init = self.query.filter_init.downcast_ref::<F::Init>().unwrap();
-            F::filter_test(filter_init)
+            let filter_init = self.state.filter_init.downcast_ref::<F::Init>().unwrap();
+            F::filter_test(filter_init, &self.ctx, self.state.current_entity_index)
         };
 
         if !does_filter_pass {
