@@ -380,7 +380,6 @@ mod test {
         world.insert(entity3, false);
 
         let mut query = world.query::<&mut String, ()>();
-        println!("{:?}", query.info.archetypes);
         for mut value in query.over(SystemRunContext::new(&world, Tick::new(1))) {
             *value = "changed".to_string();
         }
@@ -392,7 +391,5 @@ mod test {
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2]
         );
-
-        panic!();
     }
 }

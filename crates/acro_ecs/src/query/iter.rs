@@ -39,6 +39,9 @@ where
             .get_archetype(query.info.archetypes[0])
             .expect("query parent archetype not found");
 
+        let mut filter_init = Box::new(F::init(&ctx.world));
+        F::update_columns(&mut filter_init, &current_archetype.borrow());
+
         Self {
             query,
             state: QueryState {
@@ -46,7 +49,7 @@ where
                 current_archetype_index: 0,
                 columns: current_archetype.borrow().get_columns(&query.component_ids),
                 current_archetype,
-                filter_init: Box::new(F::init(&ctx.world)),
+                filter_init,
             },
             ctx,
         }
