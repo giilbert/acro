@@ -5,6 +5,7 @@ use crate::{
     entity::EntityId,
     pointer::change_detection::{self, ChangeDetectionContext, Mut, Tick},
     registry::ComponentId,
+    systems::SystemRunContext,
     world::World,
 };
 
@@ -18,7 +19,7 @@ pub trait QueryTransform<'w> {
 
     #[inline]
     fn create(
-        _world: &World,
+        _ctx: &SystemRunContext<'w>,
         _current_archetype: &Archetype,
         _entity_index: usize,
     ) -> Self::Output {
@@ -27,7 +28,7 @@ pub trait QueryTransform<'w> {
 
     #[inline]
     fn transform_component(
-        _world: &World,
+        _ctx: &SystemRunContext<'w>,
         _current_archetype: &Archetype,
         _entity_index: usize,
         _component: ComponentId,
@@ -43,7 +44,7 @@ impl<'w, 'v, T> QueryTransform<'w> for &'v T {
 
     #[inline]
     fn transform_component(
-        _world: &World,
+        _ctx: &SystemRunContext<'w>,
         _current_archetype: &Archetype,
         _entity_index: usize,
         _component: ComponentId,
@@ -59,7 +60,7 @@ impl<'w, 'v, T> QueryTransform<'w> for Option<&'v T> {
 
     #[inline]
     fn transform_component(
-        _world: &World,
+        _ctx: &SystemRunContext<'w>,
         _current_archetype: &Archetype,
         _entity_index: usize,
         _component: ComponentId,
@@ -75,7 +76,7 @@ impl<'w, 'v, T> QueryTransform<'w> for &'v mut T {
 
     #[inline]
     fn transform_component(
-        _world: &World,
+        ctx: &SystemRunContext<'w>,
         current_archetype: &Archetype,
         entity_index: usize,
         component: ComponentId,
@@ -87,7 +88,7 @@ impl<'w, 'v, T> QueryTransform<'w> for &'v mut T {
             .get(&component)
             .expect("component not found");
 
-        Mut::new(column.change_detection, Tick::new(0), entity_index, input)
+        Mut::new(column.change_detection, ctx.tick, entity_index, input)
     }
 }
 
@@ -97,7 +98,7 @@ impl<'w, 'v, T> QueryTransform<'w> for Option<&'v mut T> {
 
     #[inline]
     fn transform_component(
-        _world: &World,
+        ctx: &SystemRunContext<'w>,
         current_archetype: &Archetype,
         entity_index: usize,
         component: ComponentId,
@@ -110,7 +111,7 @@ impl<'w, 'v, T> QueryTransform<'w> for Option<&'v mut T> {
                 .get(&component)
                 .expect("component not found");
 
-            Mut::new(column.change_detection, Tick::new(0), entity_index, input)
+            Mut::new(column.change_detection, ctx.tick, entity_index, input)
         })
     }
 }
@@ -122,7 +123,11 @@ impl<'w, 'v> QueryTransform<'w> for EntityId {
     type Output = EntityId;
 
     #[inline]
-    fn create(_world: &World, current_archetype: &Archetype, entity_index: usize) -> Self::Output {
+    fn create(
+        _ctx: &SystemRunContext<'w>,
+        current_archetype: &Archetype,
+        entity_index: usize,
+    ) -> Self::Output {
         current_archetype.entities[entity_index]
     }
 }

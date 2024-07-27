@@ -59,7 +59,7 @@ where
             self.info.recompute_archetypes::<F>(ctx.world);
         }
 
-        QueryIter::new(ctx.world, self)
+        QueryIter::new(ctx, self)
     }
 }
 

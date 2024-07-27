@@ -3,7 +3,7 @@ use std::{any::TypeId, cell::UnsafeCell};
 use crate::{
     archetype::Archetypes,
     entity::{Entities, EntityId, EntityMeta},
-    pointer::change_detection::ChangeDetectionContext,
+    pointer::change_detection::{ChangeDetectionContext, Tick},
     query::{Query, QueryFilter, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,

@@ -5,6 +5,7 @@ use itertools::Itertools;
 use crate::{
     archetype::{Archetype, ArchetypeId},
     registry::{ComponentGroup, ComponentId, ComponentInfo},
+    systems::SystemRunContext,
     world::World,
 };
 
@@ -70,7 +71,7 @@ pub trait ToQueryInfo<'w> {
 
     fn to_query_info<F: for<'a> QueryFilter<'a>>(world: &mut World) -> QueryInfo;
     unsafe fn from_parts(
-        world: &'w World,
+        ctx: &SystemRunContext<'w>,
         current_archetype: &Archetype,
         entity_index: usize,
         components: impl Iterator<Item = (ComponentId, Option<NonNull<u8>>)>,
@@ -173,7 +174,7 @@ macro_rules! impl_to_query_info {
 
             #[inline]
             unsafe fn from_parts(
-                world: &'w World,
+                ctx: &SystemRunContext<'w>,
                 current_archetype: &Archetype,
                 entity_index: usize,
                 mut components: impl Iterator<Item = (ComponentId, Option<NonNull<u8>>)>,
@@ -182,7 +183,7 @@ macro_rules! impl_to_query_info {
                     $(
                         if <$members as QueryTransform>::IS_CREATE {
                             <$members as QueryTransform>::create(
-                                world,
+                                ctx,
                                 current_archetype,
                                 entity_index,
                             )
@@ -192,7 +193,7 @@ macro_rules! impl_to_query_info {
                                 .expect("unable to find componet reference");
 
                             <$members as QueryTransform>::transform_component(
-                                world,
+                                ctx,
                                 current_archetype,
                                 entity_index,
                                 component_id,
@@ -220,19 +221,19 @@ impl<'w, T1: QueryInfoUtils + QueryTransform<'w, InputOrCreate = T1>> ToQueryInf
 
     #[inline]
     unsafe fn from_parts(
-        world: &'w World,
+        ctx: &SystemRunContext<'w>,
         current_archetype: &Archetype,
         entity_index: usize,
         mut components: impl Iterator<Item = (ComponentId, Option<NonNull<u8>>)>,
     ) -> Self::Output {
         if <T1 as QueryTransform>::IS_CREATE {
-            <T1 as QueryTransform>::create(world, current_archetype, entity_index)
+            <T1 as QueryTransform>::create(ctx, current_archetype, entity_index)
         } else {
             let (component_id, component) = components
                 .next()
                 .expect("unable to find componet reference");
             <T1 as QueryTransform>::transform_component(
-                world,
+                ctx,
                 current_archetype,
                 entity_index,
                 component_id,

@@ -10,6 +10,10 @@ impl Tick {
     pub fn new(tick: u32) -> Self {
         Self(tick)
     }
+
+    pub fn next(&self) -> Self {
+        Self(self.0 + 1)
+    }
 }
 
 #[derive(Debug, Default)]

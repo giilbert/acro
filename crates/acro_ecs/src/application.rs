@@ -6,12 +6,13 @@ use crate::{
 
 struct System {
     pub name: String,
-    pub run: Box<dyn Fn(&mut World, &mut dyn Any)>,
+    pub run: Box<dyn Fn(&mut World, Tick, &mut dyn Any)>,
     pub parameters: Box<dyn Any>,
 }
 
 pub struct Application {
     world: World,
+    current_tick: Tick,
     systems: Vec<System>,
     runner: Box<dyn FnOnce(Application)>,
 }
@@ -20,6 +21,7 @@ impl Application {
     pub fn new() -> Self {
         Self {
             world: World::new(),
+            current_tick: Tick::new(0),
             systems: Vec::new(),
             runner: Box::new(|_app| panic!("no runner set!")),
         }
@@ -42,10 +44,9 @@ impl Application {
         let parameters = system_init(self);
         self.systems.push(System {
             name: std::any::type_name_of_val(&system).to_string(),
-            run: Box::new(move |world, parameters| {
+            run: Box::new(move |world, current_tick, parameters| {
                 system(
-                    // TODO: Make tick work
-                    SystemRunContext::new(world, Tick::new(0)),
+                    SystemRunContext::new(world, current_tick),
                     parameters.downcast_mut().unwrap(),
                 )
             }),
@@ -56,7 +57,12 @@ impl Application {
     pub fn run_once(&mut self) {
         // let now = std::time::Instant::now();
         for system in self.systems.iter_mut() {
-            (system.run)(&mut self.world, system.parameters.as_mut());
+            self.current_tick = self.current_tick.next();
+            (system.run)(
+                &mut self.world,
+                self.current_tick,
+                system.parameters.as_mut(),
+            );
         }
         // let elapsed = now.elapsed();
         // println!("run once took {:?}", elapsed);

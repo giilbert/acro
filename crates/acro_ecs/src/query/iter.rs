@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     archetype::{Archetype, Column},
+    systems::SystemRunContext,
     world::World,
 };
 
@@ -19,7 +20,8 @@ where
     T: for<'a> ToQueryInfo<'a>,
     F: for<'a> QueryFilter<'a>,
 {
-    pub(super) world: &'w World,
+    // pub(super) world: &'w World,
+    pub(super) ctx: SystemRunContext<'w>,
     pub(super) query: &'q Query<T, F>,
     state: QueryState<'w>,
 }
@@ -29,14 +31,15 @@ where
     T: for<'a> ToQueryInfo<'a>,
     F: for<'a> QueryFilter<'a>,
 {
-    pub fn new(world: &'w World, query: &'q Query<T, F>) -> Self {
-        let current_archetype = world
+    pub fn new(ctx: SystemRunContext<'w>, query: &'q Query<T, F>) -> Self {
+        let current_archetype = ctx
+            .world
             .archetypes
             .get_archetype(query.info.archetypes[0])
             .expect("query parent archetype not found");
 
         Self {
-            world,
+            ctx,
             query,
             state: QueryState {
                 current_entity_index: 0,
@@ -69,6 +72,7 @@ where
             // Move to the next archetype
             self.state.current_archetype_index += 1;
             self.state.current_archetype = self
+                .ctx
                 .world
                 .archetypes
                 .get_archetype(self.query.info.archetypes[self.state.current_archetype_index])
@@ -92,7 +96,7 @@ where
         let ret =
             Some(unsafe {
                 T::from_parts(
-                    self.world,
+                    &self.ctx,
                     &*self.state.current_archetype.borrow(),
                     self.state.current_entity_index,
                     self.query.component_ids.iter().zip(current_columns).map(
