@@ -1,15 +1,36 @@
 use acro_ecs::{Application, Plugin};
-use acro_render::RenderPlugin;
+use acro_render::{Mesh, RenderPlugin, Vertex};
 
 struct TestPlugin;
 
 impl Plugin for TestPlugin {
-    fn build(&mut self, app: &mut Application) {}
+    fn build(&mut self, app: &mut Application) {
+        let world = app.world();
+
+        let entity = world.spawn();
+        world.insert(
+            entity,
+            Mesh::new(
+                vec![
+                    Vertex {
+                        position: [0.0, 0.5, 0.0].into(),
+                    },
+                    Vertex {
+                        position: [0.5, -0.5, 0.0].into(),
+                    },
+                    Vertex {
+                        position: [-0.5, -0.5, 0.0].into(),
+                    },
+                ],
+                vec![0, 1, 2],
+            ),
+        )
+    }
 }
 
 fn main() {
     Application::new()
-        .add_plugin(TestPlugin)
         .add_plugin(RenderPlugin)
+        .add_plugin(TestPlugin)
         .run();
 }

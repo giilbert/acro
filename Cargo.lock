@@ -41,6 +41,7 @@ name = "acro_math"
 version = "0.1.0"
 dependencies = [
  "acro_ecs",
+ "cfg-if",
  "nalgebra",
 ]
 
@@ -49,6 +50,9 @@ name = "acro_render"
 version = "0.1.0"
 dependencies = [
  "acro_ecs",
+ "acro_math",
+ "bytemuck",
+ "cfg-if",
  "pollster",
  "wgpu",
  "winit",
@@ -246,9 +250,23 @@ checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
 
 [[package]]
 name = "bytemuck"
-version = "1.16.0"
+version = "1.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78834c15cb5d5efe3452d58b1e8ba890dd62d21907f867f383358198e56ebca5"
+checksum = "b236fc92302c97ed75b38da1f4917b5cdda4984745740f153a5d3059e48d725e"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4da9a32f3fed317401fa3c862968128267c3106685286e15d5aaa3d7389c2f60"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
+]
 
 [[package]]
 name = "bytes"

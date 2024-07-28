@@ -1,6 +1,12 @@
 use nalgebra as na;
 
-pub type Float = f32;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "double-precision")] {
+        pub type Float = f64;
+    } else {
+        pub type Float = f32;
+    }
+}
 
 pub type Vec2 = na::Vector2<Float>;
 pub type Vec3 = na::Vector3<Float>;

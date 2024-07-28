@@ -10,12 +10,12 @@ pub struct RendererHandle {
 
 #[derive(Debug)]
 pub struct RendererState {
-    surface: wgpu::Surface<'static>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    config: wgpu::SurfaceConfiguration,
-    size: winit::dpi::PhysicalSize<u32>,
-    window: Arc<winit::window::Window>,
+    pub(crate) surface: wgpu::Surface<'static>,
+    pub(crate) device: wgpu::Device,
+    pub(crate) queue: wgpu::Queue,
+    pub(crate) config: wgpu::SurfaceConfiguration,
+    pub(crate) size: winit::dpi::PhysicalSize<u32>,
+    pub(crate) window: Arc<winit::window::Window>,
 }
 
 impl RendererState {

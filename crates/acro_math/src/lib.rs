@@ -3,7 +3,7 @@ mod types;
 
 pub use crate::{
     transform::{propagate_global_transform, Children, GlobalTransform, Parent, Root, Transform},
-    types::{Mat4, UnitQuaternion},
+    types::*,
 };
 
 use acro_ecs::{schedule::Stage, Application, Plugin};
