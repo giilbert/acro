@@ -6,6 +6,7 @@ pub mod pointer;
 pub mod query;
 pub mod registry;
 pub mod resource;
+pub mod schedule;
 pub mod storage;
 pub mod systems;
 pub mod world;

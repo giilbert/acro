@@ -1,8 +1,12 @@
-use std::{any::Any, rc::Rc};
+use std::{
+    any::{Any, TypeId},
+    rc::Rc,
+};
 
 use crate::{
     pointer::change_detection::Tick,
     query::{Query, QueryFilter, QueryInfo, ToQueryInfo},
+    schedule::SystemSchedulingRequirement,
     world::World,
 };
 
@@ -51,11 +55,30 @@ impl<'w> IntoSystemRunContext<'w> for &'w SystemRunContext<'w> {
 
 pub type SystemFn = Box<dyn Fn(&mut World, Tick, &mut dyn Any)>;
 
-pub struct System {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SystemId {
+    Native(TypeId),
+    Faux(usize),
+}
+
+pub struct SystemData {
+    pub id: SystemId,
     pub name: String,
     pub run: SystemFn,
     pub last_run_tick: Tick,
     pub parameters: Box<dyn Any>,
+    pub scheduling_requirements: Vec<SystemSchedulingRequirement>,
+}
+
+impl std::fmt::Debug for SystemData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("System")
+            .field("name", &self.name)
+            .field("run", &(self.run.as_ref() as *const _))
+            .field("last_run_tick", &self.last_run_tick)
+            .field("parameters", &self.parameters)
+            .finish()
+    }
 }
 
 pub trait SystemParam {

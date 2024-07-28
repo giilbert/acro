@@ -3,14 +3,16 @@ use std::{any::Any, cell::UnsafeCell};
 use crate::{
     plugin::Plugin,
     pointer::change_detection::Tick,
-    systems::{IntoSystem, System, SystemRunContext},
+    schedule::{Schedule, Stage, SystemSchedulingRequirement},
+    systems::{IntoSystem, SystemData, SystemId, SystemRunContext},
     world::World,
 };
 
 pub struct Application {
     world: World,
     current_tick: Tick,
-    systems: Vec<System>,
+    // systems: Vec<SystemData>,
+    schedule: Schedule,
     runner: Box<dyn FnOnce(Application)>,
 }
 
@@ -19,7 +21,7 @@ impl Application {
         Self {
             world: World::new(),
             current_tick: Tick::new(0),
-            systems: Vec::new(),
+            schedule: Schedule::new(),
             runner: Box::new(|_app| panic!("no runner set!")),
         }
     }
@@ -33,30 +35,34 @@ impl Application {
         &mut self.world
     }
 
-    pub fn add_system<I, P>(&mut self, system: I)
-    where
+    pub fn add_system<I, P>(
+        &mut self,
+        stage: Stage,
+        scheduling_requirements: impl IntoIterator<Item = SystemSchedulingRequirement>,
+        system: I,
+    ) where
         I: IntoSystem<P>,
+        P: 'static,
     {
         let parameters = I::init(&self.world);
-        self.systems.push(System {
-            name: std::any::type_name_of_val(&system).to_string(),
-            run: system.into_system(),
-            last_run_tick: Tick::new(0),
-            parameters,
-        });
+        self.schedule
+            .add_system(
+                stage,
+                SystemData {
+                    id: SystemId::Native(std::any::TypeId::of::<P>()),
+                    name: std::any::type_name_of_val(&system).to_string(),
+                    run: system.into_system(),
+                    last_run_tick: Tick::new(0),
+                    parameters,
+                    scheduling_requirements: scheduling_requirements.into_iter().collect(),
+                },
+            )
+            .expect("add system failed");
     }
 
     pub fn run_once(&mut self) {
         // let now = std::time::Instant::now();
-        for system in self.systems.iter_mut() {
-            self.current_tick = self.current_tick.next();
-            (system.run)(
-                &mut self.world,
-                self.current_tick,
-                system.parameters.as_mut(),
-            );
-            system.last_run_tick = self.current_tick;
-        }
+        self.schedule.run_once(&mut self.world);
         // let elapsed = now.elapsed();
         // println!("run once took {:?}", elapsed);
     }
@@ -95,6 +101,8 @@ mod tests {
         app.world().insert(entity2, "hello".to_string());
 
         app.add_system(
+            Stage::Update,
+            [],
             |ctx: SystemRunContext,
              mut number_query: Query<&u32>,
              mut string_query: Query<&String>| {
