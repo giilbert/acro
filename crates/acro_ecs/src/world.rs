@@ -92,6 +92,10 @@ impl World {
         self.archetypes
             .get_component::<T>(&self.entities, entity, component_info.id)
     }
+
+    pub fn insert_resource<T: 'static>(&mut self, resource: T) {
+        self.resources.insert(resource);
+    }
 }
 
 #[cfg(test)]

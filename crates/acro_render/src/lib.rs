@@ -10,7 +10,7 @@ impl Plugin for RenderPlugin {
     fn build(&mut self, app: &mut Application) {
         let window = Window::new();
         app.set_runner(move |mut app| {
-            window.run(move || app.run_once());
+            window.run(app);
         });
     }
 }

@@ -1,5 +1,14 @@
-use std::sync::Arc;
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
+#[derive(Debug, Clone)]
+pub struct RendererHandle {
+    state: Arc<RendererState>,
+}
+
+#[derive(Debug)]
 pub struct RendererState {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -10,7 +19,7 @@ pub struct RendererState {
 }
 
 impl RendererState {
-    pub async fn new(window: Arc<winit::window::Window>) -> Self {
+    pub async fn new(window: Arc<winit::window::Window>) -> RendererHandle {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
             ..Default::default()
@@ -28,6 +37,9 @@ impl RendererState {
             })
             .await
             .expect("failed to request adapter");
+
+        println!("Adapter: {:?}", adapter.get_info());
+
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -60,17 +72,19 @@ impl RendererState {
         };
         surface.configure(&device, &config);
 
-        RendererState {
-            surface,
-            device,
-            queue,
-            config,
-            size,
-            window,
+        RendererHandle {
+            state: Arc::new(RendererState {
+                surface,
+                device,
+                queue,
+                config,
+                size,
+                window,
+            }),
         }
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear(&self) {
         let output = self.surface.get_current_texture().unwrap();
         let view = output
             .texture
@@ -106,5 +120,13 @@ impl RendererState {
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
+    }
+}
+
+impl Deref for RendererHandle {
+    type Target = RendererState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
     }
 }

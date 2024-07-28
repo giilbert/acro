@@ -1,18 +1,19 @@
 use std::sync::Arc;
 
+use acro_ecs::Application;
 use winit::{
     application::ApplicationHandler,
     event::{self, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
 };
 
-use crate::state::RendererState;
+use crate::state::{RendererHandle, RendererState};
 
 pub struct Window {
     event_loop: Option<EventLoop<()>>,
     window: Option<Arc<winit::window::Window>>,
-    state: Option<RendererState>,
-    update: Box<dyn FnMut()>,
+    state: Option<RendererHandle>,
+    application: Option<Application>,
 }
 
 impl Window {
@@ -23,12 +24,12 @@ impl Window {
             event_loop: Some(event_loop),
             window: None,
             state: None,
-            update: Box::new(|| panic!("no update set!")),
+            application: None,
         }
     }
 
-    pub fn run(mut self, update: impl FnMut() + 'static) {
-        self.update = Box::new(update);
+    pub fn run(mut self, application: Application) {
+        self.application = Some(application);
         let event_loop = self.event_loop.take().unwrap();
         event_loop
             .run_app(&mut self)
@@ -40,7 +41,11 @@ impl Window {
     fn create_window(&self, event_loop: &ActiveEventLoop) -> Arc<winit::window::Window> {
         let window = Arc::new(
             event_loop
-                .create_window(winit::window::Window::default_attributes().with_title("acro"))
+                .create_window(
+                    winit::window::Window::default_attributes()
+                        .with_title("acro")
+                        .with_visible(false),
+                )
                 .unwrap(),
         );
 
@@ -53,7 +58,15 @@ impl ApplicationHandler for Window {
         if self.window.is_none() {
             let window = self.create_window(event_loop);
             let state = pollster::block_on(RendererState::new(window.clone()));
+            window.set_visible(true);
+
             self.window = Some(window);
+
+            self.application
+                .as_mut()
+                .expect("application not created")
+                .world()
+                .insert_resource(state.clone());
             self.state = Some(state);
         }
     }
@@ -66,17 +79,20 @@ impl ApplicationHandler for Window {
     ) {
         let window = self.window.as_ref().expect("window not created");
         let state = self.state.as_mut().expect("state not created");
+        let application = self.application.as_mut().expect("application not created");
 
         match event {
             WindowEvent::RedrawRequested => {
-                (self.update)();
+                application.run_once();
                 state.clear();
                 window.request_redraw();
             }
             WindowEvent::CloseRequested => {
                 event_loop.exit();
             }
-            _ => println!("unhandled event: {:?}", event),
+            _ => {
+                // println!("unhandled event: {:?}", event);
+            }
         }
     }
 }
