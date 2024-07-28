@@ -88,7 +88,7 @@ fn recurse_propagate(
     }
 }
 
-fn setup_transform(world: &mut World) {
+pub fn register_components(world: &mut World) {
     world.init_component::<Transform>();
     world.init_component::<GlobalTransform>();
     world.init_component::<Parent>();
@@ -106,13 +106,14 @@ mod tests {
     };
 
     use super::{
-        propagate_global_transform, setup_transform, Children, GlobalTransform, Parent, Transform,
+        propagate_global_transform, register_components, Children, GlobalTransform, Parent,
+        Transform,
     };
 
     #[test]
     fn transform_propagation() {
         let mut world = World::new();
-        setup_transform(&mut world);
+        register_components(&mut world);
 
         let root = world.spawn();
         world.insert(
