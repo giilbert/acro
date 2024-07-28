@@ -2,7 +2,7 @@ use fnv::FnvHashMap;
 
 use crate::{
     pointer::change_detection::Tick,
-    systems::{SystemData, SystemId},
+    systems::{SystemData, SystemId, SystemRunContext},
     world::World,
 };
 
@@ -89,7 +89,7 @@ impl Schedule {
         Ok(())
     }
 
-    pub fn run_stage(&mut self, stage: Stage, mut world: &mut World) {
+    pub fn run_stage(&mut self, stage: Stage, world: &mut World) {
         let systems = match self.stages.get_mut(&stage) {
             Some(systems) => systems,
             None => return,
@@ -97,7 +97,14 @@ impl Schedule {
 
         for system in systems.iter_mut() {
             self.current_tick = self.current_tick.next();
-            (system.run)(&mut world, self.current_tick, system.parameters.as_mut());
+            (system.run)(
+                SystemRunContext {
+                    world,
+                    tick: self.current_tick,
+                    last_run_tick: system.last_run_tick,
+                },
+                system.parameters.as_mut(),
+            );
             system.last_run_tick = self.current_tick;
         }
     }
@@ -137,7 +144,7 @@ mod tests {
         SystemData {
             id: SystemId::Faux(id),
             name: name.to_string(),
-            run: Box::new(move |_, _, _| {}),
+            run: Box::new(move |_, _| {}),
             last_run_tick: Tick::new(0),
             parameters: Box::new(()),
             scheduling_requirements: scheduling_requirements.into_iter().collect(),

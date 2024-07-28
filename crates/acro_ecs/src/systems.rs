@@ -19,16 +19,12 @@ pub struct SystemRunContext<'w> {
 }
 
 impl SystemRunContext<'_> {
-    pub fn new(world: &World, tick: Tick) -> SystemRunContext {
+    pub fn ignore_changes(world: &World) -> SystemRunContext {
         SystemRunContext {
             world,
-            tick,
+            tick: Tick::new(0),
             last_run_tick: Tick::new(0),
         }
-    }
-
-    pub fn ignore_changes(world: &World) -> SystemRunContext {
-        SystemRunContext::new(world, Tick::new(0))
     }
 }
 
@@ -38,7 +34,11 @@ pub trait IntoSystemRunContext<'w> {
 
 impl<'w> IntoSystemRunContext<'w> for &'w World {
     fn into_system_run_context(self) -> SystemRunContext<'w> {
-        SystemRunContext::new(self, Tick::new(0))
+        SystemRunContext {
+            world: self,
+            tick: Tick::new(0),
+            last_run_tick: Tick::new(0),
+        }
     }
 }
 
@@ -54,7 +54,7 @@ impl<'w> IntoSystemRunContext<'w> for &'w SystemRunContext<'w> {
     }
 }
 
-pub type SystemFn = Box<dyn Fn(&mut World, Tick, &mut dyn Any)>;
+pub type SystemFn = Box<dyn Fn(SystemRunContext, &mut dyn Any)>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SystemId {
@@ -134,9 +134,9 @@ where
     }
 
     fn into_system(self) -> SystemFn {
-        Box::new(move |world, tick, parameters| {
-            let context = SystemRunContext::new(world, tick);
+        Box::new(move |context, parameters| {
             let parameters = parameters.downcast_mut::<P1::Init>().unwrap();
+            let world = context.world;
             self(context, P1::create(world, parameters));
         })
     }
@@ -154,9 +154,9 @@ macro_rules! impl_into_system {
 
             #[allow(non_snake_case)]
             fn into_system(self) -> SystemFn {
-                Box::new(move |world, tick, parameters| {
-                    let context = SystemRunContext::new(world, tick);
+                Box::new(move |context, parameters| {
                     let ($($members,)*) = parameters.downcast_mut::<($($members::Init,)*)>().unwrap();
+                    let world = context.world;
                     self(context, $($members::create(world, $members),)*);
                 })
             }

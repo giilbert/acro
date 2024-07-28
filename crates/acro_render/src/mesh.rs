@@ -1,4 +1,7 @@
-use std::ops::Deref;
+use std::{
+    hint::black_box,
+    ops::{Deref, DerefMut},
+};
 
 use acro_ecs::{
     pointer::change_detection::Mut,
@@ -72,11 +75,6 @@ pub fn upload_mesh_system(
     renderer: Res<RendererHandle>,
 ) {
     for mut mesh in mesh_query.over(&ctx) {
-        if !<Mut<Mesh> as Deref>::deref(&mesh).is_dirty {
-            continue;
-        }
-
-        println!("Uploading mesh data");
         let device = &renderer.device;
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -92,10 +90,10 @@ pub fn upload_mesh_system(
 
 pub fn render_mesh_system(
     ctx: SystemRunContext,
-    mesh_query: Query<&Mesh>,
+    mesh_query: Query<&mut Mesh>,
     renderer: Res<RendererHandle>,
 ) {
-    for mesh in mesh_query.over(&ctx) {
+    for mut mesh in mesh_query.over(&ctx) {
         let device = &renderer.device;
         let queue = &renderer.queue;
     }

@@ -418,15 +418,23 @@ mod test {
         world.insert(entity3, 22u32);
         world.insert(entity3, false);
 
-        let mut query = world.query::<&mut String, ()>();
-        for mut value in query.over(SystemRunContext::new(&world, Tick::new(1))) {
+        let query = world.query::<&mut String, ()>();
+        for mut value in query.over(SystemRunContext {
+            world: &world,
+            tick: Tick::new(1),
+            last_run_tick: Tick::new(0),
+        }) {
             *value = "changed".to_string();
         }
 
-        let mut changed_strings = world.query::<EntityId, Changed<String>>();
+        let changed_strings = world.query::<EntityId, Changed<String>>();
         assert_eq_unordered!(
             &changed_strings
-                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .over(SystemRunContext {
+                    world: &world,
+                    tick: Tick::new(1),
+                    last_run_tick: Tick::new(0),
+                })
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2]
         );
@@ -483,7 +491,11 @@ mod test {
         world.insert(entity3, false);
 
         let mut query = world.query::<&mut String, ()>();
-        for mut value in query.over(SystemRunContext::new(&world, Tick::new(1))) {
+        for mut value in query.over(SystemRunContext {
+            world: &world,
+            tick: Tick::new(1),
+            last_run_tick: Tick::new(0),
+        }) {
             *value = "changed".to_string();
         }
 
@@ -491,7 +503,11 @@ mod test {
             world.query::<EntityId, (Changed<String>, With<bool>)>();
         assert_eq_unordered!(
             &changed_strings_with_bool
-                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .over(SystemRunContext {
+                    world: &world,
+                    tick: Tick::new(2),
+                    last_run_tick: Tick::new(0)
+                })
                 .collect::<Vec<_>>(),
             &vec![entity2]
         );
@@ -499,7 +515,11 @@ mod test {
         let mut changed_strings_with_u32 = world.query::<EntityId, (Changed<String>, With<u32>)>();
         assert_eq_unordered!(
             &changed_strings_with_u32
-                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .over(SystemRunContext {
+                    world: &world,
+                    tick: Tick::new(2),
+                    last_run_tick: Tick::new(0)
+                })
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2]
         );
@@ -508,7 +528,11 @@ mod test {
             .query::<EntityId, Or<(Changed<String>, With<bool>), (Changed<String>, With<u32>)>>();
         assert_eq_unordered!(
             &changed_strings_with_bool_or_u32
-                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .over(SystemRunContext {
+                    world: &world,
+                    tick: Tick::new(2),
+                    last_run_tick: Tick::new(0),
+                })
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2]
         );
@@ -516,7 +540,11 @@ mod test {
         let mut changed_or_with_bool = world.query::<EntityId, Or<Changed<String>, With<bool>>>();
         assert_eq_unordered!(
             &changed_or_with_bool
-                .over(SystemRunContext::new(&world, Tick::new(2)))
+                .over(SystemRunContext {
+                    world: &world,
+                    tick: Tick::new(2),
+                    last_run_tick: Tick::new(1),
+                })
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2, entity3]
         );

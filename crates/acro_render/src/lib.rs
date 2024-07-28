@@ -5,7 +5,7 @@ mod window;
 pub use mesh::{Mesh, Vertex};
 
 use acro_ecs::{schedule::Stage, Application, Plugin};
-use mesh::upload_mesh_system;
+use mesh::{render_mesh_system, upload_mesh_system};
 use window::Window;
 
 pub struct RenderPlugin;
@@ -20,5 +20,6 @@ impl Plugin for RenderPlugin {
         });
 
         app.add_system(Stage::PreRender, [], upload_mesh_system);
+        app.add_system(Stage::Render, [], render_mesh_system);
     }
 }

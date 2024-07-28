@@ -7,7 +7,7 @@ use crate::{
     query::{Query, QueryFilter, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,
-    systems::IntoSystem,
+    systems::{IntoSystem, SystemRunContext},
 };
 
 #[derive(Debug)]
@@ -84,7 +84,14 @@ impl World {
     {
         let mut system_init = I::init(&self);
         let system_run_function = system.into_system();
-        (system_run_function)(self, tick, system_init.as_mut());
+        (system_run_function)(
+            SystemRunContext {
+                world: self,
+                tick,
+                last_run_tick: Tick::new(0),
+            },
+            system_init.as_mut(),
+        );
     }
 
     pub fn get<T: 'static>(&self, entity: EntityId) -> Option<&T> {
