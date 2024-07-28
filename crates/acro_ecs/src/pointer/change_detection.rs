@@ -122,7 +122,7 @@ mod tests {
                     .get()
             }
             .changed_ticks,
-            vec![Tick(0), Tick(1)]
+            vec![Tick(1), Tick(2)]
         );
     }
 }

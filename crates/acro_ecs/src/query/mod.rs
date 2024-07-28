@@ -4,12 +4,14 @@ mod iter;
 mod transform;
 mod utils;
 
-pub use filters::QueryFilter;
+pub use filters::{Changed, Or, QueryFilter, With, Without};
 pub use info::{QueryInfo, ToQueryInfo};
 
 use std::{any::Any, fmt::Debug, marker::PhantomData, rc::Rc};
 
 use crate::{
+    archetype,
+    entity::{self, EntityId},
     registry::ComponentId,
     systems::{IntoSystemRunContext, SystemRunContext},
     world::World,
@@ -41,10 +43,7 @@ where
         }
     }
 
-    pub fn over<'w, 'q>(
-        &'q mut self,
-        ctx: impl IntoSystemRunContext<'w>,
-    ) -> QueryIter<'w, 'q, T, F> {
+    pub fn over<'w, 'q>(&'q self, ctx: impl IntoSystemRunContext<'w>) -> QueryIter<'w, 'q, T, F> {
         let ctx = ctx.into_system_run_context();
 
         if self.info.archetypes_generation != ctx.world.archetypes.generation {
@@ -52,6 +51,46 @@ where
         }
 
         QueryIter::new(ctx, self)
+    }
+
+    pub fn get(
+        &self,
+        ctx: &SystemRunContext,
+        entity_id: EntityId,
+    ) -> Option<<T as ToQueryInfo>::Output> {
+        let entity_meta = ctx.world.entity_meta(entity_id);
+        let archetype_id = entity_meta.archetype_id;
+        ctx.world
+            .archetypes
+            .get_archetype(archetype_id)
+            .and_then(|archetype| {
+                let archetype = archetype.borrow();
+                let column = archetype.get_columns(&self.info.component_ids);
+
+                let ret = Some(unsafe {
+                    T::from_parts(
+                        &ctx,
+                        &archetype,
+                        entity_meta.table_index,
+                        self.info
+                            .component_ids
+                            .iter()
+                            .zip(column)
+                            .map(|(&component_id, c)| {
+                                (
+                                    component_id,
+                                    c.as_ref()
+                                        .map(|column| {
+                                            (&*column.data.get()).get_ptr(entity_meta.table_index)
+                                        })
+                                        .flatten(),
+                                )
+                            }),
+                    )
+                });
+
+                ret
+            })
     }
 }
 #[cfg(test)]

@@ -1,0 +1,8 @@
+[package]
+name = "acro_math"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+acro_ecs = { path = "../acro_ecs" }
+nalgebra = "0.33.0"

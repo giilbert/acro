@@ -36,7 +36,7 @@ pub enum ScheduleError {
 impl Schedule {
     pub fn new() -> Self {
         Self {
-            current_tick: Tick::new(0),
+            current_tick: Tick::new(1),
             stages: Default::default(),
         }
     }

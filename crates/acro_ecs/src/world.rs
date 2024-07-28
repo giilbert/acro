@@ -7,6 +7,7 @@ use crate::{
     query::{Query, QueryFilter, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,
+    systems::IntoSystem,
 };
 
 #[derive(Debug)]
@@ -74,6 +75,22 @@ impl World {
         F: QueryFilter,
     {
         Query::<T, F>::new(self)
+    }
+
+    pub fn run_system<I, P>(&mut self, system: I, tick: Tick)
+    where
+        I: IntoSystem<P>,
+        P: 'static,
+    {
+        let mut system_init = I::init(&self);
+        let system_run_function = system.into_system();
+        (system_run_function)(self, tick, system_init.as_mut());
+    }
+
+    pub fn get<T: 'static>(&self, entity: EntityId) -> Option<&T> {
+        let component_info = self.components.get::<T>()?;
+        self.archetypes
+            .get_component::<T>(&self.entities, entity, component_info.id)
     }
 }
 

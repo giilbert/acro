@@ -160,6 +160,20 @@ impl Archetypes {
         std::mem::forget(data);
     }
 
+    pub fn get_component<T: 'static>(
+        &self,
+        entities: &Entities,
+        entity: EntityId,
+        component_id: ComponentId,
+    ) -> Option<&T> {
+        let meta = entities.get(entity)?;
+        let archetype = self.archetypes.get(&meta.archetype_id)?.borrow();
+        let component_data = archetype
+            .pointer_to_entity_component(meta.table_index, component_id)?
+            .as_ptr() as *const T;
+        Some(unsafe { &*component_data })
+    }
+
     pub fn remove_component<T: 'static>(
         &mut self,
         component_registry: &ComponentRegistry,
@@ -325,7 +339,7 @@ impl Column {
         (&mut *self.data.get()).push_from_ptr(ptr);
         (*self.change_detection.get())
             .changed_ticks
-            .push(Tick::new(0));
+            .push(Tick::new(1));
     }
 
     pub unsafe fn remove(&self, index: usize) {
