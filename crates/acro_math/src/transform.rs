@@ -33,6 +33,9 @@ pub struct Parent(pub EntityId);
 #[derive(Debug, Clone)]
 pub struct Children(pub Vec<EntityId>);
 
+#[derive(Debug, Clone)]
+pub struct Root;
+
 pub fn propagate_global_transform(
     ctx: SystemRunContext,
     transform_query: Query<(EntityId, &Transform, &Children, &Parent), Changed<Transform>>,
@@ -90,13 +93,17 @@ fn setup_transform(world: &mut World) {
     world.init_component::<GlobalTransform>();
     world.init_component::<Parent>();
     world.init_component::<Children>();
+    world.init_component::<Root>();
 }
 
 #[cfg(test)]
 mod tests {
     use acro_ecs::{pointer::change_detection::Tick, world::World};
 
-    use crate::types::{Mat4, UnitQuaternion};
+    use crate::{
+        transform::Root,
+        types::{Mat4, UnitQuaternion},
+    };
 
     use super::{
         propagate_global_transform, setup_transform, Children, GlobalTransform, Parent, Transform,
@@ -122,30 +129,69 @@ mod tests {
                 matrix: Mat4::identity(),
             },
         );
+        world.insert(root, Root);
 
-        let child1 = world.spawn();
+        let child_1 = world.spawn();
         world.insert(
-            child1,
+            child_1,
             Transform {
-                position: [0.0, 0.0, 0.0].into(),
+                position: [0.0, -2.0, 0.0].into(),
                 rotation: UnitQuaternion::identity(),
                 scale: [1.0, 1.0, 1.0].into(),
             },
         );
         world.insert(
-            child1,
+            child_1,
             GlobalTransform {
                 matrix: Mat4::identity(),
             },
         );
-        world.insert(child1, Parent(root));
-        world.insert(child1, Children(vec![]));
+        world.insert(child_1, Parent(root));
 
-        world.insert(root, Children(vec![child1]));
+        let child_of_child_1 = world.spawn();
+        world.insert(
+            child_of_child_1,
+            Transform {
+                position: [0.0, 2.0, 0.0].into(),
+                rotation: UnitQuaternion::identity(),
+                scale: [1.0, 1.0, 1.0].into(),
+            },
+        );
+        world.insert(
+            child_of_child_1,
+            GlobalTransform {
+                matrix: Mat4::identity(),
+            },
+        );
+        world.insert(child_of_child_1, Parent(child_1));
+        world.insert(child_of_child_1, Children(vec![]));
+
+        world.insert(root, Children(vec![child_1]));
+        world.insert(child_1, Children(vec![child_of_child_1]));
 
         world.run_system(propagate_global_transform, Tick::new(1));
 
-        let global_transform = world.get::<GlobalTransform>(child1).unwrap();
-        assert_eq!(global_transform.matrix, Mat4::identity());
+        let child_1_global_transform = world.get::<GlobalTransform>(child_1).unwrap();
+        assert_eq!(
+            child_1_global_transform.matrix,
+            Transform {
+                position: [0.0, -2.0, 0.0].into(),
+                rotation: UnitQuaternion::identity(),
+                scale: [1.0, 1.0, 1.0].into(),
+            }
+            .get_matrix()
+        );
+
+        let child_of_child_1_global_transform =
+            world.get::<GlobalTransform>(child_of_child_1).unwrap();
+        assert_eq!(
+            child_of_child_1_global_transform.matrix,
+            Transform {
+                position: [0.0, 0.0, 0.0].into(),
+                rotation: UnitQuaternion::identity(),
+                scale: [1.0, 1.0, 1.0].into(),
+            }
+            .get_matrix()
+        );
     }
 }
