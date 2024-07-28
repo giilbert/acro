@@ -82,14 +82,14 @@ impl std::fmt::Debug for SystemData {
     }
 }
 
-pub trait SystemParam<'w> {
+pub trait SystemParam {
     type Init: Any;
 
-    fn init(world: &'w World) -> Self::Init;
-    fn create(world: &'w World, prepared: &mut Self::Init) -> Self;
+    fn init(world: &World) -> Self::Init;
+    fn create(world: &World, prepared: &mut Self::Init) -> Self;
 }
 
-impl<'w, TData, TFilters> SystemParam<'w> for Query<TData, TFilters>
+impl<TData, TFilters> SystemParam for Query<TData, TFilters>
 where
     TData: ToQueryInfo,
     TFilters: QueryFilter,
@@ -108,13 +108,14 @@ where
     }
 }
 
-impl<'w, T: 'static> SystemParam<'w> for Res<'w, T> {
+impl<T: 'static> SystemParam for Res<'_, T> {
     type Init = ();
 
-    fn init(_world: &'w World) {}
+    fn init(_world: &World) {}
 
-    fn create(world: &'w World, _prepared: &mut Self::Init) -> Self {
-        world.resources.get()
+    fn create(world: &World, _prepared: &mut Self::Init) -> Self {
+        // TODO: I'm 99% sure this is safe, but I don't want to fight the borrow checker right now
+        unsafe { std::mem::transmute(world.resources.get::<T>()) }
     }
 }
 
@@ -126,7 +127,7 @@ pub trait IntoSystem<P> {
 impl<F, P1> IntoSystem<P1> for F
 where
     F: Fn(SystemRunContext, P1) + 'static,
-    P1: for<'w> SystemParam<'w>,
+    P1: SystemParam,
 {
     fn init(world: &World) -> Box<dyn Any> {
         Box::new(P1::init(world))
@@ -145,7 +146,7 @@ macro_rules! impl_into_system {
     ($($members:ident),+) => {
         impl<
             F: Fn(SystemRunContext, $($members),+) + 'static,
-            $($members: for<'w> SystemParam<'w>),*
+            $($members: SystemParam),*
         > IntoSystem<($($members),+)> for F {
             fn init(world: &World) -> Box<dyn Any> {
                 Box::new(($($members::init(world),)*))
