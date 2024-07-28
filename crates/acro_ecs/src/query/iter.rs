@@ -18,8 +18,8 @@ struct QueryState<'w> {
 
 pub struct QueryIter<'w, 'q, T, F>
 where
-    T: for<'a> ToQueryInfo<'a>,
-    F: for<'a> QueryFilter<'a>,
+    T: ToQueryInfo,
+    F: QueryFilter,
 {
     // pub(super) world: &'w World,
     pub(super) ctx: SystemRunContext<'w>,
@@ -29,8 +29,8 @@ where
 
 impl<'w, 'q, T, F> QueryIter<'w, 'q, T, F>
 where
-    T: for<'a> ToQueryInfo<'a>,
-    F: for<'a> QueryFilter<'a>,
+    T: ToQueryInfo,
+    F: QueryFilter,
 {
     pub fn new(ctx: SystemRunContext<'w>, query: &'q Query<T, F>) -> Self {
         let current_archetype = ctx
@@ -60,10 +60,10 @@ where
 
 impl<'w, T, F> Iterator for QueryIter<'w, '_, T, F>
 where
-    T: for<'a> ToQueryInfo<'a>,
-    F: for<'a> QueryFilter<'a> + 'static,
+    T: ToQueryInfo,
+    F: QueryFilter + 'static,
 {
-    type Item = <T as ToQueryInfo<'w>>::Output;
+    type Item = <T as ToQueryInfo>::Output;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {

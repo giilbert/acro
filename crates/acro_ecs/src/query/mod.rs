@@ -18,20 +18,20 @@ use crate::{
 use self::iter::QueryIter;
 
 #[derive(Debug)]
-pub struct Query<T: for<'w> ToQueryInfo<'w>, F: for<'w> QueryFilter<'w> = ()> {
+pub struct Query<T: ToQueryInfo, F: QueryFilter = ()> {
     pub(super) info: Rc<QueryInfo>,
     pub(super) _phantom: PhantomData<(T, F)>,
 }
 
 impl<T, F> Query<T, F>
 where
-    T: for<'w> ToQueryInfo<'w>,
-    F: for<'w> QueryFilter<'w>,
+    T: ToQueryInfo,
+    F: QueryFilter,
 {
     pub fn new<TData, TFilters>(world: &World) -> Query<TData, TFilters>
     where
-        TData: for<'w> ToQueryInfo<'w>,
-        TFilters: for<'w> QueryFilter<'w>,
+        TData: ToQueryInfo,
+        TFilters: QueryFilter,
     {
         let info = TData::to_query_info::<TFilters>(world);
 

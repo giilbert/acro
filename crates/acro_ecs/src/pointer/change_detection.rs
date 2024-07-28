@@ -76,8 +76,8 @@ impl<'v, T> DerefMut for Mut<'v, T> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        archetype::ArchetypeId, pointer::change_detection::Tick, registry::ComponentId,
-        systems::SystemRunContext, world::World, Application,
+        archetype::ArchetypeId, pointer::change_detection::Tick, query::Query,
+        registry::ComponentId, systems::SystemRunContext, world::World, Application,
     };
 
     #[test]
@@ -91,16 +91,13 @@ mod tests {
         let entity2 = app.world().spawn();
         app.world().insert(entity2, 42u32);
 
-        app.add_system(
-            |app| (app.world().query::<&mut u32, ()>(),),
-            |ctx: SystemRunContext, (number_query,)| {
-                for mut value in number_query.over(&ctx) {
-                    if value == 42 {
-                        *value = 20;
-                    }
+        app.add_system(|ctx: SystemRunContext, mut number_query: Query<&mut u32>| {
+            for mut value in number_query.over(&ctx) {
+                if value == 42 {
+                    *value = 20;
                 }
-            },
-        );
+            }
+        });
 
         app.run_once();
 

@@ -3,16 +3,9 @@ use std::{any::Any, cell::UnsafeCell};
 use crate::{
     plugin::Plugin,
     pointer::change_detection::Tick,
-    systems::{IntoSystem, SystemRunContext},
+    systems::{IntoSystem, System, SystemRunContext},
     world::World,
 };
-
-struct System {
-    pub name: String,
-    pub run: Box<dyn Fn(&mut World, Tick, &mut dyn Any)>,
-    pub last_run_tick: Tick,
-    pub parameters: Box<dyn Any>,
-}
 
 pub struct Application {
     world: World,
@@ -40,22 +33,16 @@ impl Application {
         &mut self.world
     }
 
-    pub fn add_system<T: Any>(
-        &mut self,
-        system_init: impl FnOnce(&mut Application) -> T,
-        system: impl Fn(SystemRunContext, &mut T) -> () + 'static,
-    ) {
-        let parameters = system_init(self);
+    pub fn add_system<I, P>(&mut self, system: I)
+    where
+        I: IntoSystem<P>,
+    {
+        let parameters = I::init(&self.world);
         self.systems.push(System {
             name: std::any::type_name_of_val(&system).to_string(),
-            run: Box::new(move |world, current_tick, parameters| {
-                system(
-                    SystemRunContext::new(world, current_tick),
-                    parameters.downcast_mut().unwrap(),
-                )
-            }),
+            run: system.into_system(),
             last_run_tick: Tick::new(0),
-            parameters: Box::new(parameters),
+            parameters,
         });
     }
 
@@ -89,6 +76,8 @@ impl Application {
 
 #[cfg(test)]
 mod tests {
+    use crate::query::Query;
+
     use super::*;
 
     #[test]
@@ -106,13 +95,9 @@ mod tests {
         app.world().insert(entity2, "hello".to_string());
 
         app.add_system(
-            |app| {
-                (
-                    app.world.query::<&u32, ()>(),
-                    app.world.query::<&String, ()>(),
-                )
-            },
-            |ctx, (number_query, string_query)| {
+            |ctx: SystemRunContext,
+             mut number_query: Query<&u32>,
+             mut string_query: Query<&String>| {
                 *ctx.world.resources.get_mut::<u32>() += 1;
 
                 for value in number_query.over(&ctx) {

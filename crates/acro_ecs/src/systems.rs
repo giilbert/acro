@@ -49,17 +49,26 @@ impl<'w> IntoSystemRunContext<'w> for &'w SystemRunContext<'w> {
     }
 }
 
-pub trait SystemParam<'w> {
+pub type SystemFn = Box<dyn Fn(&mut World, Tick, &mut dyn Any)>;
+
+pub struct System {
+    pub name: String,
+    pub run: SystemFn,
+    pub last_run_tick: Tick,
+    pub parameters: Box<dyn Any>,
+}
+
+pub trait SystemParam {
     type Init: Any;
 
     fn init(world: &World) -> Self::Init;
     fn create(prepared: &mut Self::Init) -> Self;
 }
 
-impl<'w, TData, TFilters> SystemParam<'w> for Query<TData, TFilters>
+impl<TData, TFilters> SystemParam for Query<TData, TFilters>
 where
-    TData: for<'a> ToQueryInfo<'a>,
-    TFilters: for<'a> QueryFilter<'a>,
+    TData: ToQueryInfo,
+    TFilters: QueryFilter,
 {
     type Init = Rc<QueryInfo>;
 
@@ -77,22 +86,23 @@ where
 
 pub trait IntoSystem<P> {
     fn init(world: &World) -> Box<dyn Any>;
-    fn into_system(self) -> Box<dyn FnOnce(&SystemRunContext, &mut dyn Any) -> ()>;
+    fn into_system(self) -> SystemFn;
 }
 
 impl<F, P1> IntoSystem<P1> for F
 where
-    F: Fn(&SystemRunContext, P1) + 'static,
-    P1: for<'a> SystemParam<'a>,
+    F: Fn(SystemRunContext, P1) + 'static,
+    P1: SystemParam,
 {
     fn init(world: &World) -> Box<dyn Any> {
         Box::new(P1::init(world))
     }
 
-    fn into_system(self) -> Box<dyn FnOnce(&SystemRunContext, &mut dyn Any) -> ()> {
-        Box::new(move |context, parameters| {
+    fn into_system(self) -> SystemFn {
+        Box::new(move |world, tick, parameters| {
+            let context = SystemRunContext::new(world, tick);
             let parameters = parameters.downcast_mut::<P1::Init>().unwrap();
-            self(&context, P1::create(parameters));
+            self(context, P1::create(parameters));
         })
     }
 }
@@ -100,16 +110,17 @@ where
 macro_rules! impl_into_system {
     ($($members:ident),+) => {
         impl<
-            F: Fn(&SystemRunContext, $($members),+) + 'static,
-            $($members: for<'a> SystemParam<'a>),*
+            F: Fn(SystemRunContext, $($members),+) + 'static,
+            $($members: SystemParam),*
         > IntoSystem<($($members),+)> for F {
             fn init(world: &World) -> Box<dyn Any> {
                 Box::new(($($members::init(world),)*))
             }
 
             #[allow(non_snake_case)]
-            fn into_system(self) -> Box<dyn FnOnce(&SystemRunContext, &mut dyn Any) -> ()> {
-                Box::new(move |context, parameters| {
+            fn into_system(self) -> SystemFn {
+                Box::new(move |world, tick, parameters| {
+                    let context = SystemRunContext::new(world, tick);
                     let ($($members,)*) = parameters.downcast_mut::<($($members::Init,)*)>().unwrap();
                     self(context, $($members::create($members),)*);
                 })

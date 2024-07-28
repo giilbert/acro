@@ -70,8 +70,8 @@ impl World {
 
     pub fn query<T, F>(&mut self) -> Query<T, F>
     where
-        T: for<'a> ToQueryInfo<'a>,
-        F: for<'a> QueryFilter<'a>,
+        T: ToQueryInfo,
+        F: QueryFilter,
     {
         Query::<T, F>::new(self)
     }

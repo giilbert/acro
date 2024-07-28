@@ -14,19 +14,19 @@ use super::{
     ToQueryInfo,
 };
 
-pub trait QueryFilter<'w> {
+pub trait QueryFilter {
     type Init: Debug + Any;
 
     // If true, this filter only acts on archetypes, and filter_test will never be called.
     const IS_STRICTLY_ARCHETYPAL: bool;
 
-    fn init(world: &'w World) -> Self::Init;
+    fn init(world: &World) -> Self::Init;
     // When a query moves between archetypes, Self::Init needs to be updated to reflect the
     // structure of the new archetype.
     fn update_columns(init: &mut Self::Init, new_archetype: &Archetype);
 
     fn filter_archetype<'a>(
-        _world: &'w World,
+        _world: &World,
         components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
     ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
         components
@@ -34,21 +34,21 @@ pub trait QueryFilter<'w> {
 
     // If the filter is strictly archetypal, calling filter_test is unnecessary because the filter
     // will be applied to the archetypes directly.
-    fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
+    fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext, _entity_index: usize) -> bool {
         Self::IS_STRICTLY_ARCHETYPAL
     }
 }
 
-impl<'w> QueryFilter<'w> for () {
+impl QueryFilter for () {
     type Init = ();
 
     const IS_STRICTLY_ARCHETYPAL: bool = true;
 
-    fn init(_world: &'w World) -> Self::Init {}
+    fn init(_world: &World) -> Self::Init {}
     fn update_columns(_init: &mut Self::Init, _new_archetype: &Archetype) {}
 
     fn filter_archetype<'a>(
-        _world: &'w World,
+        _world: &World,
         components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
     ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
         components
@@ -58,22 +58,22 @@ impl<'w> QueryFilter<'w> for () {
 // This filter filters out all archetypes regardless of their contents.
 pub struct Nothing;
 
-impl<'w> QueryFilter<'w> for Nothing {
+impl QueryFilter for Nothing {
     type Init = ();
 
     const IS_STRICTLY_ARCHETYPAL: bool = true;
 
-    fn init(_world: &'w World) -> Self::Init {}
+    fn init(_world: &World) -> Self::Init {}
     fn update_columns(_init: &mut Self::Init, _new_archetype: &Archetype) {}
 
     fn filter_archetype<'a>(
-        _world: &'w World,
+        _world: &World,
         _components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
     ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
         std::iter::empty()
     }
 
-    fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
+    fn filter_test(_init: &Self::Init, _ctx: &SystemRunContext, _entity_index: usize) -> bool {
         false
     }
 }
@@ -83,18 +83,18 @@ pub struct With<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<'w, T> QueryFilter<'w> for With<T>
+impl<T> QueryFilter for With<T>
 where
     T: Any,
 {
     type Init = ();
     const IS_STRICTLY_ARCHETYPAL: bool = true;
 
-    fn init(_world: &'w World) -> Self::Init {}
+    fn init(_world: &World) -> Self::Init {}
     fn update_columns(_init: &mut Self::Init, _new_archetype: &Archetype) {}
 
     fn filter_archetype<'a>(
-        world: &'w World,
+        world: &World,
         components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
     ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
         let full = get_full_component_info::<&T>(world);
@@ -109,18 +109,18 @@ pub struct Without<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<'w, T> QueryFilter<'w> for Without<T>
+impl<T> QueryFilter for Without<T>
 where
     T: Any,
 {
     type Init = ();
     const IS_STRICTLY_ARCHETYPAL: bool = true;
 
-    fn init(_world: &'w World) -> Self::Init {}
+    fn init(_world: &World) -> Self::Init {}
     fn update_columns(_init: &mut Self::Init, _new_archetype: &Archetype) {}
 
     fn filter_archetype<'a>(
-        world: &'w World,
+        world: &World,
         components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
     ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
         let full = get_full_component_info::<&T>(world);
@@ -145,31 +145,31 @@ macro_rules! expand_filter_archetype {
 macro_rules! impl_to_filter_info_and {
     ($($members:ident),+) => {
         #[allow(non_snake_case)]
-        impl<'w, $($members: QueryFilter<'w>),*> QueryFilter<'w> for ($($members,)*)
+        impl<$($members: QueryFilter),*> QueryFilter for ($($members,)*)
         {
             // The Init type is a tuple of the Init types of each member.
             type Init = ($($members::Init,)*);
 
             const IS_STRICTLY_ARCHETYPAL: bool = $($members::IS_STRICTLY_ARCHETYPAL &&)+ true;
 
-            fn init(world: &'w World) -> Self::Init {
+            fn init(world: &World) -> Self::Init {
                 ($($members::init(world),)*)
             }
 
             fn update_columns(init: &mut Self::Init, new_archetype: &Archetype) {
                 let ($($members,)*) = init;
-                $(<$members as QueryFilter<'w>>::update_columns($members, new_archetype);)*
+                $(<$members as QueryFilter>::update_columns($members, new_archetype);)*
             }
 
             fn filter_archetype<'a>(
-                world: &'w World,
+                world: &World,
                 components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
             ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
                 expand_filter_archetype!(world, components, $($members),+)
             }
 
 
-            fn filter_test(init: &Self::Init, _ctx: &SystemRunContext<'w>, _entity_index: usize) -> bool {
+            fn filter_test(init: &Self::Init, _ctx: &SystemRunContext, _entity_index: usize) -> bool {
                 let ($($members,)*) = init;
                 $($members::filter_test($members, _ctx, _entity_index) &&)+ true
             }
@@ -195,29 +195,29 @@ pub struct Or<
     T7 = Nothing,
     T8 = Nothing,
 > where
-    T1: for<'a> QueryFilter<'a>,
-    T2: for<'a> QueryFilter<'a>,
-    T3: for<'a> QueryFilter<'a>,
-    T4: for<'a> QueryFilter<'a>,
-    T5: for<'a> QueryFilter<'a>,
-    T6: for<'a> QueryFilter<'a>,
-    T7: for<'a> QueryFilter<'a>,
-    T8: for<'a> QueryFilter<'a>,
+    T1: QueryFilter,
+    T2: QueryFilter,
+    T3: QueryFilter,
+    T4: QueryFilter,
+    T5: QueryFilter,
+    T6: QueryFilter,
+    T7: QueryFilter,
+    T8: QueryFilter,
 {
     _phantom: PhantomData<(T1, T2, T3, T4, T5, T6, T7, T8)>,
 }
 
-impl<'w, T1, T2, T3, T4, T5, T6, T7, T8, I1, I2, I3, I4, I5, I6, I7, I8> QueryFilter<'w>
+impl<T1, T2, T3, T4, T5, T6, T7, T8, I1, I2, I3, I4, I5, I6, I7, I8> QueryFilter
     for Or<T1, T2, T3, T4, T5, T6, T7, T8>
 where
-    T1: for<'a> QueryFilter<'a, Init = I1>,
-    T2: for<'a> QueryFilter<'a, Init = I2>,
-    T3: for<'a> QueryFilter<'a, Init = I3>,
-    T4: for<'a> QueryFilter<'a, Init = I4>,
-    T5: for<'a> QueryFilter<'a, Init = I5>,
-    T6: for<'a> QueryFilter<'a, Init = I6>,
-    T7: for<'a> QueryFilter<'a, Init = I7>,
-    T8: for<'a> QueryFilter<'a, Init = I8>,
+    T1: QueryFilter<Init = I1>,
+    T2: QueryFilter<Init = I2>,
+    T3: QueryFilter<Init = I3>,
+    T4: QueryFilter<Init = I4>,
+    T5: QueryFilter<Init = I5>,
+    T6: QueryFilter<Init = I6>,
+    T7: QueryFilter<Init = I7>,
+    T8: QueryFilter<Init = I8>,
     I1: Debug + Any,
     I2: Debug + Any,
     I3: Debug + Any,
@@ -238,7 +238,7 @@ where
         && T7::IS_STRICTLY_ARCHETYPAL
         && T8::IS_STRICTLY_ARCHETYPAL;
 
-    fn init(world: &'w World) -> Self::Init {
+    fn init(world: &World) -> Self::Init {
         (
             T1::init(world),
             T2::init(world),
@@ -273,7 +273,7 @@ where
     }
 
     fn filter_archetype<'a>(
-        world: &'w World,
+        world: &World,
         components: impl Iterator<Item = Ref<'a, Archetype>> + Clone,
     ) -> impl Iterator<Item = Ref<'a, Archetype>> + Clone {
         T1::filter_archetype(world, components.clone())
@@ -286,7 +286,7 @@ where
             .chain(T8::filter_archetype(world, components))
     }
 
-    fn filter_test(init: &Self::Init, ctx: &SystemRunContext<'w>, entity_index: usize) -> bool {
+    fn filter_test(init: &Self::Init, ctx: &SystemRunContext, entity_index: usize) -> bool {
         T1::filter_test(&init.0, ctx, entity_index)
             || T2::filter_test(&init.1, ctx, entity_index)
             || T3::filter_test(&init.2, ctx, entity_index)
@@ -308,7 +308,7 @@ pub struct ChangeInit {
     pub column: Option<Rc<Column>>,
 }
 
-impl<'w, T: 'static> QueryFilter<'w> for Changed<T> {
+impl<T: 'static> QueryFilter for Changed<T> {
     type Init = ChangeInit;
 
     const IS_STRICTLY_ARCHETYPAL: bool = false;
@@ -324,7 +324,7 @@ impl<'w, T: 'static> QueryFilter<'w> for Changed<T> {
         init.column = new_archetype.get_column(init.component_id);
     }
 
-    fn filter_test(init: &Self::Init, ctx: &SystemRunContext<'w>, entity_index: usize) -> bool {
+    fn filter_test(init: &Self::Init, ctx: &SystemRunContext, entity_index: usize) -> bool {
         init.column
             .as_ref()
             .map(|column| {

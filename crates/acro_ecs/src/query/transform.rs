@@ -11,7 +11,7 @@ use crate::{
 
 /// A trait for types that can be fetched from a query.
 /// 'w is the lifetime of the world or data borrowed from it.
-pub trait QueryTransform<'w> {
+pub trait QueryTransform {
     const IS_CREATE: bool = false;
 
     type InputOrCreate;
@@ -19,7 +19,7 @@ pub trait QueryTransform<'w> {
 
     #[inline]
     fn create(
-        _ctx: &SystemRunContext<'w>,
+        _ctx: &SystemRunContext,
         _current_archetype: &Archetype,
         _entity_index: usize,
     ) -> Self::Output {
@@ -28,7 +28,7 @@ pub trait QueryTransform<'w> {
 
     #[inline]
     fn transform_component(
-        _ctx: &SystemRunContext<'w>,
+        _ctx: &SystemRunContext,
         _current_archetype: &Archetype,
         _entity_index: usize,
         _component: ComponentId,
@@ -38,13 +38,13 @@ pub trait QueryTransform<'w> {
     }
 }
 
-impl<'w, 'v, T> QueryTransform<'w> for &'v T {
+impl<'v, T> QueryTransform for &'v T {
     type InputOrCreate = &'v T;
     type Output = Self::InputOrCreate;
 
     #[inline]
     fn transform_component(
-        _ctx: &SystemRunContext<'w>,
+        _ctx: &SystemRunContext,
         _current_archetype: &Archetype,
         _entity_index: usize,
         _component: ComponentId,
@@ -54,13 +54,13 @@ impl<'w, 'v, T> QueryTransform<'w> for &'v T {
     }
 }
 
-impl<'w, 'v, T> QueryTransform<'w> for Option<&'v T> {
+impl<'v, T> QueryTransform for Option<&'v T> {
     type InputOrCreate = Option<&'v T>;
     type Output = Self::InputOrCreate;
 
     #[inline]
     fn transform_component(
-        _ctx: &SystemRunContext<'w>,
+        _ctx: &SystemRunContext,
         _current_archetype: &Archetype,
         _entity_index: usize,
         _component: ComponentId,
@@ -70,13 +70,13 @@ impl<'w, 'v, T> QueryTransform<'w> for Option<&'v T> {
     }
 }
 
-impl<'w, 'v, T> QueryTransform<'w> for &'v mut T {
+impl<'v, T> QueryTransform for &'v mut T {
     type InputOrCreate = &'v mut T;
     type Output = Mut<'v, T>;
 
     #[inline]
     fn transform_component(
-        ctx: &SystemRunContext<'w>,
+        ctx: &SystemRunContext,
         current_archetype: &Archetype,
         entity_index: usize,
         component: ComponentId,
@@ -92,13 +92,13 @@ impl<'w, 'v, T> QueryTransform<'w> for &'v mut T {
     }
 }
 
-impl<'w, 'v, T> QueryTransform<'w> for Option<&'v mut T> {
+impl<'v, T> QueryTransform for Option<&'v mut T> {
     type InputOrCreate = Option<&'v mut T>;
     type Output = Option<Mut<'v, T>>;
 
     #[inline]
     fn transform_component(
-        ctx: &SystemRunContext<'w>,
+        ctx: &SystemRunContext,
         current_archetype: &Archetype,
         entity_index: usize,
         component: ComponentId,
@@ -116,7 +116,7 @@ impl<'w, 'v, T> QueryTransform<'w> for Option<&'v mut T> {
     }
 }
 
-impl<'w, 'v> QueryTransform<'w> for EntityId {
+impl<'v> QueryTransform for EntityId {
     const IS_CREATE: bool = true;
 
     type InputOrCreate = EntityId;
@@ -124,7 +124,7 @@ impl<'w, 'v> QueryTransform<'w> for EntityId {
 
     #[inline]
     fn create(
-        _ctx: &SystemRunContext<'w>,
+        _ctx: &SystemRunContext,
         current_archetype: &Archetype,
         entity_index: usize,
     ) -> Self::Output {

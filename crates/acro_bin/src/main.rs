@@ -4,14 +4,7 @@ use acro_render::RenderPlugin;
 struct TestPlugin;
 
 impl Plugin for TestPlugin {
-    fn build(&mut self, app: &mut Application) {
-        app.add_system(
-            |_app| (),
-            |_world, _queries| {
-                // println!("Hello, world!");
-            },
-        );
-    }
+    fn build(&mut self, app: &mut Application) {}
 }
 
 fn main() {

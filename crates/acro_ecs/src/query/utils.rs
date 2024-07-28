@@ -19,7 +19,7 @@ pub enum QueryFetchType {
 }
 
 #[allow(unused)]
-pub(crate) trait QueryInfoUtils: Any {
+pub(crate) trait QueryInfoUtils {
     const BORROW: QueryBorrowType = QueryBorrowType::Unknown;
     const FETCH: QueryFetchType = QueryFetchType::Unknown;
 
@@ -27,7 +27,7 @@ pub(crate) trait QueryInfoUtils: Any {
     fn type_id() -> TypeId;
 }
 
-impl<T: 'static> QueryInfoUtils for &'static T {
+impl<'a, T: 'static> QueryInfoUtils for &'a T {
     const BORROW: QueryBorrowType = QueryBorrowType::Borrow;
     const FETCH: QueryFetchType = QueryFetchType::Component;
 
@@ -36,7 +36,7 @@ impl<T: 'static> QueryInfoUtils for &'static T {
     }
 }
 
-impl<T: 'static> QueryInfoUtils for &'static mut T {
+impl<'a, T: 'static> QueryInfoUtils for &'a mut T {
     const BORROW: QueryBorrowType = QueryBorrowType::BorrowMut;
     const FETCH: QueryFetchType = QueryFetchType::Component;
 
