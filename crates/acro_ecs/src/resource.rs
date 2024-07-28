@@ -1,6 +1,7 @@
 use std::{
     any::{Any, TypeId},
     cell::{Ref, RefCell, RefMut},
+    ops::Deref,
 };
 
 use fnv::FnvHashMap;
@@ -29,16 +30,18 @@ impl ResourceRegistry {
         id
     }
 
-    pub fn get<T: 'static>(&self) -> Ref<T> {
-        Ref::map(
-            self.data[self
-                .types
-                .get(&TypeId::of::<T>())
-                .expect("resource not found")
-                .0]
-                .borrow(),
-            |r| r.downcast_ref().unwrap(),
-        )
+    pub fn get<T: 'static>(&self) -> Res<T> {
+        Res {
+            inner: Ref::map(
+                self.data[self
+                    .types
+                    .get(&TypeId::of::<T>())
+                    .expect("resource not found")
+                    .0]
+                    .borrow(),
+                |r| r.downcast_ref().unwrap(),
+            ),
+        }
     }
 
     pub fn get_mut<T: 'static>(&self) -> RefMut<T> {
@@ -51,5 +54,17 @@ impl ResourceRegistry {
                 .borrow_mut(),
             |r| r.downcast_mut().unwrap(),
         )
+    }
+}
+
+pub struct Res<'b, T> {
+    inner: Ref<'b, T>,
+}
+
+impl<T> Deref for Res<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }

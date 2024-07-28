@@ -6,6 +6,7 @@ use std::{
 use crate::{
     pointer::change_detection::Tick,
     query::{Query, QueryFilter, QueryInfo, ToQueryInfo},
+    resource::Res,
     schedule::SystemSchedulingRequirement,
     world::World,
 };
@@ -81,14 +82,14 @@ impl std::fmt::Debug for SystemData {
     }
 }
 
-pub trait SystemParam {
+pub trait SystemParam<'w> {
     type Init: Any;
 
-    fn init(world: &World) -> Self::Init;
-    fn create(prepared: &mut Self::Init) -> Self;
+    fn init(world: &'w World) -> Self::Init;
+    fn create(world: &'w World, prepared: &mut Self::Init) -> Self;
 }
 
-impl<TData, TFilters> SystemParam for Query<TData, TFilters>
+impl<'w, TData, TFilters> SystemParam<'w> for Query<TData, TFilters>
 where
     TData: ToQueryInfo,
     TFilters: QueryFilter,
@@ -99,11 +100,21 @@ where
         Rc::new(TData::to_query_info::<TFilters>(world))
     }
 
-    fn create(prepared: &mut Self::Init) -> Self {
+    fn create(_world: &World, prepared: &mut Self::Init) -> Self {
         Query {
             info: Rc::clone(prepared),
             _phantom: Default::default(),
         }
+    }
+}
+
+impl<'w, T: 'static> SystemParam<'w> for Res<'w, T> {
+    type Init = ();
+
+    fn init(_world: &'w World) {}
+
+    fn create(world: &'w World, _prepared: &mut Self::Init) -> Self {
+        world.resources.get()
     }
 }
 
@@ -115,7 +126,7 @@ pub trait IntoSystem<P> {
 impl<F, P1> IntoSystem<P1> for F
 where
     F: Fn(SystemRunContext, P1) + 'static,
-    P1: SystemParam,
+    P1: for<'w> SystemParam<'w>,
 {
     fn init(world: &World) -> Box<dyn Any> {
         Box::new(P1::init(world))
@@ -125,7 +136,7 @@ where
         Box::new(move |world, tick, parameters| {
             let context = SystemRunContext::new(world, tick);
             let parameters = parameters.downcast_mut::<P1::Init>().unwrap();
-            self(context, P1::create(parameters));
+            self(context, P1::create(world, parameters));
         })
     }
 }
@@ -134,7 +145,7 @@ macro_rules! impl_into_system {
     ($($members:ident),+) => {
         impl<
             F: Fn(SystemRunContext, $($members),+) + 'static,
-            $($members: SystemParam),*
+            $($members: for<'w> SystemParam<'w>),*
         > IntoSystem<($($members),+)> for F {
             fn init(world: &World) -> Box<dyn Any> {
                 Box::new(($($members::init(world),)*))
@@ -145,7 +156,7 @@ macro_rules! impl_into_system {
                 Box::new(move |world, tick, parameters| {
                     let context = SystemRunContext::new(world, tick);
                     let ($($members,)*) = parameters.downcast_mut::<($($members::Init,)*)>().unwrap();
-                    self(context, $($members::create($members),)*);
+                    self(context, $($members::create(world, $members),)*);
                 })
             }
         }
