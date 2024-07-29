@@ -45,11 +45,15 @@ impl World {
     }
 
     pub fn get_component_info<T: 'static>(&self) -> &ComponentInfo {
-        self.components.get::<T>().expect("component not found")
+        self.components
+            .get::<T>()
+            .unwrap_or_else(|| panic!("component {} not found", std::any::type_name::<T>()))
     }
 
     pub fn get_component_info_id(&self, id: TypeId) -> &ComponentInfo {
-        self.components.get_by_id(id).expect("component not found")
+        self.components
+            .get_by_id(id)
+            .unwrap_or_else(|| panic!("component with id {id:?} not found"))
     }
 
     pub fn insert<T: 'static>(&mut self, entity: EntityId, component: T) {

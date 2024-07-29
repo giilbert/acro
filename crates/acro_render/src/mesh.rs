@@ -9,7 +9,7 @@ use acro_ecs::{
     resource::Res,
     systems::SystemRunContext,
 };
-use acro_math::{Float, Vec3};
+use acro_math::{Float, GlobalTransform, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
 use wgpu::util::DeviceExt;
@@ -102,12 +102,13 @@ pub fn upload_mesh_system(
         let shader = shaders
             .handle_by_name(&mesh.shader_name)
             .expect("shader not found");
+
         let module = &shader.module;
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
+                bind_group_layouts: &[&shader.model_matrix_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -165,7 +166,7 @@ pub fn upload_mesh_system(
 
 pub fn render_mesh_system(
     ctx: SystemRunContext,
-    mesh_query: Query<&Mesh>,
+    mesh_query: Query<(&GlobalTransform, &Mesh)>,
     renderer: Res<RendererHandle>,
     shaders: Res<Shaders>,
 ) {
@@ -187,8 +188,20 @@ pub fn render_mesh_system(
         timestamp_writes: None,
     });
 
-    for mesh in mesh_query.over(&ctx) {
+    for (global_transform, mesh) in mesh_query.over(&ctx) {
+        let shader = shaders
+            .handle_by_name(&mesh.shader_name)
+            .expect("shader not found");
+
         mesh_render_pass.set_pipeline(&mesh.render_pipeline.as_ref().expect("no render pipeline"));
+
+        renderer.queue.write_buffer(
+            &shader.model_matrix_buffer,
+            0,
+            bytemuck::cast_slice(global_transform.matrix.as_slice()),
+        );
+        mesh_render_pass.set_bind_group(0, &shader.model_matrix_bind_group, &[]);
+
         mesh_render_pass.set_vertex_buffer(0, mesh.vertex_buffer.as_ref().unwrap().slice(..));
         mesh_render_pass.set_index_buffer(
             mesh.index_buffer.as_ref().unwrap().slice(..),

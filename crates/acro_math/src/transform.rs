@@ -22,9 +22,27 @@ impl Transform {
     }
 }
 
+impl Default for Transform {
+    fn default() -> Self {
+        Self {
+            position: [0.0, 0.0, 0.0].into(),
+            rotation: UnitQuaternion::identity(),
+            scale: [1.0, 1.0, 1.0].into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct GlobalTransform {
     pub matrix: Mat4,
+}
+
+impl Default for GlobalTransform {
+    fn default() -> Self {
+        Self {
+            matrix: Mat4::identity(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -69,8 +87,6 @@ fn recurse_propagate(
         .get(&ctx, current_entity)
         .expect("Invalid tree structure: entity does not have a global transform!");
     this_global_transform.matrix = parent_global_transform.matrix * transform.get_matrix();
-
-    dbg!(this_global_transform.matrix);
 
     // Propagate the global transform of this entity to its children
     for child in children.0.iter() {

@@ -23,6 +23,7 @@ name = "acro_bin"
 version = "0.1.0"
 dependencies = [
  "acro_ecs",
+ "acro_math",
  "acro_render",
 ]
 

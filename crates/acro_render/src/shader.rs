@@ -1,5 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, ops::Deref, sync::Arc};
 
+use acro_math::Float;
 use wgpu::include_wgsl;
 
 use crate::state::RendererHandle;
@@ -7,6 +8,9 @@ use crate::state::RendererHandle;
 #[derive(Debug)]
 pub struct Shader {
     pub(crate) module: wgpu::ShaderModule,
+    pub(crate) model_matrix_buffer: wgpu::Buffer,
+    pub(crate) model_matrix_bind_group_layout: wgpu::BindGroupLayout,
+    pub(crate) model_matrix_bind_group: wgpu::BindGroup,
 }
 
 impl Shader {
@@ -18,7 +22,65 @@ impl Shader {
                 source: wgpu::ShaderSource::Wgsl(Cow::Owned(source.to_string())),
             });
 
-        Self { module }
+        let model_matrix_buffer = renderer.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("model_matrix_buffer"),
+            size: std::mem::size_of::<[[Float; 4]; 4]>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let model_matrix_bind_group_layout =
+            renderer
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }],
+                    label: Some("model_matrix_bind_group_layout"),
+                });
+
+        let model_matrix_bind_group =
+            renderer
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    layout: &model_matrix_bind_group_layout,
+                    entries: &[wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: model_matrix_buffer.as_entire_binding(),
+                    }],
+                    label: Some("model_matrix_bind_group"),
+                });
+
+        let model_matrix_bind_group_layout =
+            renderer
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }],
+                    label: Some("camera_bind_group_layout"),
+                });
+
+        Self {
+            module,
+            model_matrix_buffer,
+            model_matrix_bind_group_layout,
+            model_matrix_bind_group,
+        }
     }
 }
 
