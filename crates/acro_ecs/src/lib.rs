@@ -13,4 +13,13 @@ pub mod systems;
 pub mod world;
 
 pub use application::Application;
+pub use bundle::Bundle;
+pub use entity::EntityId;
 pub use plugin::Plugin;
+pub use pointer::change_detection::{Mut, Tick};
+pub use query::{Changed, Or, Query, With, Without};
+pub use registry::{ComponentId, ComponentRegistry, ComponentType};
+pub use resource::{Res, ResMut};
+pub use schedule::{Schedule, Stage, SystemSchedulingRequirement};
+pub use systems::SystemRunContext;
+pub use world::World;

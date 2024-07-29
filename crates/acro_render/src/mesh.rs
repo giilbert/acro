@@ -1,18 +1,10 @@
-
-use acro_ecs::{
-    query::{Changed, Query},
-    resource::Res,
-    systems::SystemRunContext,
-};
+use acro_ecs::{Changed, Query, Res, SystemRunContext};
 use acro_math::{GlobalTransform, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
 use wgpu::util::DeviceExt;
 
-use crate::{
-    shader::Shaders,
-    state::RendererHandle,
-};
+use crate::{RendererHandle, Shaders};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]

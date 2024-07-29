@@ -8,12 +8,7 @@ pub use crate::{
     shader::Shaders,
 };
 
-use acro_ecs::{
-    resource::ResMut,
-    schedule::Stage,
-    systems::SystemRunContext,
-    Application, Plugin,
-};
+use acro_ecs::{Application, Plugin, ResMut, Stage, SystemRunContext};
 use mesh::{render_mesh_system, upload_mesh_system};
 use state::RendererHandle;
 use window::Window;
