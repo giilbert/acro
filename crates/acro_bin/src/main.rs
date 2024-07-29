@@ -1,15 +1,16 @@
 use acro_ecs::{
+    entity::EntityId,
     query::{Query, With},
     schedule::Stage,
     systems::SystemRunContext,
     Application, Plugin,
 };
-use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Transform};
+use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
 use acro_render::{Mesh, RenderPlugin, Vertex};
 
 fn update(ctx: SystemRunContext, query: Query<&mut Transform, With<Mesh>>) {
     for mut transform in query.over(&ctx) {
-        transform.position.x += 0.0000001;
+        transform.position.x += 0.00001;
     }
 }
 
@@ -19,9 +20,9 @@ impl Plugin for TestPlugin {
     fn build(&mut self, app: &mut Application) {
         let world = app.world();
 
-        let entity = world.spawn();
-        world.insert(
-            entity,
+        let root = world.spawn((Root, GlobalTransform::default(), Transform::default()));
+
+        world.spawn((
             Mesh::new(
                 vec![
                     Vertex {
@@ -37,12 +38,11 @@ impl Plugin for TestPlugin {
                 vec![0, 1, 2],
                 "basic-mesh",
             ),
-        );
-
-        world.insert(entity, GlobalTransform::default());
-        world.insert(entity, Transform::default());
-        world.insert(entity, Parent(entity));
-        world.insert(entity, Children(vec![]));
+            GlobalTransform::default(),
+            Transform::default(),
+            Parent(root),
+            Children(vec![]),
+        ));
 
         app.add_system(Stage::Update, [], update);
     }

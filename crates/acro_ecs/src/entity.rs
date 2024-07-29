@@ -6,6 +6,12 @@ pub struct EntityId {
     index: u32,
 }
 
+impl EntityId {
+    pub fn new(generation: u32, index: u32) -> Self {
+        Self { generation, index }
+    }
+}
+
 #[derive(Debug)]
 pub struct Entities {
     entities: Vec<EntityMeta>,

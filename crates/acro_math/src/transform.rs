@@ -131,7 +131,7 @@ mod tests {
         let mut world = World::new();
         register_components(&mut world);
 
-        let root = world.spawn();
+        let root = world.spawn_empty();
         world.insert(
             root,
             Transform {
@@ -148,7 +148,7 @@ mod tests {
         );
         world.insert(root, Root);
 
-        let child_1 = world.spawn();
+        let child_1 = world.spawn_empty();
         world.insert(
             child_1,
             Transform {
@@ -165,7 +165,7 @@ mod tests {
         );
         world.insert(child_1, Parent(root));
 
-        let child_of_child_1 = world.spawn();
+        let child_of_child_1 = world.spawn_empty();
         world.insert(
             child_of_child_1,
             Transform {

@@ -8,7 +8,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         cx.iter(|| {
             for i in 0..1000 {
-                let entity = black_box(world.spawn());
+                let entity = black_box(world.spawn_empty());
                 black_box(world.insert(entity, i as u32));
             }
         });
@@ -20,7 +20,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         world.init_component::<String>();
 
         for i in 0..1_000_000 {
-            let entity = world.spawn();
+            let entity = world.spawn_empty();
             world.insert(entity, i as u32);
             world.insert(entity, i.to_string());
         }
@@ -42,7 +42,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         world.init_component::<String>();
 
         for i in 0..120 {
-            let entity = world.spawn();
+            let entity = world.spawn_empty();
             if i % 2 == 0 {
                 world.insert(entity, i as u32);
             }

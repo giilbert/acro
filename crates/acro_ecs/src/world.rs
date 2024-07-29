@@ -2,6 +2,7 @@ use std::any::TypeId;
 
 use crate::{
     archetype::Archetypes,
+    bundle::Bundle,
     entity::{Entities, EntityId, EntityMeta},
     pointer::change_detection::Tick,
     query::{Query, QueryFilter, ToQueryInfo},
@@ -28,7 +29,13 @@ impl World {
         }
     }
 
-    pub fn spawn(&mut self) -> EntityId {
+    pub fn spawn<T: Bundle>(&mut self, bundle: T) -> EntityId {
+        let entity = self.spawn_empty();
+        bundle.build(self, entity);
+        entity
+    }
+
+    pub fn spawn_empty(&mut self) -> EntityId {
         self.archetypes.push_empty_entity(&mut self.entities)
     }
 
@@ -57,7 +64,11 @@ impl World {
     }
 
     pub fn insert<T: 'static>(&mut self, entity: EntityId, component: T) {
-        let component_info = self.components.get::<T>().expect("component not found");
+        let component_info = self
+            .components
+            .get::<T>()
+            .unwrap_or_else(|| panic!("component {} not found", std::any::type_name::<T>()));
+
         self.archetypes.add_component(
             &self.components,
             &mut self.entities,
@@ -124,8 +135,8 @@ mod tests {
         let mut world = World::new();
         world.init_component::<u32>();
 
-        let entity_1 = world.spawn();
-        let entity_2 = world.spawn();
+        let entity_1 = world.spawn_empty();
+        let entity_2 = world.spawn_empty();
 
         let entity_meta_1 = world.entity_meta(entity_1);
         let entity_meta_2 = world.entity_meta(entity_2);
@@ -147,7 +158,7 @@ mod tests {
         let mut world = World::new();
         world.init_component::<u32>();
 
-        let entity_1 = world.spawn();
+        let entity_1 = world.spawn_empty();
         let entity_meta_1 = world.entity_meta(entity_1);
         assert_eq!(entity_meta_1.archetype_id, ArchetypeId::EMPTY);
 

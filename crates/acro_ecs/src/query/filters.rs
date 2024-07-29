@@ -333,7 +333,6 @@ impl<T: 'static> QueryFilter for Changed<T> {
 
 #[cfg(test)]
 mod test {
-    
 
     use assert_unordered::assert_eq_unordered;
 
@@ -354,18 +353,9 @@ mod test {
         world.init_component::<bool>();
         world.init_component::<String>();
 
-        let entity1 = world.spawn();
-        world.insert(entity1, 42u32);
-        world.insert(entity1, "hello".to_string());
-
-        let entity2 = world.spawn();
-        world.insert(entity2, 12u32);
-        world.insert(entity2, "bye".to_string());
-        world.insert(entity2, true);
-
-        let entity3 = world.spawn();
-        world.insert(entity3, 22u32);
-        world.insert(entity3, false);
+        let entity1 = world.spawn((42u32, "hello".to_string()));
+        let entity2 = world.spawn((12u32, "bye".to_string(), true));
+        let entity3 = world.spawn((22u32, false));
 
         let query = world.query::<EntityId, With<String>>();
         assert_eq_unordered!(
@@ -400,18 +390,8 @@ mod test {
         world.init_component::<bool>();
         world.init_component::<String>();
 
-        let entity1 = world.spawn();
-        world.insert(entity1, 42u32);
-        world.insert(entity1, "hello".to_string());
-
-        let entity2 = world.spawn();
-        world.insert(entity2, 12u32);
-        world.insert(entity2, "bye".to_string());
-        world.insert(entity2, true);
-
-        let entity3 = world.spawn();
-        world.insert(entity3, 22u32);
-        world.insert(entity3, false);
+        let entity1 = world.spawn((42u32, "hello".to_string()));
+        let entity2 = world.spawn((12u32, "bye".to_string(), true));
 
         let query = world.query::<&mut String, ()>();
         for mut value in query.over(SystemRunContext {
@@ -442,15 +422,9 @@ mod test {
         world.init_component::<bool>();
         world.init_component::<String>();
 
-        let entity1 = world.spawn();
-        world.insert(entity1, "hello".to_string());
-
-        let entity2 = world.spawn();
-        world.insert(entity2, 12u32);
-        world.insert(entity2, true);
-
-        let entity3 = world.spawn();
-        world.insert(entity3, false);
+        let entity1 = world.spawn(("hello".to_string(),));
+        let entity2 = world.spawn((12u32, true));
+        let entity3 = world.spawn((false,));
 
         let query = world.query::<EntityId, Or<With<String>, With<u32>>>();
         assert_eq_unordered!(
@@ -472,18 +446,9 @@ mod test {
         world.init_component::<bool>();
         world.init_component::<String>();
 
-        let entity1 = world.spawn();
-        world.insert(entity1, 42u32);
-        world.insert(entity1, "hello".to_string());
-
-        let entity2 = world.spawn();
-        world.insert(entity2, 12u32);
-        world.insert(entity2, "bye".to_string());
-        world.insert(entity2, true);
-
-        let entity3 = world.spawn();
-        world.insert(entity3, 22u32);
-        world.insert(entity3, false);
+        let entity1 = world.spawn((42u32, "hello".to_string()));
+        let entity2 = world.spawn((12u32, "bye".to_string(), true));
+        let entity3 = world.spawn((22u32, false));
 
         let query = world.query::<&mut String, ()>();
         for mut value in query.over(SystemRunContext {
@@ -494,8 +459,7 @@ mod test {
             *value = "changed".to_string();
         }
 
-        let changed_strings_with_bool =
-            world.query::<EntityId, (Changed<String>, With<bool>)>();
+        let changed_strings_with_bool = world.query::<EntityId, (Changed<String>, With<bool>)>();
         assert_eq_unordered!(
             &changed_strings_with_bool
                 .over(SystemRunContext {

@@ -77,8 +77,7 @@ impl<'v, T> DerefMut for Mut<'v, T> {
 mod tests {
     use crate::{
         archetype::ArchetypeId, pointer::change_detection::Tick, query::Query,
-        registry::ComponentId, schedule::Stage, systems::SystemRunContext,
-        Application,
+        registry::ComponentId, schedule::Stage, systems::SystemRunContext, Application,
     };
 
     #[test]
@@ -87,10 +86,8 @@ mod tests {
 
         app.world().init_component::<u32>();
 
-        let entity1 = app.world().spawn();
-        app.world().insert(entity1, 40u32);
-        let entity2 = app.world().spawn();
-        app.world().insert(entity2, 42u32);
+        app.world().spawn((40u32,));
+        app.world().spawn((42u32,));
 
         app.add_system(
             Stage::Update,

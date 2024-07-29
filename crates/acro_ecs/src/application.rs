@@ -93,10 +93,10 @@ mod tests {
 
         app.world().resources.insert(4u32);
 
-        let entity1 = app.world().spawn();
+        let entity1 = app.world().spawn_empty();
         app.world().insert(entity1, 42u32);
 
-        let entity2 = app.world().spawn();
+        let entity2 = app.world().spawn_empty();
         app.world().insert(entity2, "hello".to_string());
 
         app.add_system(
