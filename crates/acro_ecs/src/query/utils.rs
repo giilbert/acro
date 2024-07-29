@@ -45,7 +45,7 @@ impl<'a, T: 'static> QueryInfoUtils for &'a mut T {
     }
 }
 
-impl<T: 'static> QueryInfoUtils for Option<&'static T> {
+impl<'a, T: 'static> QueryInfoUtils for Option<&'a T> {
     const BORROW: QueryBorrowType = QueryBorrowType::OptionBorrow;
     const FETCH: QueryFetchType = QueryFetchType::Component;
 
@@ -54,7 +54,7 @@ impl<T: 'static> QueryInfoUtils for Option<&'static T> {
     }
 }
 
-impl<T: 'static> QueryInfoUtils for Option<&'static mut T> {
+impl<'a, T: 'static> QueryInfoUtils for Option<&'a mut T> {
     const BORROW: QueryBorrowType = QueryBorrowType::OptionBorrowMut;
     const FETCH: QueryFetchType = QueryFetchType::Component;
 

@@ -182,3 +182,20 @@ impl_into_system!(P1, P2, P3, P4, P5);
 impl_into_system!(P1, P2, P3, P4, P5, P6);
 impl_into_system!(P1, P2, P3, P4, P5, P6, P7);
 impl_into_system!(P1, P2, P3, P4, P5, P6, P7, P8);
+
+#[cfg(test)]
+mod tests {
+    use crate::{query::Query, systems::SystemRunContext};
+
+    use super::IntoSystem;
+
+    #[test]
+    fn system_with_optional_query() {
+        // Test that the types and lifetimes line up
+        fn system(context: SystemRunContext, query: Query<Option<&u32>>) {
+            let _ = (context, query);
+        }
+
+        let _ = system.into_system();
+    }
+}
