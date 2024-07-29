@@ -1,5 +1,5 @@
 use acro_ecs::{Application, Plugin};
-use acro_render::{Mesh, RenderPlugin, Vertex};
+use acro_render::{Mesh, RenderPlugin, Shaders, Vertex};
 
 struct TestPlugin;
 
@@ -13,16 +13,17 @@ impl Plugin for TestPlugin {
             Mesh::new(
                 vec![
                     Vertex {
-                        position: [0.0, 0.5, 0.0].into(),
+                        position: [-0.5, -0.5, 0.0].into(),
                     },
                     Vertex {
                         position: [0.5, -0.5, 0.0].into(),
                     },
                     Vertex {
-                        position: [-0.5, -0.5, 0.0].into(),
+                        position: [0.0, 0.5, 0.0].into(),
                     },
                 ],
                 vec![0, 1, 2],
+                "basic-mesh",
             ),
         )
     }

@@ -8,6 +8,7 @@ acro_ecs = { path = "../acro_ecs" }
 acro_math = { path = "../acro_math" }
 bytemuck = { version = "1.16.1", features = ["derive"] }
 cfg-if = "1.0.0"
+parking_lot = "0.12.3"
 pollster = "0.3.0"
 wgpu = "0.20.1"
 winit = "0.30.2"

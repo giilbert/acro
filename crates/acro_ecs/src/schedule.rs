@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use fnv::FnvHashMap;
 
 use crate::{
@@ -11,6 +13,8 @@ use crate::{
 pub struct Schedule {
     pub current_tick: Tick,
     pub stages: FnvHashMap<Stage, Vec<SystemData>>,
+    time_accumulator: Duration,
+    time_count: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -38,6 +42,8 @@ impl Schedule {
         Self {
             current_tick: Tick::new(1),
             stages: Default::default(),
+            time_accumulator: Duration::new(0, 0),
+            time_count: 0,
         }
     }
 
@@ -110,12 +116,30 @@ impl Schedule {
     }
 
     pub fn run_once(&mut self, world: &mut World) {
+        let now = std::time::Instant::now();
         self.run_stage(Stage::PreUpdate, world);
         self.run_stage(Stage::Update, world);
         self.run_stage(Stage::PostUpdate, world);
+
         self.run_stage(Stage::PreRender, world);
         self.run_stage(Stage::Render, world);
         self.run_stage(Stage::PostRender, world);
+        let elapsed = now.elapsed();
+
+        self.time_accumulator += elapsed;
+        self.time_count += 1;
+
+        const FRAME_TIME_INTERVAL: Duration = Duration::from_secs(1);
+        if self.time_accumulator > FRAME_TIME_INTERVAL {
+            let average_frame_time = self.time_accumulator / self.time_count;
+            println!(
+                "average frame time: {:?} = {:.02}fps",
+                average_frame_time,
+                1.0 / average_frame_time.as_secs_f32()
+            );
+            self.time_accumulator = Duration::new(0, 0);
+            self.time_count = 0;
+        }
     }
 
     pub fn get_systems(&self, stage: Stage) -> &[SystemData] {

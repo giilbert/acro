@@ -70,6 +70,7 @@ impl ApplicationHandler for Window {
                 .expect("application not created")
                 .world()
                 .insert_resource(state.clone());
+
             self.application
                 .as_mut()
                 .expect("application not created")
@@ -93,7 +94,6 @@ impl ApplicationHandler for Window {
         match event {
             WindowEvent::RedrawRequested => {
                 application.run_once();
-                state.clear();
                 window.request_redraw();
             }
             WindowEvent::CloseRequested => {

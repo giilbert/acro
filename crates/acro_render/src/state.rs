@@ -1,7 +1,6 @@
-use std::{
-    ops::{Deref, DerefMut},
-    sync::{Arc, Mutex},
-};
+use std::{ops::Deref, sync::Arc};
+
+use parking_lot::{lock_api::MappedMutexGuard, Mutex, MutexGuard, RawMutex};
 
 #[derive(Debug, Clone)]
 pub struct RendererHandle {
@@ -17,6 +16,8 @@ pub struct RendererState {
     pub(crate) size: winit::dpi::PhysicalSize<u32>,
     pub(crate) window: Arc<winit::window::Window>,
     pub(crate) encoder: Mutex<Option<wgpu::CommandEncoder>>,
+    pub(crate) view: Mutex<Option<wgpu::TextureView>>,
+    pub(crate) output: Mutex<Option<wgpu::SurfaceTexture>>,
 }
 
 impl RendererState {
@@ -82,15 +83,26 @@ impl RendererState {
                 size,
                 window,
                 encoder: Mutex::new(None),
+                view: Mutex::new(None),
+                output: Mutex::new(None),
             }),
         }
     }
 
-    pub fn clear(&self) {
+    pub fn encoder(&self) -> MappedMutexGuard<RawMutex, wgpu::CommandEncoder> {
+        MutexGuard::map(self.encoder.lock(), |encoder| {
+            encoder.as_mut().expect("encoder not created")
+        })
+    }
 
-        // submit will accept anything that implements IntoIter
-        // self.queue.submit(std::iter::once(encoder.finish()));
-        // output.present();
+    pub fn take_encoder(&self) -> Option<wgpu::CommandEncoder> {
+        self.encoder.lock().take()
+    }
+
+    pub fn view(&self) -> MappedMutexGuard<RawMutex, wgpu::TextureView> {
+        MutexGuard::map(self.view.lock(), |view| {
+            view.as_mut().expect("view not created")
+        })
     }
 }
 

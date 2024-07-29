@@ -53,6 +53,7 @@ dependencies = [
  "acro_math",
  "bytemuck",
  "cfg-if",
+ "parking_lot",
  "pollster",
  "wgpu",
  "winit",
