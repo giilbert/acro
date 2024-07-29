@@ -38,3 +38,7 @@ a non-exhaustive list of stuff I want to do
 uhhhh....
 
 it's very much not finished but you can just `cargo run` (rust 1.80.0) in the root of the project to run whatever example I made
+
+_current status of project_: moving red triangle
+
+![video here](https://us-east-1.tixte.net/uploads/gilbert.is-from.space/2024-07-29_11-33-45.mp4)
