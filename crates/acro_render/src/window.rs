@@ -7,7 +7,10 @@ use winit::{
     event_loop::{ActiveEventLoop, EventLoop},
 };
 
-use crate::state::{RendererHandle, RendererState};
+use crate::{
+    shader::Shaders,
+    state::{RendererHandle, RendererState},
+};
 
 pub struct Window {
     event_loop: Option<EventLoop<()>>,
@@ -67,6 +70,12 @@ impl ApplicationHandler for Window {
                 .expect("application not created")
                 .world()
                 .insert_resource(state.clone());
+            self.application
+                .as_mut()
+                .expect("application not created")
+                .world()
+                .insert_resource(Shaders::new(&state));
+
             self.state = Some(state);
         }
     }

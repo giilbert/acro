@@ -14,7 +14,7 @@ use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
 use wgpu::util::DeviceExt;
 
-use crate::state::RendererHandle;
+use crate::{shader::Shaders, state::RendererHandle};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -53,6 +53,7 @@ pub struct Mesh {
     pub indices: Vec<u32>,
     pub(crate) is_dirty: bool,
     pub(crate) vertex_buffer: Option<wgpu::Buffer>,
+    pub(crate) index_buffer: Option<wgpu::Buffer>,
 }
 
 impl Mesh {
@@ -62,6 +63,7 @@ impl Mesh {
             indices,
             is_dirty: true,
             vertex_buffer: None,
+            index_buffer: None,
         }
     }
 }
@@ -83,8 +85,15 @@ pub fn upload_mesh_system(
             usage: wgpu::BufferUsages::VERTEX,
         });
 
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(&mesh.indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
         mesh.is_dirty = false;
         mesh.vertex_buffer = Some(vertex_buffer);
+        mesh.index_buffer = Some(index_buffer);
     }
 }
 
@@ -92,9 +101,27 @@ pub fn render_mesh_system(
     ctx: SystemRunContext,
     mesh_query: Query<&mut Mesh>,
     renderer: Res<RendererHandle>,
+    shaders: Res<Shaders>,
 ) {
-    for mut mesh in mesh_query.over(&ctx) {
-        let device = &renderer.device;
-        let queue = &renderer.queue;
-    }
+    let render_pass = renderer
+        .encoder
+        .begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.05,
+                        g: 0.05,
+                        b: 0.05,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
 }

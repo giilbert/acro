@@ -1,7 +1,7 @@
 use std::{
     any::{Any, TypeId},
     cell::{Ref, RefCell, RefMut},
-    ops::Deref,
+    ops::{Deref, DerefMut},
 };
 
 use fnv::FnvHashMap;
@@ -44,16 +44,18 @@ impl ResourceRegistry {
         }
     }
 
-    pub fn get_mut<T: 'static>(&self) -> RefMut<T> {
-        RefMut::map(
-            self.data[self
-                .types
-                .get(&TypeId::of::<T>())
-                .expect("resource not found")
-                .0]
-                .borrow_mut(),
-            |r| r.downcast_mut().unwrap(),
-        )
+    pub fn get_mut<T: 'static>(&self) -> ResMut<T> {
+        ResMut {
+            inner: RefMut::map(
+                self.data[self
+                    .types
+                    .get(&TypeId::of::<T>())
+                    .expect("resource not found")
+                    .0]
+                    .borrow_mut(),
+                |r| r.downcast_mut().unwrap(),
+            ),
+        }
     }
 }
 
@@ -66,5 +68,23 @@ impl<T> Deref for Res<'_, T> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+pub struct ResMut<'b, T> {
+    inner: RefMut<'b, T>,
+}
+
+impl<T> Deref for ResMut<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for ResMut<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }

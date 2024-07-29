@@ -6,7 +6,7 @@ use std::{
 use crate::{
     pointer::change_detection::Tick,
     query::{Query, QueryFilter, QueryInfo, ToQueryInfo},
-    resource::Res,
+    resource::{Res, ResMut},
     schedule::SystemSchedulingRequirement,
     world::World,
 };
@@ -116,6 +116,17 @@ impl<T: 'static> SystemParam for Res<'_, T> {
     fn create(world: &World, _prepared: &mut Self::Init) -> Self {
         // TODO: I'm 99% sure this is safe, but I don't want to fight the borrow checker right now
         unsafe { std::mem::transmute(world.resources.get::<T>()) }
+    }
+}
+
+impl<T: 'static> SystemParam for ResMut<'_, T> {
+    type Init = ();
+
+    fn init(_world: &World) {}
+
+    fn create(world: &World, _prepared: &mut Self::Init) -> Self {
+        // TODO: EEEEEEEEEEE same here
+        unsafe { std::mem::transmute(world.resources.get_mut::<T>()) }
     }
 }
 

@@ -32,6 +32,10 @@ impl World {
         self.archetypes.push_empty_entity(&mut self.entities)
     }
 
+    pub fn resources(&self) -> &ResourceRegistry {
+        &self.resources
+    }
+
     pub fn entity_meta(&self, entity: EntityId) -> &EntityMeta {
         self.entities.get(entity).expect("entity not found")
     }
