@@ -104,18 +104,9 @@ mod tests {
         world.init_component::<bool>();
         world.init_component::<String>();
 
-        let entity1 = world.spawn_empty();
-        world.insert(entity1, 42u32);
-        world.insert(entity1, "hello".to_string());
-
-        let entity2 = world.spawn_empty();
-        world.insert(entity2, 12u32);
-        world.insert(entity2, "bye".to_string());
-        world.insert(entity2, true);
-
-        let entity3 = world.spawn_empty();
-        world.insert(entity3, 42u32);
-        world.insert(entity3, false);
+        let entity1 = world.spawn((42u32, "hello".to_string()));
+        let entity2 = world.spawn((12u32, "bye".to_string(), true));
+        let _entity3 = world.spawn((42u32, false));
 
         let query1 = world.query::<(&u32, &mut String), ()>();
         assert_eq!(
@@ -153,11 +144,8 @@ mod tests {
         world.init_component::<u32>();
         world.init_component::<bool>();
 
-        let entity1 = world.spawn_empty();
-        world.insert(entity1, 42u32);
-
-        let entity2 = world.spawn_empty();
-        world.insert(entity2, 12u32);
+        let entity1 = world.spawn((42u32,));
+        let entity2 = world.spawn((12u32,));
 
         let query1 = world.query::<&u32, ()>();
         let data1 = query1.over(&world).collect::<Vec<_>>();
@@ -180,11 +168,8 @@ mod tests {
         world.init_component::<u32>();
         world.init_component::<bool>();
 
-        let entity1 = world.spawn_empty();
-        world.insert(entity1, 42u32);
-
-        let entity2 = world.spawn_empty();
-        world.insert(entity2, 12u32);
+        let entity1 = world.spawn((42u32,));
+        let entity2 = world.spawn((12u32,));
 
         let query1 = world.query::<(EntityId, &u32), ()>();
         let data1 = query1.over(&world).collect::<Vec<_>>();
@@ -198,21 +183,10 @@ mod tests {
         world.init_component::<u8>();
         world.init_component::<bool>();
 
-        let entity1 = world.spawn_empty();
-        world.insert(entity1, 42u32);
-
-        let entity2 = world.spawn_empty();
-        world.insert(entity2, 12u32);
-        world.insert(entity2, true);
-
-        let entity3 = world.spawn_empty();
-        world.insert(entity3, 2u32);
-        world.insert(entity3, 42u8);
-        world.insert(entity3, false);
-
-        let entity4 = world.spawn_empty();
-        world.insert(entity4, 2u32);
-        world.insert(entity4, 42u8);
+        let entity1 = world.spawn((42u32,));
+        let entity2 = world.spawn((12u32, true));
+        let entity3 = world.spawn((2u32, 42u8, false));
+        let entity4 = world.spawn((2u32, 42u8));
 
         let query1 = world.query::<(EntityId, Option<&bool>), ()>();
         let data1 = query1.over(&world).collect::<Vec<_>>();
