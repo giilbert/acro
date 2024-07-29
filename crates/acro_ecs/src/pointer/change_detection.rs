@@ -77,7 +77,7 @@ impl<'v, T> DerefMut for Mut<'v, T> {
 mod tests {
     use crate::{
         archetype::ArchetypeId, pointer::change_detection::Tick, query::Query,
-        registry::ComponentId, schedule::Stage, systems::SystemRunContext, world::World,
+        registry::ComponentId, schedule::Stage, systems::SystemRunContext,
         Application,
     };
 
@@ -95,7 +95,7 @@ mod tests {
         app.add_system(
             Stage::Update,
             [],
-            |ctx: SystemRunContext, mut number_query: Query<&mut u32>| {
+            |ctx: SystemRunContext, number_query: Query<&mut u32>| {
                 for mut value in number_query.over(&ctx) {
                     if value == 42 {
                         *value = 20;

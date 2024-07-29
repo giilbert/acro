@@ -7,12 +7,10 @@ mod utils;
 pub use filters::{Changed, Or, QueryFilter, With, Without};
 pub use info::{QueryInfo, ToQueryInfo};
 
-use std::{any::Any, fmt::Debug, marker::PhantomData, rc::Rc};
+use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 
 use crate::{
-    archetype,
-    entity::{self, EntityId},
-    registry::ComponentId,
+    entity::EntityId,
     systems::{IntoSystemRunContext, SystemRunContext},
     world::World,
 };
@@ -97,10 +95,7 @@ where
 mod tests {
     use assert_unordered::assert_eq_unordered;
 
-    use crate::{
-        archetype::ArchetypeId, entity::EntityId, pointer::change_detection::Tick,
-        query::info::QueryComponentInfo, systems::SystemRunContext, world::World,
-    };
+    use crate::{entity::EntityId, query::info::QueryComponentInfo, world::World};
 
     #[test]
     fn query() {
@@ -122,7 +117,7 @@ mod tests {
         world.insert(entity3, 42u32);
         world.insert(entity3, false);
 
-        let mut query1 = world.query::<(&u32, &mut String), ()>();
+        let query1 = world.query::<(&u32, &mut String), ()>();
         assert_eq!(
             query1.info.components,
             vec![
@@ -147,7 +142,7 @@ mod tests {
             vec![(&42u32, "hello".to_string()), (&12u32, "bye".to_string())]
         );
 
-        let mut query2 = world.query::<(&u32, &bool), ()>();
+        let query2 = world.query::<(&u32, &bool), ()>();
         let data2 = query2.over(&world).collect::<Vec<_>>();
         assert_eq_unordered!(data2, vec![(&12u32, &true), (&42u32, &false)]);
     }
@@ -164,7 +159,7 @@ mod tests {
         let entity2 = world.spawn();
         world.insert(entity2, 12u32);
 
-        let mut query1 = world.query::<&u32, ()>();
+        let query1 = world.query::<&u32, ()>();
         let data1 = query1.over(&world).collect::<Vec<_>>();
         assert_eq_unordered!(data1, vec![&42u32, &12u32]);
 
@@ -191,7 +186,7 @@ mod tests {
         let entity2 = world.spawn();
         world.insert(entity2, 12u32);
 
-        let mut query1 = world.query::<(EntityId, &u32), ()>();
+        let query1 = world.query::<(EntityId, &u32), ()>();
         let data1 = query1.over(&world).collect::<Vec<_>>();
         assert_eq_unordered!(data1, vec![(entity1, &42u32), (entity2, &12u32)]);
     }
@@ -219,7 +214,7 @@ mod tests {
         world.insert(entity4, 2u32);
         world.insert(entity4, 42u8);
 
-        let mut query1 = world.query::<(EntityId, Option<&bool>), ()>();
+        let query1 = world.query::<(EntityId, Option<&bool>), ()>();
         let data1 = query1.over(&world).collect::<Vec<_>>();
 
         assert_eq_unordered!(

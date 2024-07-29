@@ -1,4 +1,3 @@
-use std::{any::Any, cell::UnsafeCell};
 
 use crate::{
     plugin::Plugin,
@@ -104,8 +103,8 @@ mod tests {
             Stage::Update,
             [],
             |ctx: SystemRunContext,
-             mut number_query: Query<&u32>,
-             mut string_query: Query<&String>| {
+             number_query: Query<&u32>,
+             string_query: Query<&String>| {
                 *ctx.world.resources.get_mut::<u32>() += 1;
 
                 for value in number_query.over(&ctx) {

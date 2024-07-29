@@ -1,12 +1,10 @@
-use std::{cell::UnsafeCell, os::unix::thread};
 
 use crate::{
     archetype::Archetype,
     entity::EntityId,
-    pointer::change_detection::{self, ChangeDetectionContext, Mut, Tick},
+    pointer::change_detection::{Mut},
     registry::ComponentId,
     systems::SystemRunContext,
-    world::World,
 };
 
 /// A trait for types that can be fetched from a query.

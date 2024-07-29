@@ -1,21 +1,16 @@
-use std::{
-    hint::black_box,
-    ops::{Deref, DerefMut},
-};
 
 use acro_ecs::{
-    pointer::change_detection::Mut,
     query::{Changed, Query},
     resource::Res,
     systems::SystemRunContext,
 };
-use acro_math::{Float, GlobalTransform, Vec3};
+use acro_math::{GlobalTransform, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
 use wgpu::util::DeviceExt;
 
 use crate::{
-    shader::{ShaderHandle, Shaders},
+    shader::Shaders,
     state::RendererHandle,
 };
 

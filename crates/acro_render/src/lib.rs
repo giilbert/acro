@@ -9,7 +9,7 @@ pub use crate::{
 };
 
 use acro_ecs::{
-    resource::{Res, ResMut},
+    resource::ResMut,
     schedule::Stage,
     systems::SystemRunContext,
     Application, Plugin,

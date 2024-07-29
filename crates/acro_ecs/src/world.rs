@@ -1,9 +1,9 @@
-use std::{any::TypeId, cell::UnsafeCell};
+use std::any::TypeId;
 
 use crate::{
     archetype::Archetypes,
     entity::{Entities, EntityId, EntityMeta},
-    pointer::change_detection::{ChangeDetectionContext, Tick},
+    pointer::change_detection::Tick,
     query::{Query, QueryFilter, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,

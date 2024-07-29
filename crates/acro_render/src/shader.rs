@@ -1,7 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, ops::Deref, sync::Arc};
 
 use acro_math::Float;
-use wgpu::include_wgsl;
 
 use crate::state::RendererHandle;
 

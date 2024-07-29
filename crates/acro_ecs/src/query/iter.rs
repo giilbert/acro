@@ -3,7 +3,6 @@ use std::{any::Any, cell::RefCell, rc::Rc};
 use crate::{
     archetype::{Archetype, ArchetypeId, Column},
     systems::SystemRunContext,
-    world::World,
 };
 
 use super::{filters::QueryFilter, Query, ToQueryInfo};

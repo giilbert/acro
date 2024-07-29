@@ -2,17 +2,12 @@ use std::{any::Any, cell::Ref, fmt::Debug, marker::PhantomData, rc::Rc};
 
 use crate::{
     archetype::{Archetype, Column},
-    entity,
-    registry::{ComponentGroup, ComponentId},
+    registry::ComponentId,
     systems::SystemRunContext,
     world::World,
 };
 
-use super::{
-    info::{get_full_component_info, QueryComponentInfo},
-    utils::QueryInfoUtils,
-    ToQueryInfo,
-};
+use super::info::get_full_component_info;
 
 pub trait QueryFilter {
     type Init: Debug + Any;
@@ -338,7 +333,7 @@ impl<T: 'static> QueryFilter for Changed<T> {
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
+    
 
     use assert_unordered::assert_eq_unordered;
 
@@ -372,16 +367,16 @@ mod test {
         world.insert(entity3, 22u32);
         world.insert(entity3, false);
 
-        let mut query = world.query::<EntityId, With<String>>();
+        let query = world.query::<EntityId, With<String>>();
         assert_eq_unordered!(
             &query.over(&world).collect::<Vec<_>>(),
             &vec![entity1, entity2]
         );
 
-        let mut query = world.query::<EntityId, (With<String>, With<bool>)>();
+        let query = world.query::<EntityId, (With<String>, With<bool>)>();
         assert_eq_unordered!(&query.over(&world).collect::<Vec<_>>(), &vec![entity2]);
 
-        let mut query = world.query::<EntityId, Or<With<String>, With<bool>>>();
+        let query = world.query::<EntityId, Or<With<String>, With<bool>>>();
         assert_eq_unordered!(
             &query
                 .over(SystemRunContext::ignore_changes(&mut world))
@@ -389,7 +384,7 @@ mod test {
             &vec![entity1, entity2, entity3]
         );
 
-        let mut query = world.query::<EntityId, Or<With<String>, With<u32>>>();
+        let query = world.query::<EntityId, Or<With<String>, With<u32>>>();
         assert_eq_unordered!(
             &query
                 .over(SystemRunContext::ignore_changes(&mut world))
@@ -457,16 +452,16 @@ mod test {
         let entity3 = world.spawn();
         world.insert(entity3, false);
 
-        let mut query = world.query::<EntityId, Or<With<String>, With<u32>>>();
+        let query = world.query::<EntityId, Or<With<String>, With<u32>>>();
         assert_eq_unordered!(
             &query.over(&world).collect::<Vec<_>>(),
             &vec![entity1, entity2]
         );
 
-        let mut query = world.query::<EntityId, (Without<String>, With<u32>)>();
+        let query = world.query::<EntityId, (Without<String>, With<u32>)>();
         assert_eq_unordered!(&query.over(&world).collect::<Vec<_>>(), &vec![entity2]);
 
-        let mut query = world.query::<EntityId, (Without<String>, Without<u32>)>();
+        let query = world.query::<EntityId, (Without<String>, Without<u32>)>();
         assert_eq_unordered!(&query.over(&world).collect::<Vec<_>>(), &vec![entity3]);
     }
 
@@ -490,7 +485,7 @@ mod test {
         world.insert(entity3, 22u32);
         world.insert(entity3, false);
 
-        let mut query = world.query::<&mut String, ()>();
+        let query = world.query::<&mut String, ()>();
         for mut value in query.over(SystemRunContext {
             world: &world,
             tick: Tick::new(1),
@@ -499,7 +494,7 @@ mod test {
             *value = "changed".to_string();
         }
 
-        let mut changed_strings_with_bool =
+        let changed_strings_with_bool =
             world.query::<EntityId, (Changed<String>, With<bool>)>();
         assert_eq_unordered!(
             &changed_strings_with_bool
@@ -512,7 +507,7 @@ mod test {
             &vec![entity2]
         );
 
-        let mut changed_strings_with_u32 = world.query::<EntityId, (Changed<String>, With<u32>)>();
+        let changed_strings_with_u32 = world.query::<EntityId, (Changed<String>, With<u32>)>();
         assert_eq_unordered!(
             &changed_strings_with_u32
                 .over(SystemRunContext {
@@ -524,7 +519,7 @@ mod test {
             &vec![entity1, entity2]
         );
 
-        let mut changed_strings_with_bool_or_u32 = world
+        let changed_strings_with_bool_or_u32 = world
             .query::<EntityId, Or<(Changed<String>, With<bool>), (Changed<String>, With<u32>)>>();
         assert_eq_unordered!(
             &changed_strings_with_bool_or_u32
@@ -537,7 +532,7 @@ mod test {
             &vec![entity1, entity2]
         );
 
-        let mut changed_or_with_bool = world.query::<EntityId, Or<Changed<String>, With<bool>>>();
+        let changed_or_with_bool = world.query::<EntityId, Or<Changed<String>, With<bool>>>();
         assert_eq_unordered!(
             &changed_or_with_bool
                 .over(SystemRunContext {

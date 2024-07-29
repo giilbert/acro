@@ -1,11 +1,10 @@
-use std::{any::TypeId, cell::UnsafeCell, collections::HashMap, rc::Rc};
+use std::{cell::UnsafeCell, rc::Rc};
 
 use fnv::FnvHashMap;
 
 use crate::{
     archetype::Column,
-    entity::EntityId,
-    registry::{ComponentGroup, ComponentId, ComponentInfo, ComponentType},
+    registry::{ComponentGroup, ComponentId, ComponentType},
 };
 
 use super::anyvec::AnyVec;
