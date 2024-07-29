@@ -1,13 +1,14 @@
 use std::{any::Any, cell::RefCell, rc::Rc};
 
 use crate::{
-    archetype::{Archetype, Column},
+    archetype::{Archetype, ArchetypeId, Column},
     systems::SystemRunContext,
     world::World,
 };
 
 use super::{filters::QueryFilter, Query, ToQueryInfo};
 
+#[derive(Debug)]
 struct QueryState<'w> {
     pub current_entity_index: usize,
     pub current_archetype_index: usize,
@@ -36,7 +37,14 @@ where
         let current_archetype = ctx
             .world
             .archetypes
-            .get_archetype(query.info.archetypes.borrow()[0])
+            .get_archetype(
+                *query
+                    .info
+                    .archetypes
+                    .borrow()
+                    .get(0)
+                    .unwrap_or(&ArchetypeId::INVALID),
+            )
             .expect("query parent archetype not found");
 
         let mut filter_init = Box::new(F::init(&ctx.world));
@@ -72,7 +80,18 @@ where
         // If the current archetype has ended, loop through the next archetype
         if self.state.current_entity_index == archetype.entities.len() {
             // If we are at the last archetype, return None to end the iterator
-            if self.state.current_archetype_index == self.query.info.archetypes.borrow().len() - 1 {
+            // In the case that there are no archetypes for the query to iterate over, this will
+            // also return None
+            if self.state.current_archetype_index
+                == self
+                    .query
+                    .info
+                    .archetypes
+                    .borrow()
+                    .len()
+                    .checked_sub(1)
+                    .unwrap_or(0)
+            {
                 return None;
             }
 

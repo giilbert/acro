@@ -232,4 +232,17 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn query_no_archetypes() {
+        let mut world = World::new();
+        world.init_component::<u32>();
+        world.init_component::<bool>();
+
+        let _entity = world.spawn();
+
+        let query1 = world.query::<&u32, ()>();
+        let data1 = query1.over(&world).collect::<Vec<&u32>>();
+        assert!(data1.is_empty());
+    }
 }

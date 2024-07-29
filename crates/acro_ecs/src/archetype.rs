@@ -39,6 +39,13 @@ impl Archetypes {
             ArchetypeId(0),
             RefCell::new(Archetype::new(ComponentGroup::new(vec![]), ArchetypeId(0))),
         );
+        archetypes.insert(
+            ArchetypeId::INVALID,
+            RefCell::new(Archetype::new(
+                ComponentGroup::new(vec![]),
+                ArchetypeId::INVALID,
+            )),
+        );
         components.insert(ComponentGroup::new(vec![]), ArchetypeId(0));
 
         Self {
@@ -319,6 +326,8 @@ pub struct ArchetypeId(pub usize);
 
 impl ArchetypeId {
     pub const EMPTY: Self = ArchetypeId(0);
+    // Used as a placeholder for when a query doesn't have any archetypes to iterate over
+    pub const INVALID: Self = ArchetypeId(usize::MAX);
 }
 
 #[derive(Debug)]
