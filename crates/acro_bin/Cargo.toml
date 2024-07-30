@@ -5,5 +5,7 @@ edition = "2021"
 
 [dependencies]
 acro_ecs = { path = "../acro_ecs" }
+acro_log = { path = "../acro_log" }
 acro_math = { path = "../acro_math" }
 acro_render = { path = "../acro_render" }
+tracing = "0.1.40"

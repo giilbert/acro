@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use fnv::FnvHashMap;
+use tracing::info;
 
 use crate::{
     pointer::change_detection::Tick,
@@ -129,11 +130,11 @@ impl Schedule {
         self.time_accumulator += elapsed;
         self.time_count += 1;
 
-        const FRAME_TIME_INTERVAL: Duration = Duration::from_secs(1);
+        const FRAME_TIME_INTERVAL: Duration = Duration::from_secs(5);
         if self.time_accumulator > FRAME_TIME_INTERVAL {
             let average_frame_time = self.time_accumulator / self.time_count;
-            println!(
-                "average frame time: {:?} = {:.02}fps",
+            info!(
+                "average frame time over {FRAME_TIME_INTERVAL:?}: {:?} = {:.02}fps",
                 average_frame_time,
                 1.0 / average_frame_time.as_secs_f32()
             );
@@ -151,7 +152,6 @@ impl Schedule {
 
 #[cfg(test)]
 mod tests {
-    
 
     use crate::{
         pointer::change_detection::Tick,

@@ -1,4 +1,5 @@
 use acro_ecs::{Application, Plugin, Query, Stage, SystemRunContext, With};
+use acro_log::LogPlugin;
 use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
 use acro_render::{Mesh, RenderPlugin, Vertex};
 
@@ -44,6 +45,7 @@ impl Plugin for TestPlugin {
 
 fn main() {
     Application::new()
+        .add_plugin(LogPlugin)
         .add_plugin(MathPlugin)
         .add_plugin(RenderPlugin)
         .add_plugin(TestPlugin)

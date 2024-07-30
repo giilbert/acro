@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 fnv = "1.0.7"
 itertools = "0.13.0"
+tracing = "0.1.40"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }

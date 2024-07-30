@@ -9,6 +9,7 @@ use parking_lot::{
     lock_api::{MappedMutexGuard, MappedRwLockReadGuard},
     Mutex, MutexGuard, RawMutex, RawRwLock, RwLock, RwLockReadGuard,
 };
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct RendererHandle {
@@ -53,7 +54,7 @@ impl RendererState {
             .await
             .expect("failed to request adapter");
 
-        println!("Adapter: {:?}", adapter.get_info());
+        info!("Adapter: {:?}", adapter.get_info());
 
         let (device, queue) = adapter
             .request_device(
