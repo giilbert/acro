@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant, SystemTime};
 
 use fnv::FnvHashMap;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::{
     pointer::change_detection::Tick,
@@ -112,7 +112,8 @@ impl Schedule {
 
         for system in systems.iter_mut() {
             self.current_tick = self.current_tick.next();
-            (system.run)(
+
+            let result = (system.run)(
                 SystemRunContext {
                     world,
                     tick: self.current_tick,
@@ -120,6 +121,13 @@ impl Schedule {
                 },
                 system.parameters.as_mut(),
             );
+            match result {
+                Ok(()) => {}
+                Err(err) => {
+                    error!("system {} failed: {:?}", system.name, err);
+                }
+            }
+
             system.last_run_tick = self.current_tick;
         }
     }
@@ -196,7 +204,7 @@ mod tests {
         SystemData {
             id: SystemId::Faux(id),
             name: name.to_string(),
-            run: Box::new(move |_, _| {}),
+            run: Box::new(move |_, _| Ok(())),
             last_run_tick: Tick::new(0),
             parameters: Box::new(()),
             scheduling_requirements: scheduling_requirements.into_iter().collect(),

@@ -1,5 +1,6 @@
 use std::{
     any::{Any, TypeId},
+    error::Error,
     rc::Rc,
 };
 
@@ -95,7 +96,8 @@ impl<'w> IntoSystemRunContext<'w> for &'w SystemRunContext<'w> {
     }
 }
 
-pub type SystemFn = Box<dyn Fn(SystemRunContext, &mut dyn Any)>;
+type SystemResult = Result<(), Box<dyn Error>>;
+pub type SystemFn = Box<dyn Fn(SystemRunContext, &mut dyn Any) -> SystemResult>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SystemId {
@@ -176,22 +178,42 @@ pub trait IntoSystem<P> {
     fn into_system(self) -> SystemFn;
 }
 
-impl<F> IntoSystem<()> for F
+pub trait IntoSystemResult {
+    fn into_system_result(self) -> SystemResult;
+}
+
+impl IntoSystemResult for () {
+    #[inline]
+    fn into_system_result(self) -> SystemResult {
+        Ok(())
+    }
+}
+
+impl IntoSystemResult for Result<(), Box<dyn Error>> {
+    #[inline]
+    fn into_system_result(self) -> SystemResult {
+        self
+    }
+}
+
+impl<F, R> IntoSystem<()> for F
 where
-    F: Fn(SystemRunContext) + 'static,
+    F: Fn(SystemRunContext) -> R + 'static,
+    R: IntoSystemResult + 'static,
 {
     fn init(_world: &World) -> Box<dyn Any> {
         Box::new(())
     }
 
     fn into_system(self) -> SystemFn {
-        Box::new(move |context, _| self(context))
+        Box::new(move |context, _| self(context).into_system_result())
     }
 }
 
-impl<F, P1> IntoSystem<P1> for F
+impl<F, P1, R> IntoSystem<P1> for F
 where
-    F: Fn(SystemRunContext, P1) + 'static,
+    F: Fn(SystemRunContext, P1) -> R + 'static,
+    R: IntoSystemResult + 'static,
     P1: SystemParam,
 {
     fn init(world: &World) -> Box<dyn Any> {
@@ -202,7 +224,7 @@ where
         Box::new(move |context, parameters| {
             let parameters = parameters.downcast_mut::<P1::Init>().unwrap();
             let world = context.world;
-            self(context, P1::create(world, parameters));
+            self(context, P1::create(world, parameters)).into_system_result()
         })
     }
 }
@@ -210,7 +232,8 @@ where
 macro_rules! impl_into_system {
     ($($members:ident),+) => {
         impl<
-            F: Fn(SystemRunContext, $($members),+) + 'static,
+            F: Fn(SystemRunContext, $($members),+) -> R + 'static,
+            R: IntoSystemResult + 'static,
             $($members: SystemParam),*
         > IntoSystem<($($members),+)> for F {
             fn init(world: &World) -> Box<dyn Any> {
@@ -222,7 +245,7 @@ macro_rules! impl_into_system {
                 Box::new(move |context, parameters| {
                     let ($($members,)*) = parameters.downcast_mut::<($($members::Init,)*)>().unwrap();
                     let world = context.world;
-                    self(context, $($members::create(world, $members),)*);
+                    self(context, $($members::create(world, $members),)*).into_system_result()
                 })
             }
         }
