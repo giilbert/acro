@@ -9,6 +9,7 @@ use crate::{
     resource::{Res, ResMut},
     schedule::SystemSchedulingRequirement,
     world::World,
+    ComponentId, EntityId,
 };
 
 #[derive(Debug, Clone)]
@@ -18,13 +19,53 @@ pub struct SystemRunContext<'w> {
     pub last_run_tick: Tick,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotifyChangeError {
+    EntityDeleted,
+    ComponentDeleted,
+}
+
 impl SystemRunContext<'_> {
-    pub fn ignore_changes(world: &World) -> SystemRunContext {
+    pub fn new_ignore_changes(world: &World) -> SystemRunContext {
         SystemRunContext {
             world,
             tick: Tick::new(0),
             last_run_tick: Tick::new(0),
         }
+    }
+
+    pub fn force_notify_change<T: 'static>(
+        &self,
+        entity_id: EntityId,
+    ) -> Result<(), NotifyChangeError> {
+        self.force_notify_change_with_id(entity_id, self.world.get_component_info::<T>().id)
+    }
+
+    pub fn force_notify_change_with_id(
+        &self,
+        entity_id: EntityId,
+        component_id: ComponentId,
+    ) -> Result<(), NotifyChangeError> {
+        let meta = self
+            .world
+            .entity_meta_opt(entity_id)
+            .ok_or(NotifyChangeError::EntityDeleted)?;
+
+        let change_detection = unsafe {
+            &mut *self
+                .world
+                .archetypes
+                .get_archetype(meta.archetype_id)
+                .expect("archetype not found")
+                .borrow_mut()
+                .get_column(component_id)
+                .ok_or(NotifyChangeError::ComponentDeleted)?
+                .change_detection
+                .get()
+        };
+        change_detection.changed_ticks[meta.table_index] = self.tick;
+
+        Ok(())
     }
 }
 

@@ -1,5 +1,5 @@
 use acro_assets::Assets;
-use acro_ecs::{Changed, Query, Res, SystemRunContext, With};
+use acro_ecs::{Changed, EntityId, Query, Res, SystemRunContext, With};
 use acro_math::{GlobalTransform, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
@@ -73,11 +73,11 @@ impl Mesh {
 // Should the mesh buffer data be stored separately from the component?
 pub fn upload_mesh_system(
     ctx: SystemRunContext,
-    mesh_query: Query<&mut Mesh, Changed<Mesh>>,
+    mesh_query: Query<(EntityId, &mut Mesh), Changed<Mesh>>,
     renderer: Res<RendererHandle>,
     assets: Res<Assets>,
 ) {
-    for mut mesh in mesh_query.over(&ctx) {
+    for (entity, mut mesh) in mesh_query.over(&ctx) {
         let device = &renderer.device;
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -93,6 +93,7 @@ pub fn upload_mesh_system(
         });
 
         let shader = assets.get::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
+        shader.notify_changes::<Mesh>(&ctx, entity);
 
         let module = &shader.module;
 

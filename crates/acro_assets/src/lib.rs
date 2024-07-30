@@ -5,18 +5,18 @@ use std::{
     any::{Any, TypeId},
     collections::{HashMap, HashSet, VecDeque},
     path::Path,
-    sync::{mpsc, Arc},
+    sync::Arc,
 };
 
 pub use crate::{asset::Asset, loader::Loadable};
 
 use acro_ecs::{
-    pointer::change_detection::ChangeDetectionContext, Application, ComponentId, EntityId, Plugin,
-    Stage, SystemRunContext, World,
+    systems::NotifyChangeError, Application, ComponentId, EntityId, Plugin, Stage,
+    SystemRunContext, World,
 };
 use notify::{event::AccessKind, EventKind, RecursiveMode, Watcher};
 use parking_lot::{Mutex, RwLock};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 pub struct Assets {
     queue: Arc<Mutex<VecDeque<QueuedAsset>>>,
@@ -40,7 +40,7 @@ impl std::fmt::Debug for Assets {
 pub struct AnyAssetData {
     id: TypeId,
     data: Arc<dyn Any + Send + Sync>,
-    notify_changes: HashMap<EntityId, HashSet<ComponentId>>,
+    notify_changes: Arc<RwLock<HashMap<EntityId, HashSet<ComponentId>>>>,
 }
 pub type AssetLoader = Arc<dyn Fn(&World, Vec<u8>) -> AnyAssetData>;
 
@@ -131,27 +131,70 @@ impl Assets {
         });
     }
 
-    pub fn process_queue(&mut self, world: &World) {
+    pub fn process_queue(&mut self, ctx: &SystemRunContext) {
         let mut queue = self.queue.lock();
         while let Some(asset) = queue.pop_front() {
-            match asset.queue_type {
-                QueueType::Init => {
-                    info!("loading asset: {}", asset.path);
-                }
-                QueueType::Reload => {
-                    info!("reloading asset: {}", asset.path);
-                }
-            }
-
             let file_content = std::fs::read(&asset.path).expect("failed to read file");
 
-            self.data.write().insert(
-                asset.path,
-                (self
-                    .asset_loaders
-                    .get(&asset.type_id)
-                    .expect("asset does not exist"))(world, file_content),
-            );
+            let new_data = (self
+                .asset_loaders
+                .get(&asset.type_id)
+                .expect("asset does not exist"))(ctx.world, file_content)
+            .data;
+
+            let mut data = self.data.write();
+
+            match asset.queue_type {
+                QueueType::Init => {
+                    data.insert(
+                        asset.path.clone(),
+                        AnyAssetData {
+                            data: new_data,
+                            id: asset.type_id,
+                            notify_changes: Default::default(),
+                        },
+                    );
+
+                    info!("asset loaded: {}", asset.path);
+                }
+                QueueType::Reload => {
+                    let old_asset = data.get_mut(&asset.path).expect("asset not loaded");
+                    old_asset.data = new_data;
+
+                    let mut component_count = 0;
+                    for (&entity, components) in old_asset.notify_changes.write().iter_mut() {
+                        let mut components_to_remove = vec![];
+
+                        for &component_id in components.iter() {
+                            let notify_result =
+                                ctx.force_notify_change_with_id(entity, component_id);
+
+                            match notify_result {
+                                Ok(_) => {}
+                                Err(NotifyChangeError::EntityDeleted) => {
+                                    components.clear();
+                                    break;
+                                }
+                                Err(NotifyChangeError::ComponentDeleted) => {
+                                    components_to_remove.push(component_id);
+                                }
+                            }
+
+                            component_count += 1;
+                        }
+
+                        for component_id in components_to_remove {
+                            components.remove(&component_id);
+                        }
+                    }
+
+                    info!(
+                        "asset reloaded: {} (notified {component_count} component{})",
+                        asset.path,
+                        if component_count == 1 { "" } else { "s" },
+                    );
+                }
+            }
         }
     }
 
@@ -159,16 +202,16 @@ impl Assets {
     where
         T: Loadable,
     {
+        let data = self.data.read();
+        let asset = data.get(path).expect("asset not loaded");
+
         Asset {
-            data: self
-                .data
-                .read()
-                .get(path)
-                .expect("asset not loaded")
+            data: asset
                 .data
                 .clone()
                 .downcast()
                 .expect("failed to downcast asset"),
+            notify_changes: asset.notify_changes.clone(),
         }
     }
 
@@ -178,7 +221,7 @@ impl Assets {
             Arc::new(|world, data| AnyAssetData {
                 data: Arc::new(T::load(world, data).expect("failed to load asset")),
                 id: TypeId::of::<T>(),
-                notify_changes: HashMap::new(),
+                notify_changes: Default::default(),
             }),
         );
     }
@@ -187,7 +230,7 @@ impl Assets {
 fn load_queued_system(ctx: SystemRunContext) {
     let world = &ctx.world;
     let mut assets = world.resources().get_mut::<Assets>();
-    assets.process_queue(world);
+    assets.process_queue(&ctx);
 }
 
 pub struct AssetsPlugin;

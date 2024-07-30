@@ -43,8 +43,12 @@ impl World {
         &self.resources
     }
 
+    pub fn entity_meta_opt(&self, entity: EntityId) -> Option<&EntityMeta> {
+        self.entities.get(entity)
+    }
+
     pub fn entity_meta(&self, entity: EntityId) -> &EntityMeta {
-        self.entities.get(entity).expect("entity not found")
+        self.entity_meta_opt(entity).expect("entity not found")
     }
 
     pub fn init_component<T: 'static>(&mut self) -> &ComponentInfo {

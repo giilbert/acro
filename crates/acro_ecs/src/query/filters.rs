@@ -369,7 +369,7 @@ mod test {
         let query = world.query::<EntityId, Or<With<String>, With<bool>>>();
         assert_eq_unordered!(
             &query
-                .over(SystemRunContext::ignore_changes(&mut world))
+                .over(SystemRunContext::new_ignore_changes(&mut world))
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2, entity3]
         );
@@ -377,7 +377,7 @@ mod test {
         let query = world.query::<EntityId, Or<With<String>, With<u32>>>();
         assert_eq_unordered!(
             &query
-                .over(SystemRunContext::ignore_changes(&mut world))
+                .over(SystemRunContext::new_ignore_changes(&mut world))
                 .collect::<Vec<_>>(),
             &vec![entity1, entity2, entity3]
         );
