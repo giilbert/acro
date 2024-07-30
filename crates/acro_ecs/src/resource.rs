@@ -36,7 +36,7 @@ impl ResourceRegistry {
                 self.data[self
                     .types
                     .get(&TypeId::of::<T>())
-                    .expect("resource not found")
+                    .unwrap_or_else(|| panic!("resource {} not found", std::any::type_name::<T>()))
                     .0]
                     .borrow(),
                 |r| r.downcast_ref().unwrap(),
@@ -50,7 +50,7 @@ impl ResourceRegistry {
                 self.data[self
                     .types
                     .get(&TypeId::of::<T>())
-                    .expect("resource not found")
+                    .unwrap_or_else(|| panic!("resource {} not found", std::any::type_name::<T>()))
                     .0]
                     .borrow_mut(),
                 |r| r.downcast_mut().unwrap(),

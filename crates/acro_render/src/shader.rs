@@ -1,5 +1,7 @@
 use std::{borrow::Cow, collections::HashMap, ops::Deref, sync::Arc};
 
+use acro_assets::Loadable;
+use acro_ecs::World;
 use acro_math::{Float, Mat4};
 
 use crate::state::RendererHandle;
@@ -128,6 +130,18 @@ impl Shader {
     }
 }
 
+impl Loadable for Shader {
+    fn load(world: &World, path: &str) -> Result<Self, ()> {
+        let renderer = world.resources().get::<RendererHandle>();
+        let file_contents = std::fs::read_to_string(path).expect("failed to read shader file");
+        Ok(Shader::new(
+            &renderer,
+            file_contents,
+            ShaderOptions::mesh_defaults(),
+        ))
+    }
+}
+
 #[derive(Debug)]
 pub struct ShaderOptions {
     pub bind_groups: Vec<BindGroupOptions>,
@@ -194,47 +208,5 @@ impl Deref for ShaderHandle {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-#[derive(Debug)]
-pub struct Shaders {
-    renderer: RendererHandle,
-    shaders: HashMap<String, ShaderHandle>,
-}
-
-impl Shaders {
-    pub fn new(renderer: &RendererHandle) -> Self {
-        let mut shaders = Self {
-            renderer: renderer.clone(),
-            shaders: HashMap::new(),
-        };
-
-        shaders.create_shader(
-            "basic-mesh",
-            include_str!("shaders/basic-mesh.wgsl"),
-            ShaderOptions::mesh_defaults(),
-        );
-
-        shaders
-    }
-
-    pub fn handle_by_name(&self, name: impl ToString) -> Option<&ShaderHandle> {
-        self.shaders.get(&name.to_string())
-    }
-
-    pub fn create_shader(
-        &mut self,
-        name: impl ToString,
-        source: impl ToString,
-        options: ShaderOptions,
-    ) -> ShaderHandle {
-        let shader = Shader::new(&self.renderer, source, options);
-        let handle = ShaderHandle {
-            name: name.to_string(),
-            inner: Arc::new(shader),
-        };
-        self.shaders.insert(name.to_string(), handle.clone());
-        handle
     }
 }

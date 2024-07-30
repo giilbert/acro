@@ -1,0 +1,9 @@
+[package]
+name = "acro_assets"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+acro_ecs = { path = "../acro_ecs" }
+notify = "6.1.1"
+tracing = "0.1.40"

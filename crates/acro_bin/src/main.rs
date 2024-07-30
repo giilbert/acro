@@ -1,3 +1,4 @@
+use acro_assets::AssetsPlugin;
 use acro_ecs::{Application, Plugin, Query, Stage, SystemRunContext, With};
 use acro_log::LogPlugin;
 use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
@@ -31,7 +32,7 @@ impl Plugin for TestPlugin {
                     },
                 ],
                 vec![0, 1, 2],
-                "basic-mesh",
+                "crates/acro_render/src/shaders/basic-mesh.wgsl",
             ),
             GlobalTransform::default(),
             Transform::default(),
@@ -66,6 +67,7 @@ impl Plugin for TestPlugin {
 fn main() {
     Application::new()
         .add_plugin(LogPlugin)
+        .add_plugin(AssetsPlugin)
         .add_plugin(MathPlugin)
         .add_plugin(RenderPlugin)
         .add_plugin(TestPlugin)

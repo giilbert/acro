@@ -9,10 +9,7 @@ use winit::{
     platform::x11::WindowAttributesExtX11,
 };
 
-use crate::{
-    shader::Shaders,
-    state::{RendererHandle, RendererState},
-};
+use crate::state::{RendererHandle, RendererState};
 
 pub struct Window {
     event_loop: Option<EventLoop<()>>,
@@ -73,12 +70,6 @@ impl ApplicationHandler for Window {
                 .expect("application not created")
                 .world()
                 .insert_resource(state.clone());
-
-            self.application
-                .as_mut()
-                .expect("application not created")
-                .world()
-                .insert_resource(Shaders::new(&state));
 
             self.state = Some(state);
         }

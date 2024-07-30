@@ -135,6 +135,19 @@ pub trait IntoSystem<P> {
     fn into_system(self) -> SystemFn;
 }
 
+impl<F> IntoSystem<()> for F
+where
+    F: Fn(SystemRunContext) + 'static,
+{
+    fn init(_world: &World) -> Box<dyn Any> {
+        Box::new(())
+    }
+
+    fn into_system(self) -> SystemFn {
+        Box::new(move |context, _| self(context))
+    }
+}
+
 impl<F, P1> IntoSystem<P1> for F
 where
     F: Fn(SystemRunContext, P1) + 'static,

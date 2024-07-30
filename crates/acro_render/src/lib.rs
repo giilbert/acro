@@ -9,11 +9,12 @@ use std::cell::RefCell;
 pub use crate::{
     camera::{Camera, CameraType, MainCamera},
     mesh::{Mesh, Vertex},
-    shader::Shaders,
 };
 
+use acro_assets::Assets;
 use acro_ecs::{Application, Plugin, Res, Stage, SystemRunContext};
 use mesh::{render_mesh_system, upload_mesh_system};
+use shader::Shader;
 use state::{FrameState, RendererHandle};
 use window::Window;
 
@@ -24,6 +25,12 @@ impl Plugin for RenderPlugin {
         app.world().init_component::<Mesh>();
         app.world().init_component::<Camera>();
         app.world().init_component::<MainCamera>();
+
+        {
+            let world = app.world();
+            let mut assets = world.resources().get_mut::<Assets>();
+            assets.queue::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
+        }
 
         let window = Window::new();
         app.set_runner(move |app| {

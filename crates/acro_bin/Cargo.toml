@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+acro_assets = { path = "../acro_assets" }
 acro_ecs = { path = "../acro_ecs" }
 acro_log = { path = "../acro_log" }
 acro_math = { path = "../acro_math" }

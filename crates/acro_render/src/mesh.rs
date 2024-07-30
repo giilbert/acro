@@ -1,3 +1,4 @@
+use acro_assets::Assets;
 use acro_ecs::{Changed, Query, Res, SystemRunContext, With};
 use acro_math::{GlobalTransform, Vec3};
 use bytemuck::{Pod, Zeroable};
@@ -6,8 +7,8 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{self, MainCamera},
-    shader::{BindGroupId, UniformId},
-    Camera, RendererHandle, Shaders,
+    shader::{BindGroupId, Shader, UniformId},
+    Camera, RendererHandle,
 };
 
 #[repr(C)]
@@ -73,7 +74,7 @@ pub fn upload_mesh_system(
     ctx: SystemRunContext,
     mesh_query: Query<&mut Mesh, Changed<Mesh>>,
     renderer: Res<RendererHandle>,
-    shaders: Res<Shaders>,
+    assets: Res<Assets>,
 ) {
     for mut mesh in mesh_query.over(&ctx) {
         let device = &renderer.device;
@@ -90,9 +91,7 @@ pub fn upload_mesh_system(
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let shader = shaders
-            .handle_by_name(&mesh.shader_name)
-            .expect("shader not found");
+        let shader = assets.get::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
 
         let module = &shader.module;
 
@@ -163,7 +162,7 @@ pub fn render_mesh_system(
     mesh_query: Query<(&GlobalTransform, &Mesh)>,
     camera_query: Query<(&GlobalTransform, &Camera), With<MainCamera>>,
     renderer: Res<RendererHandle>,
-    shaders: Res<Shaders>,
+    assets: Res<Assets>,
 ) {
     let frame_state = renderer.frame_state();
     let view = &frame_state.view;
@@ -171,25 +170,23 @@ pub fn render_mesh_system(
 
     let (camera_transform, camera) = camera_query.single(&ctx);
 
-    let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("Render Pass"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-            view: &view,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Load,
-                store: wgpu::StoreOp::Store,
-            },
-        })],
-        depth_stencil_attachment: None,
-        occlusion_query_set: None,
-        timestamp_writes: None,
-    });
-
     for (global_transform, mesh) in mesh_query.over(&ctx) {
-        let shader = shaders
-            .handle_by_name(&mesh.shader_name)
-            .expect("shader not found");
+        let shader = assets.get::<Shader>(&mesh.shader_name);
+
+        let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
 
         mesh_render_pass.set_pipeline(&mesh.render_pipeline.as_ref().expect("no render pipeline"));
 
