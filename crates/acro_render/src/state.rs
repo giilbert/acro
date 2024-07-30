@@ -1,6 +1,14 @@
-use std::{ops::Deref, sync::Arc};
+use std::{
+    cell::{Ref, RefCell, RefMut},
+    ops::Deref,
+    rc::Rc,
+    sync::Arc,
+};
 
-use parking_lot::{lock_api::MappedMutexGuard, Mutex, MutexGuard, RawMutex};
+use parking_lot::{
+    lock_api::{MappedMutexGuard, MappedRwLockReadGuard},
+    Mutex, MutexGuard, RawMutex, RawRwLock, RwLock, RwLockReadGuard,
+};
 
 #[derive(Debug, Clone)]
 pub struct RendererHandle {
@@ -15,9 +23,14 @@ pub struct RendererState {
     pub(crate) config: wgpu::SurfaceConfiguration,
     pub(crate) size: winit::dpi::PhysicalSize<u32>,
     pub(crate) window: Arc<winit::window::Window>,
-    pub(crate) encoder: Mutex<Option<wgpu::CommandEncoder>>,
-    pub(crate) view: Mutex<Option<wgpu::TextureView>>,
-    pub(crate) output: Mutex<Option<wgpu::SurfaceTexture>>,
+    pub(crate) frame_state: RefCell<Option<FrameState>>,
+}
+
+#[derive(Debug)]
+pub struct FrameState {
+    pub(crate) encoder: RefCell<wgpu::CommandEncoder>,
+    pub(crate) view: wgpu::TextureView,
+    pub(crate) output: wgpu::SurfaceTexture,
 }
 
 impl RendererState {
@@ -82,27 +95,17 @@ impl RendererState {
                 config,
                 size,
                 window,
-                encoder: Mutex::new(None),
-                view: Mutex::new(None),
-                output: Mutex::new(None),
+                frame_state: RefCell::new(None),
             }),
         }
     }
 
-    pub fn encoder(&self) -> MappedMutexGuard<RawMutex, wgpu::CommandEncoder> {
-        MutexGuard::map(self.encoder.lock(), |encoder| {
-            encoder.as_mut().expect("encoder not created")
-        })
+    pub fn take_frame_state(&self) -> Option<FrameState> {
+        self.frame_state.borrow_mut().take()
     }
 
-    pub fn take_encoder(&self) -> Option<wgpu::CommandEncoder> {
-        self.encoder.lock().take()
-    }
-
-    pub fn view(&self) -> MappedMutexGuard<RawMutex, wgpu::TextureView> {
-        MutexGuard::map(self.view.lock(), |view| {
-            view.as_mut().expect("view not created")
-        })
+    pub fn frame_state(&self) -> Ref<FrameState> {
+        Ref::map(self.frame_state.borrow(), |state| state.as_ref().unwrap())
     }
 }
 

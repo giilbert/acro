@@ -3,14 +3,16 @@ mod shader;
 mod state;
 mod window;
 
+use std::cell::RefCell;
+
 pub use crate::{
     mesh::{Mesh, Vertex},
     shader::Shaders,
 };
 
-use acro_ecs::{Application, Plugin, ResMut, Stage, SystemRunContext};
+use acro_ecs::{Application, Plugin, Res, Stage, SystemRunContext};
 use mesh::{render_mesh_system, upload_mesh_system};
-use state::RendererHandle;
+use state::{FrameState, RendererHandle};
 use window::Window;
 
 pub struct RenderPlugin;
@@ -31,7 +33,7 @@ impl Plugin for RenderPlugin {
     }
 }
 
-fn start_render_system(_ctx: SystemRunContext, renderer: ResMut<RendererHandle>) {
+fn start_render_system(_ctx: SystemRunContext, renderer: Res<RendererHandle>) {
     let output = renderer.surface.get_current_texture().unwrap();
     let view = output
         .texture
@@ -64,20 +66,19 @@ fn start_render_system(_ctx: SystemRunContext, renderer: ResMut<RendererHandle>)
         });
     }
 
-    *renderer.encoder.lock() = Some(encoder);
-    *renderer.view.lock() = Some(view);
-    *renderer.output.lock() = Some(output);
+    *renderer.frame_state.borrow_mut() = Some(FrameState {
+        encoder: RefCell::new(encoder),
+        view,
+        output,
+    });
 }
 
-fn end_render_system(_ctx: SystemRunContext, renderer: ResMut<RendererHandle>) {
-    let output = renderer.output.lock().take().expect("output already taken");
+fn end_render_system(_ctx: SystemRunContext, renderer: Res<RendererHandle>) {
+    let frame_state = renderer.take_frame_state().expect("frame already ended");
+    let encoder = frame_state.encoder.into_inner();
 
-    let commands = renderer
-        .take_encoder()
-        .expect("encoder already finished for this frame")
-        .finish();
+    let commands = encoder.finish();
     renderer.queue.submit(std::iter::once(commands));
 
-    *renderer.view.lock() = None;
-    output.present();
+    frame_state.output.present();
 }

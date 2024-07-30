@@ -156,8 +156,9 @@ pub fn render_mesh_system(
     renderer: Res<RendererHandle>,
     shaders: Res<Shaders>,
 ) {
-    let view = renderer.view();
-    let mut encoder = renderer.encoder();
+    let frame_state = renderer.frame_state();
+    let view = &frame_state.view;
+    let mut encoder = frame_state.encoder.borrow_mut();
 
     let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("Render Pass"),
