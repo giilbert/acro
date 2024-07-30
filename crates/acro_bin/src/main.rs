@@ -5,7 +5,7 @@ use acro_render::{Mesh, RenderPlugin, Vertex};
 
 fn update(ctx: SystemRunContext, query: Query<&mut Transform, With<Mesh>>) {
     for mut transform in query.over(&ctx) {
-        transform.position.x += 0.00001;
+        transform.position.x += 0.001;
     }
 }
 
@@ -39,7 +39,7 @@ impl Plugin for TestPlugin {
             Children(vec![]),
         ));
 
-        app.add_system(Stage::Update, [], update);
+        app.add_system(Stage::FixedUpdate, [], update);
     }
 }
 

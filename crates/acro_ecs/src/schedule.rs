@@ -1,7 +1,7 @@
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
 
 use fnv::FnvHashMap;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::{
     pointer::change_detection::Tick,
@@ -14,6 +14,8 @@ use crate::{
 pub struct Schedule {
     pub current_tick: Tick,
     pub stages: FnvHashMap<Stage, Vec<SystemData>>,
+    last_render_run: SystemTime,
+    render_interval: Duration,
     time_accumulator: Duration,
     time_count: u32,
 }
@@ -22,6 +24,7 @@ pub struct Schedule {
 pub enum Stage {
     PreUpdate,
     Update,
+    FixedUpdate,
     PostUpdate,
     PreRender,
     Render,
@@ -40,9 +43,14 @@ pub enum ScheduleError {
 
 impl Schedule {
     pub fn new() -> Self {
+        // TODO: Make this configurable
+        const FRAMES_PER_SECOND: f64 = 60.0;
+
         Self {
             current_tick: Tick::new(1),
             stages: Default::default(),
+            last_render_run: SystemTime::now(),
+            render_interval: Duration::from_secs_f64(1.0 / FRAMES_PER_SECOND),
             time_accumulator: Duration::new(0, 0),
             time_count: 0,
         }
@@ -117,29 +125,49 @@ impl Schedule {
     }
 
     pub fn run_once(&mut self, world: &mut World) {
-        let now = std::time::Instant::now();
+        let now = std::time::SystemTime::now();
+        let time_since_last_render = now
+            .duration_since(self.last_render_run)
+            .unwrap_or(Duration::new(0, 0));
+        let should_render = time_since_last_render > self.render_interval;
+
         self.run_stage(Stage::PreUpdate, world);
         self.run_stage(Stage::Update, world);
+        if should_render {
+            self.run_stage(Stage::FixedUpdate, world);
+        }
         self.run_stage(Stage::PostUpdate, world);
 
-        self.run_stage(Stage::PreRender, world);
-        self.run_stage(Stage::Render, world);
-        self.run_stage(Stage::PostRender, world);
-        let elapsed = now.elapsed();
+        if should_render {
+            self.last_render_run = now;
 
-        self.time_accumulator += elapsed;
-        self.time_count += 1;
+            self.run_stage(Stage::PreRender, world);
+            self.run_stage(Stage::Render, world);
+            self.run_stage(Stage::PostRender, world);
 
-        const FRAME_TIME_INTERVAL: Duration = Duration::from_secs(5);
-        if self.time_accumulator > FRAME_TIME_INTERVAL {
-            let average_frame_time = self.time_accumulator / self.time_count;
-            info!(
-                "average frame time over {FRAME_TIME_INTERVAL:?}: {:?} = {:.02}fps",
-                average_frame_time,
-                1.0 / average_frame_time.as_secs_f32()
-            );
-            self.time_accumulator = Duration::new(0, 0);
-            self.time_count = 0;
+            let elapsed = now.elapsed().expect("time went backwards");
+
+            self.time_accumulator += elapsed;
+            self.time_count += 1;
+
+            const FRAME_TIME_INTERVAL: Duration = Duration::from_secs(5);
+            if self.time_count * self.render_interval > FRAME_TIME_INTERVAL {
+                let average_frame_time = self.time_accumulator / self.time_count;
+                info!(
+                    "{FRAME_TIME_INTERVAL:?} average frame time: {:?} (theoretical max = {:.02}fps)",
+                    average_frame_time,
+                    1.0 / average_frame_time.as_secs_f64()
+                );
+                self.time_accumulator = Duration::new(0, 0);
+                self.time_count = 0;
+            }
+
+            if elapsed > self.render_interval {
+                warn!(
+                    "frame took too long: {elapsed:?} (target = {:?})",
+                    self.render_interval
+                );
+            }
         }
     }
 
