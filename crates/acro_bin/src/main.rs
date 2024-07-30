@@ -1,8 +1,8 @@
-use acro_assets::AssetsPlugin;
+use acro_assets::{Assets, AssetsPlugin};
 use acro_ecs::{Application, Plugin, Query, Stage, SystemRunContext, With};
 use acro_log::LogPlugin;
 use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
-use acro_render::{Camera, CameraType, MainCamera, Mesh, RenderPlugin, Vertex};
+use acro_render::{Camera, CameraType, MainCamera, Mesh, RenderPlugin, Texture, Vertex};
 
 fn update(ctx: SystemRunContext, query: Query<&mut Transform, With<Mesh>>) {
     for mut transform in query.over(&ctx) {
@@ -18,20 +18,29 @@ impl Plugin for TestPlugin {
 
         let root = world.spawn((Root, GlobalTransform::default(), Transform::default()));
 
+        world
+            .resources()
+            .get_mut::<Assets>()
+            .queue::<Texture>("crates/acro_render/src/textures/ferris.jpeg");
+
         world.spawn((
             Mesh::new(
                 vec![
                     Vertex {
                         position: [-0.5, -0.5, 0.0].into(),
+                        tex_coords: [0.0, 0.0].into(),
                     },
                     Vertex {
                         position: [0.5, -0.5, 0.0].into(),
+                        tex_coords: [1.0, 0.0].into(),
                     },
                     Vertex {
                         position: [0.0, 0.5, 0.0].into(),
+                        tex_coords: [0.5, 1.0].into(),
                     },
                 ],
                 vec![0, 1, 2],
+                Some("crates/acro_render/src/textures/ferris.jpeg"),
                 "crates/acro_render/src/shaders/basic-mesh.wgsl",
             ),
             GlobalTransform::default(),

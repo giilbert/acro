@@ -2,6 +2,7 @@ mod camera;
 mod mesh;
 mod shader;
 mod state;
+mod texture;
 mod window;
 
 use std::cell::RefCell;
@@ -9,6 +10,7 @@ use std::cell::RefCell;
 pub use crate::{
     camera::{Camera, CameraType, MainCamera},
     mesh::{Mesh, Vertex},
+    texture::Texture,
 };
 
 use acro_assets::Assets;
@@ -30,6 +32,7 @@ impl Plugin for RenderPlugin {
             let world = app.world();
             let mut assets = world.resources().get_mut::<Assets>();
             assets.register_loader::<Shader>();
+            assets.register_loader::<Texture>();
             assets.queue::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
         }
 

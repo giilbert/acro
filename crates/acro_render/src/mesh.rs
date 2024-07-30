@@ -1,6 +1,6 @@
 use acro_assets::Assets;
 use acro_ecs::{Changed, EntityId, Query, Res, SystemRunContext, With};
-use acro_math::{GlobalTransform, Vec3};
+use acro_math::{GlobalTransform, Vec2, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
 use wgpu::util::DeviceExt;
@@ -8,6 +8,7 @@ use wgpu::util::DeviceExt;
 use crate::{
     camera::MainCamera,
     shader::{BindGroupId, Shader, UniformId},
+    texture::Texture,
     Camera, RendererHandle,
 };
 
@@ -15,13 +16,16 @@ use crate::{
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     pub position: Vec3,
+    pub tex_coords: Vec2,
 }
 
 cfg_if! {
     if #[cfg(feature = "double-precision")] {
-        const VERTEX_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float64x3;
+        const VEC3_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float64x3;
+        const VEC2_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float64x2;
     } else {
-        const VERTEX_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float32x3;
+        const VEC3_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float32x3;
+        const VEC2_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float32x2;
     }
 }
 
@@ -30,11 +34,18 @@ impl Vertex {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[wgpu::VertexAttribute {
-                offset: 0,
-                shader_location: 0,
-                format: VERTEX_FORMAT,
-            }],
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: VEC3_FORMAT,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<Vec3>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: VEC2_FORMAT,
+                },
+            ],
         }
     }
 }
@@ -46,7 +57,8 @@ unsafe impl Pod for Vertex {}
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
-    pub(crate) shader_name: String,
+    pub diffuse_texture: Option<String>,
+    pub(crate) shader_path: String,
     pub(crate) data: Option<MeshData>,
 }
 
@@ -58,11 +70,17 @@ pub(crate) struct MeshData {
 }
 
 impl Mesh {
-    pub fn new(vertices: Vec<Vertex>, indices: Vec<u32>, shader_name: impl ToString) -> Self {
+    pub fn new(
+        vertices: Vec<Vertex>,
+        indices: Vec<u32>,
+        diffuse_texture: Option<impl Into<String>>,
+        shader_path: impl ToString,
+    ) -> Self {
         Self {
             vertices,
             indices,
-            shader_name: shader_name.to_string(),
+            diffuse_texture: diffuse_texture.map(Into::into),
+            shader_path: shader_path.to_string(),
             data: None,
         }
     }
@@ -92,8 +110,14 @@ pub fn upload_mesh_system(
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let shader = assets.get::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
+        let shader = assets.get::<Shader>(&mesh.shader_path);
         shader.notify_changes::<Mesh>(&ctx, entity);
+
+        let texture = mesh.diffuse_texture.as_ref().map(|path| {
+            let texture = assets.get::<Texture>(path);
+            texture.notify_changes::<Mesh>(&ctx, entity);
+            texture
+        });
 
         let module = &shader.module;
 
@@ -110,6 +134,11 @@ pub fn upload_mesh_system(
                         .bind_groups
                         .get(&BindGroupId::ViewProjectionMatrix)
                         .expect("view-projection matrix bind group not found")
+                        .bind_group_layout,
+                    &shader
+                        .bind_groups
+                        .get(&BindGroupId::DiffuseTexture)
+                        .expect("diffuse texture bind group not found")
                         .bind_group_layout,
                 ],
                 push_constant_ranges: &[],
@@ -175,68 +204,83 @@ pub fn render_mesh_system(
 
     for (global_transform, mesh) in mesh_query.over(&ctx) {
         let data = mesh.data.as_ref().expect("mesh data not loaded");
-        let shader = assets.get::<Shader>(&mesh.shader_name);
+        let shader = assets.get::<Shader>(&mesh.shader_path);
 
-        let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Render Pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            occlusion_query_set: None,
-            timestamp_writes: None,
-        });
+        let texture = mesh
+            .diffuse_texture
+            .as_ref()
+            .map(|path| assets.get::<Texture>(path));
 
-        mesh_render_pass.set_pipeline(&data.render_pipeline);
+        let texture = texture.expect("diffuse texture not found");
 
-        // Update model matrix uniform
-        let model_matrix_bind_group = shader
-            .bind_groups
-            .get(&BindGroupId::ModelMatrix)
-            .expect("model matrix bind group not found");
-        let model_matrix_uniform = model_matrix_bind_group
-            .uniforms
-            .get(&UniformId::ModelMatrix)
-            .expect("model matrix uniform not found");
-        renderer.queue.write_buffer(
-            &model_matrix_uniform.buffer,
-            0,
-            bytemuck::cast_slice(global_transform.matrix.as_slice()),
-        );
-        mesh_render_pass.set_bind_group(0, &model_matrix_bind_group.bind_group, &[]);
+        {
+            let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            mesh_render_pass.set_pipeline(&data.render_pipeline);
 
-        // Update view-projection matrix uniform
-        let view_projection_matrix_bind_group = shader
-            .bind_groups
-            .get(&BindGroupId::ViewProjectionMatrix)
-            .expect("view-projection matrix bind group not found");
-        let view_matrix_uniform = view_projection_matrix_bind_group
-            .uniforms
-            .get(&UniformId::ViewMatrix)
-            .expect("view matrix uniform not found");
-        renderer.queue.write_buffer(
-            &view_matrix_uniform.buffer,
-            0,
-            bytemuck::cast_slice(camera_transform.matrix.as_slice()),
-        );
-        let projection_matrix_uniform = view_projection_matrix_bind_group
-            .uniforms
-            .get(&UniformId::ProjectionMatrix)
-            .expect("projection matrix uniform not found");
-        renderer.queue.write_buffer(
-            &projection_matrix_uniform.buffer,
-            0,
-            bytemuck::cast_slice(camera.projection_matrix.as_slice()),
-        );
-        mesh_render_pass.set_bind_group(1, &view_projection_matrix_bind_group.bind_group, &[]);
+            // Update model matrix uniform
+            let model_matrix_bind_group = shader
+                .bind_groups
+                .get(&BindGroupId::ModelMatrix)
+                .expect("model matrix bind group not found");
+            let model_matrix_uniform = model_matrix_bind_group
+                .uniforms
+                .get(&UniformId::ModelMatrix)
+                .expect("model matrix uniform not found");
+            renderer.queue.write_buffer(
+                &model_matrix_uniform.data,
+                0,
+                bytemuck::cast_slice(global_transform.matrix.as_slice()),
+            );
+            mesh_render_pass.set_bind_group(0, &model_matrix_bind_group.bind_group, &[]);
 
-        mesh_render_pass.set_vertex_buffer(0, data.vertex_buffer.slice(..));
-        mesh_render_pass.set_index_buffer(data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        mesh_render_pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
+            // Update view-projection matrix uniform
+            let view_projection_matrix_bind_group = shader
+                .bind_groups
+                .get(&BindGroupId::ViewProjectionMatrix)
+                .expect("view-projection matrix bind group not found");
+            let view_matrix_uniform = view_projection_matrix_bind_group
+                .uniforms
+                .get(&UniformId::ViewMatrix)
+                .expect("view matrix uniform not found");
+            renderer.queue.write_buffer(
+                &view_matrix_uniform.data,
+                0,
+                bytemuck::cast_slice(camera_transform.matrix.as_slice()),
+            );
+            let projection_matrix_uniform = view_projection_matrix_bind_group
+                .uniforms
+                .get(&UniformId::ProjectionMatrix)
+                .expect("projection matrix uniform not found");
+            renderer.queue.write_buffer(
+                &projection_matrix_uniform.data,
+                0,
+                bytemuck::cast_slice(camera.projection_matrix.as_slice()),
+            );
+            mesh_render_pass.set_bind_group(1, &view_projection_matrix_bind_group.bind_group, &[]);
+
+            let texture_bind_group = shader
+                .bind_groups
+                .get(&BindGroupId::DiffuseTexture)
+                .expect("view-projection matrix bind group not found");
+            mesh_render_pass.set_bind_group(2, &texture_bind_group.bind_group, &[]);
+
+            mesh_render_pass.set_vertex_buffer(0, data.vertex_buffer.slice(..));
+            mesh_render_pass
+                .set_index_buffer(data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            mesh_render_pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
+        }
     }
 }

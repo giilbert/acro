@@ -14,6 +14,7 @@ pollster = "0.3.0"
 tracing = "0.1.40"
 wgpu = "0.20.1"
 winit = "0.30.2"
+image = "0.25.2"
 
 [features]
 double-precision = []

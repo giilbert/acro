@@ -16,6 +16,7 @@ pub struct Shader {
 pub enum BindGroupId {
     ModelMatrix,
     ViewProjectionMatrix,
+    DiffuseTexture,
     Custom(String),
 }
 
@@ -31,6 +32,8 @@ pub enum UniformId {
     ModelMatrix,
     ViewMatrix,
     ProjectionMatrix,
+    Texture2D,
+    Sampler,
     Custom(String),
 }
 
@@ -38,7 +41,14 @@ pub enum UniformId {
 pub struct UniformData {
     pub(crate) index: u32,
     pub(crate) stage: wgpu::ShaderStages,
-    pub(crate) buffer: wgpu::Buffer,
+    pub(crate) data: UniformDataType,
+}
+
+#[derive(Debug)]
+pub enum UniformDataType {
+    Buffer(wgpu::Buffer),
+    Texture(wgpu::Texture),
+    Sampler(wgpu::Sampler),
 }
 
 impl Shader {
@@ -57,6 +67,8 @@ impl Shader {
             for (index, uniform_options) in bind_groups_options.uniforms.iter().enumerate() {
                 let (size, label) = match uniform_options.uniform_type {
                     UniformType::Mat4 => (std::mem::size_of::<Mat4>() as u64, "Mat4"),
+                    UniformType::Sampler => continue,
+                    UniformType::Texture2D => continue,
                 };
 
                 let buffer = renderer.device.create_buffer(&wgpu::BufferDescriptor {
@@ -71,7 +83,7 @@ impl Shader {
                     UniformData {
                         index: index as u32,
                         stage: uniform_options.stage,
-                        buffer,
+                        data: UniformDataType::Buffer(buffer),
                     },
                 );
             }
@@ -82,15 +94,37 @@ impl Shader {
                     .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                         entries: uniform_data
                             .values()
-                            .map(|data| wgpu::BindGroupLayoutEntry {
-                                binding: data.index,
-                                visibility: data.stage,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Uniform,
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
+                            .map(|data| match bind_groups_options.id {
+                                BindGroupId::ModelMatrix
+                                | BindGroupId::ViewProjectionMatrix
+                                | BindGroupId::Custom(_) => wgpu::BindGroupLayoutEntry {
+                                    binding: data.index,
+                                    visibility: data.stage,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Uniform,
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
                                 },
-                                count: None,
+                                BindGroupId::DiffuseTexture => wgpu::BindGroupLayoutEntry {
+                                    binding: data.index,
+                                    visibility: data.stage,
+                                    ty: match data.index {
+                                        0 => wgpu::BindingType::Texture {
+                                            multisampled: false,
+                                            view_dimension: wgpu::TextureViewDimension::D2,
+                                            sample_type: wgpu::TextureSampleType::Float {
+                                                filterable: true,
+                                            },
+                                        },
+                                        1 => wgpu::BindingType::Sampler(
+                                            wgpu::SamplerBindingType::Filtering,
+                                        ),
+                                        _ => unreachable!(),
+                                    },
+                                    count: None,
+                                },
                             })
                             .collect::<Vec<_>>()
                             .as_slice(),
@@ -107,7 +141,7 @@ impl Shader {
                         .values()
                         .map(|data| wgpu::BindGroupEntry {
                             binding: data.index,
-                            resource: data.buffer.as_entire_binding(),
+                            resource: data.data.as_entire_binding(),
                         })
                         .collect::<Vec<_>>(),
                     label: Some(format!("{:?} bind group", bind_groups_options.id).as_str()),
@@ -154,6 +188,8 @@ pub struct BindGroupOptions {
 #[derive(Debug)]
 pub enum UniformType {
     Mat4,
+    Texture2D,
+    Sampler,
 }
 
 #[derive(Debug)]
@@ -187,6 +223,21 @@ impl ShaderOptions {
                             id: UniformId::ProjectionMatrix,
                             stage: wgpu::ShaderStages::VERTEX,
                             uniform_type: UniformType::Mat4,
+                        },
+                    ],
+                },
+                BindGroupOptions {
+                    id: BindGroupId::DiffuseTexture,
+                    uniforms: vec![
+                        UniformOptions {
+                            id: UniformId::Texture2D,
+                            stage: wgpu::ShaderStages::FRAGMENT,
+                            uniform_type: UniformType::Texture2D,
+                        },
+                        UniformOptions {
+                            id: UniformId::Sampler,
+                            stage: wgpu::ShaderStages::FRAGMENT,
+                            uniform_type: UniformType::Sampler,
                         },
                     ],
                 },
