@@ -3,6 +3,7 @@ use acro_ecs::{Changed, Query, Res, SystemRunContext, With};
 use acro_math::{GlobalTransform, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
+use tracing::info;
 use wgpu::util::DeviceExt;
 
 use crate::{

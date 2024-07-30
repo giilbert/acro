@@ -5,5 +5,5 @@ where
     Self: Sized + 'static,
 {
     // TODO: Handle errors
-    fn load(world: &World, path: &str) -> Result<Self, ()>;
+    fn load(world: &World, data: Vec<u8>) -> Result<Self, ()>;
 }

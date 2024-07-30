@@ -29,6 +29,7 @@ impl Plugin for RenderPlugin {
         {
             let world = app.world();
             let mut assets = world.resources().get_mut::<Assets>();
+            assets.register_loader::<Shader>();
             assets.queue::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
         }
 

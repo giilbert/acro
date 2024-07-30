@@ -1,8 +1,8 @@
 use std::{any::Any, ops::Deref, sync::Arc};
 
-use crate::loader::Loadable;
+use acro_ecs::{EntityId, SystemRunContext};
 
-pub type AnyAssetData = Arc<dyn Any + Send + Sync>;
+use crate::loader::Loadable;
 
 #[derive(Debug)]
 pub struct Asset<T: Loadable> {
@@ -15,4 +15,12 @@ impl<T: Loadable> Deref for Asset<T> {
     fn deref(&self) -> &Self::Target {
         &*self.data
     }
+}
+
+impl<T> Asset<T>
+where
+    T: Loadable,
+{
+    // TODO: Implement this
+    pub fn notify_changes(&self, entity_id: EntityId, ctx: &SystemRunContext) {}
 }

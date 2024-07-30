@@ -131,12 +131,11 @@ impl Shader {
 }
 
 impl Loadable for Shader {
-    fn load(world: &World, path: &str) -> Result<Self, ()> {
+    fn load(world: &World, data: Vec<u8>) -> Result<Self, ()> {
         let renderer = world.resources().get::<RendererHandle>();
-        let file_contents = std::fs::read_to_string(path).expect("failed to read shader file");
         Ok(Shader::new(
             &renderer,
-            file_contents,
+            String::from_utf8_lossy(&data),
             ShaderOptions::mesh_defaults(),
         ))
     }

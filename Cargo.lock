@@ -24,6 +24,7 @@ version = "0.1.0"
 dependencies = [
  "acro_ecs",
  "notify",
+ "parking_lot",
  "tracing",
 ]
 
