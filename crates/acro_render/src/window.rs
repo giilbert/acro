@@ -88,7 +88,7 @@ impl ApplicationHandler for Window {
         event: event::WindowEvent,
     ) {
         let window = self.window.as_ref().expect("window not created");
-        let state = self.state.as_mut().expect("state not created");
+        let state = self.state.as_ref().expect("state not created");
         let application = self.application.as_mut().expect("application not created");
 
         match event {
@@ -98,6 +98,9 @@ impl ApplicationHandler for Window {
             }
             WindowEvent::CloseRequested => {
                 event_loop.exit();
+            }
+            WindowEvent::Resized(size) => {
+                state.resize(size);
             }
             _ => {
                 // println!("unhandled event: {:?}", event);

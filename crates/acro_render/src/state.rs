@@ -10,6 +10,8 @@ use parking_lot::{
     Mutex, MutexGuard, RawMutex, RawRwLock, RwLock, RwLockReadGuard,
 };
 use tracing::info;
+use wgpu::hal::SurfaceConfiguration;
+use winit::dpi::PhysicalSize;
 
 #[derive(Debug, Clone)]
 pub struct RendererHandle {
@@ -18,10 +20,11 @@ pub struct RendererHandle {
 
 #[derive(Debug)]
 pub struct RendererState {
+    pub(crate) adapter: wgpu::Adapter,
     pub(crate) surface: wgpu::Surface<'static>,
     pub(crate) device: wgpu::Device,
     pub(crate) queue: wgpu::Queue,
-    pub(crate) config: wgpu::SurfaceConfiguration,
+    pub(crate) config: RefCell<wgpu::SurfaceConfiguration>,
     pub(crate) size: winit::dpi::PhysicalSize<u32>,
     pub(crate) window: Arc<winit::window::Window>,
     pub(crate) frame_state: RefCell<Option<FrameState>>,
@@ -90,15 +93,22 @@ impl RendererState {
 
         RendererHandle {
             state: Arc::new(RendererState {
+                adapter,
                 surface,
                 device,
                 queue,
-                config,
+                config: RefCell::new(config),
                 size,
                 window,
                 frame_state: RefCell::new(None),
             }),
         }
+    }
+
+    pub fn resize(&self, size: PhysicalSize<u32>) {
+        self.config.borrow_mut().width = size.width;
+        self.config.borrow_mut().height = size.height;
+        self.surface.configure(&self.device, &self.config.borrow());
     }
 
     pub fn take_frame_state(&self) -> Option<FrameState> {

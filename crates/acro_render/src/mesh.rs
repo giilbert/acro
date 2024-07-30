@@ -119,7 +119,7 @@ pub fn upload_mesh_system(
                 module,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: renderer.config.format,
+                    format: renderer.config.borrow().format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
