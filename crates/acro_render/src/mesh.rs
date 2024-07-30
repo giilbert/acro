@@ -1,12 +1,13 @@
-use acro_ecs::{Changed, Query, Res, SystemRunContext};
+use acro_ecs::{Changed, Query, Res, SystemRunContext, With};
 use acro_math::{GlobalTransform, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    camera::{self, MainCamera},
     shader::{BindGroupId, UniformId},
-    RendererHandle, Shaders,
+    Camera, RendererHandle, Shaders,
 };
 
 #[repr(C)]
@@ -98,11 +99,18 @@ pub fn upload_mesh_system(
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&shader
-                    .bind_groups
-                    .get(&BindGroupId::ModelMatrix)
-                    .expect("model matrix bind group not found")
-                    .bind_group_layout],
+                bind_group_layouts: &[
+                    &shader
+                        .bind_groups
+                        .get(&BindGroupId::ModelMatrix)
+                        .expect("model matrix bind group not found")
+                        .bind_group_layout,
+                    &shader
+                        .bind_groups
+                        .get(&BindGroupId::ViewProjectionMatrix)
+                        .expect("view-projection matrix bind group not found")
+                        .bind_group_layout,
+                ],
                 push_constant_ranges: &[],
             });
 
@@ -153,12 +161,15 @@ pub fn upload_mesh_system(
 pub fn render_mesh_system(
     ctx: SystemRunContext,
     mesh_query: Query<(&GlobalTransform, &Mesh)>,
+    camera_query: Query<(&GlobalTransform, &Camera), With<MainCamera>>,
     renderer: Res<RendererHandle>,
     shaders: Res<Shaders>,
 ) {
     let frame_state = renderer.frame_state();
     let view = &frame_state.view;
     let mut encoder = frame_state.encoder.borrow_mut();
+
+    let (camera_transform, camera) = camera_query.single(&ctx);
 
     let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("Render Pass"),
@@ -197,6 +208,31 @@ pub fn render_mesh_system(
             bytemuck::cast_slice(global_transform.matrix.as_slice()),
         );
         mesh_render_pass.set_bind_group(0, &model_matrix_bind_group.bind_group, &[]);
+
+        // Update view-projection matrix uniform
+        let view_projection_matrix_bind_group = shader
+            .bind_groups
+            .get(&BindGroupId::ViewProjectionMatrix)
+            .expect("view-projection matrix bind group not found");
+        let view_matrix_uniform = view_projection_matrix_bind_group
+            .uniforms
+            .get(&UniformId::ViewMatrix)
+            .expect("view matrix uniform not found");
+        renderer.queue.write_buffer(
+            &view_matrix_uniform.buffer,
+            0,
+            bytemuck::cast_slice(camera_transform.matrix.as_slice()),
+        );
+        let projection_matrix_uniform = view_projection_matrix_bind_group
+            .uniforms
+            .get(&UniformId::ProjectionMatrix)
+            .expect("projection matrix uniform not found");
+        renderer.queue.write_buffer(
+            &projection_matrix_uniform.buffer,
+            0,
+            bytemuck::cast_slice(camera.projection_matrix.as_slice()),
+        );
+        mesh_render_pass.set_bind_group(1, &view_projection_matrix_bind_group.bind_group, &[]);
 
         mesh_render_pass.set_vertex_buffer(0, mesh.vertex_buffer.as_ref().unwrap().slice(..));
         mesh_render_pass.set_index_buffer(

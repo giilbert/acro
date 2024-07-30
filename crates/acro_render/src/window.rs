@@ -3,8 +3,10 @@ use std::sync::Arc;
 use acro_ecs::Application;
 use winit::{
     application::ApplicationHandler,
+    dpi::PhysicalSize,
     event::{self, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
+    platform::x11::WindowAttributesExtX11,
 };
 
 use crate::{
@@ -46,6 +48,7 @@ impl Window {
             event_loop
                 .create_window(
                     winit::window::Window::default_attributes()
+                        .with_inner_size(PhysicalSize::new(800, 600))
                         .with_title("acro")
                         .with_visible(false),
                 )

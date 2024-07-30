@@ -1,3 +1,4 @@
+mod camera;
 mod mesh;
 mod shader;
 mod state;
@@ -6,6 +7,7 @@ mod window;
 use std::cell::RefCell;
 
 pub use crate::{
+    camera::{Camera, CameraType, MainCamera},
     mesh::{Mesh, Vertex},
     shader::Shaders,
 };
@@ -20,6 +22,8 @@ pub struct RenderPlugin;
 impl Plugin for RenderPlugin {
     fn build(&mut self, app: &mut Application) {
         app.world().init_component::<Mesh>();
+        app.world().init_component::<Camera>();
+        app.world().init_component::<MainCamera>();
 
         let window = Window::new();
         app.set_runner(move |app| {

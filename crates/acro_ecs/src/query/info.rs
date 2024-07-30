@@ -1,6 +1,7 @@
 use std::{cell::RefCell, collections::HashSet, ptr::NonNull};
 
 use itertools::Itertools;
+use tracing::warn;
 
 use crate::{
     archetype::{Archetype, ArchetypeId},
@@ -17,7 +18,7 @@ use super::{
 
 #[derive(Debug)]
 pub struct QueryInfo {
-    pub(super) archetypes_generation: usize,
+    pub(super) archetypes_generation: RefCell<usize>,
     pub(super) archetypes: RefCell<Vec<ArchetypeId>>,
     pub(super) components: Vec<QueryComponentInfo>,
     pub(super) component_ids: Vec<ComponentId>,
@@ -25,7 +26,8 @@ pub struct QueryInfo {
 
 impl QueryInfo {
     pub fn recompute_archetypes<F: QueryFilter>(&self, world: &World) {
-        *self.archetypes.borrow_mut() = find_archetypes::<F>(world, &self.components);
+        let archetypes = find_archetypes::<F>(world, &self.components);
+        *self.archetypes.borrow_mut() = archetypes;
     }
 }
 
@@ -166,7 +168,7 @@ macro_rules! impl_to_query_info {
             fn to_query_info<F: QueryFilter>(world: &World) -> QueryInfo {
                 let components = vec![$(get_full_component_info::<$members>(world),)*];
                 QueryInfo {
-                    archetypes_generation: world.archetypes.generation,
+                    archetypes_generation: RefCell::new(world.archetypes.generation),
                     archetypes: RefCell::new(find_archetypes::<F>(world, &components)),
                     component_ids: components.iter()
                         .filter(|c| c.is_component())
@@ -217,7 +219,7 @@ impl<'w, T1: QueryInfoUtils + QueryTransform<InputOrCreate = T1>> ToQueryInfo fo
     fn to_query_info<F: QueryFilter>(world: &World) -> QueryInfo {
         let components = vec![get_full_component_info::<T1>(world)];
         QueryInfo {
-            archetypes_generation: world.archetypes.generation,
+            archetypes_generation: RefCell::new(world.archetypes.generation),
             archetypes: RefCell::new(find_archetypes::<F>(world, &components)),
             component_ids: components
                 .iter()

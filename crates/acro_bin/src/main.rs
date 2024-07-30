@@ -1,7 +1,7 @@
 use acro_ecs::{Application, Plugin, Query, Stage, SystemRunContext, With};
 use acro_log::LogPlugin;
 use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
-use acro_render::{Mesh, RenderPlugin, Vertex};
+use acro_render::{Camera, CameraType, MainCamera, Mesh, RenderPlugin, Vertex};
 
 fn update(ctx: SystemRunContext, query: Query<&mut Transform, With<Mesh>>) {
     for mut transform in query.over(&ctx) {
@@ -35,6 +35,26 @@ impl Plugin for TestPlugin {
             ),
             GlobalTransform::default(),
             Transform::default(),
+            Parent(root),
+            Children(vec![]),
+        ));
+
+        world.spawn((
+            Camera::new(
+                CameraType::Perspective {
+                    fov: 70.0,
+                    near: 0.01,
+                    far: 1_000.0,
+                },
+                800,
+                600,
+            ),
+            MainCamera,
+            GlobalTransform::default(),
+            Transform {
+                position: [0.0, 0.0, -2.0].into(),
+                ..Default::default()
+            },
             Parent(root),
             Children(vec![]),
         ));

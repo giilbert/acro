@@ -6,6 +6,7 @@ mod utils;
 
 pub use filters::{Changed, Or, QueryFilter, With, Without};
 pub use info::{QueryInfo, ToQueryInfo};
+use tracing::info;
 
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 
@@ -26,7 +27,7 @@ pub struct Query<T: ToQueryInfo, F: QueryFilter = ()> {
 impl<T, F> Query<T, F>
 where
     T: ToQueryInfo,
-    F: QueryFilter,
+    F: QueryFilter + 'static,
 {
     pub fn new<TData, TFilters>(world: &World) -> Query<TData, TFilters>
     where
@@ -41,13 +42,24 @@ where
         }
     }
 
+    pub fn check_archetypes(&self, world: &World) {
+        if *self.info.archetypes_generation.borrow() < world.archetypes.generation {
+            self.info.recompute_archetypes::<F>(world);
+            *self.info.archetypes_generation.borrow_mut() = world.archetypes.generation;
+        }
+    }
+
+    pub fn get_single(&self, ctx: &SystemRunContext) -> Option<<T as ToQueryInfo>::Output> {
+        self.over(ctx).next()
+    }
+
+    pub fn single(&self, ctx: &SystemRunContext) -> <T as ToQueryInfo>::Output {
+        self.get_single(&ctx).expect("query returned no results")
+    }
+
     pub fn over<'w, 'q>(&'q self, ctx: impl IntoSystemRunContext<'w>) -> QueryIter<'w, 'q, T, F> {
         let ctx = ctx.into_system_run_context();
-
-        if self.info.archetypes_generation != ctx.world.archetypes.generation {
-            self.info.recompute_archetypes::<F>(ctx.world);
-        }
-
+        self.check_archetypes(ctx.world);
         QueryIter::new(ctx, self)
     }
 

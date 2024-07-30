@@ -91,7 +91,7 @@ impl World {
     pub fn query<T, F>(&mut self) -> Query<T, F>
     where
         T: ToQueryInfo,
-        F: QueryFilter,
+        F: QueryFilter + 'static,
     {
         Query::<T, F>::new(self)
     }

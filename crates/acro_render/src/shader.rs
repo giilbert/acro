@@ -13,6 +13,7 @@ pub struct Shader {
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum BindGroupId {
     ModelMatrix,
+    ViewProjectionMatrix,
     Custom(String),
 }
 
@@ -26,6 +27,8 @@ pub struct BindGroupData {
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum UniformId {
     ModelMatrix,
+    ViewMatrix,
+    ProjectionMatrix,
     Custom(String),
 }
 
@@ -150,14 +153,31 @@ pub struct UniformOptions {
 impl ShaderOptions {
     pub fn mesh_defaults() -> Self {
         Self {
-            bind_groups: vec![BindGroupOptions {
-                id: BindGroupId::ModelMatrix,
-                uniforms: vec![UniformOptions {
-                    id: UniformId::ModelMatrix,
-                    stage: wgpu::ShaderStages::VERTEX,
-                    uniform_type: UniformType::Mat4,
-                }],
-            }],
+            bind_groups: vec![
+                BindGroupOptions {
+                    id: BindGroupId::ModelMatrix,
+                    uniforms: vec![UniformOptions {
+                        id: UniformId::ModelMatrix,
+                        stage: wgpu::ShaderStages::VERTEX,
+                        uniform_type: UniformType::Mat4,
+                    }],
+                },
+                BindGroupOptions {
+                    id: BindGroupId::ViewProjectionMatrix,
+                    uniforms: vec![
+                        UniformOptions {
+                            id: UniformId::ViewMatrix,
+                            stage: wgpu::ShaderStages::VERTEX,
+                            uniform_type: UniformType::Mat4,
+                        },
+                        UniformOptions {
+                            id: UniformId::ProjectionMatrix,
+                            stage: wgpu::ShaderStages::VERTEX,
+                            uniform_type: UniformType::Mat4,
+                        },
+                    ],
+                },
+            ],
         }
     }
 }
