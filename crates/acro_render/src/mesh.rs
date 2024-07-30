@@ -3,11 +3,10 @@ use acro_ecs::{Changed, EntityId, Query, Res, SystemRunContext, With};
 use acro_math::{GlobalTransform, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
-use tracing::info;
 use wgpu::util::DeviceExt;
 
 use crate::{
-    camera::{self, MainCamera},
+    camera::MainCamera,
     shader::{BindGroupId, Shader, UniformId},
     Camera, RendererHandle,
 };
@@ -47,11 +46,15 @@ unsafe impl Pod for Vertex {}
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
-    pub(crate) is_dirty: bool,
-    pub(crate) vertex_buffer: Option<wgpu::Buffer>,
-    pub(crate) index_buffer: Option<wgpu::Buffer>,
-    pub(crate) render_pipeline: Option<wgpu::RenderPipeline>,
     pub(crate) shader_name: String,
+    pub(crate) data: Option<MeshData>,
+}
+
+#[derive(Debug)]
+pub(crate) struct MeshData {
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) index_buffer: wgpu::Buffer,
+    pub(crate) render_pipeline: wgpu::RenderPipeline,
 }
 
 impl Mesh {
@@ -59,11 +62,8 @@ impl Mesh {
         Self {
             vertices,
             indices,
-            is_dirty: true,
-            vertex_buffer: None,
-            index_buffer: None,
-            render_pipeline: None,
             shader_name: shader_name.to_string(),
+            data: None,
         }
     }
 }
@@ -152,10 +152,11 @@ pub fn upload_mesh_system(
             multiview: None,
         });
 
-        mesh.is_dirty = false;
-        mesh.vertex_buffer = Some(vertex_buffer);
-        mesh.index_buffer = Some(index_buffer);
-        mesh.render_pipeline = Some(render_pipeline);
+        mesh.data = Some(MeshData {
+            vertex_buffer,
+            index_buffer,
+            render_pipeline,
+        });
     }
 }
 
@@ -173,6 +174,7 @@ pub fn render_mesh_system(
     let (camera_transform, camera) = camera_query.single(&ctx);
 
     for (global_transform, mesh) in mesh_query.over(&ctx) {
+        let data = mesh.data.as_ref().expect("mesh data not loaded");
         let shader = assets.get::<Shader>(&mesh.shader_name);
 
         let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -190,7 +192,7 @@ pub fn render_mesh_system(
             timestamp_writes: None,
         });
 
-        mesh_render_pass.set_pipeline(&mesh.render_pipeline.as_ref().expect("no render pipeline"));
+        mesh_render_pass.set_pipeline(&data.render_pipeline);
 
         // Update model matrix uniform
         let model_matrix_bind_group = shader
@@ -233,11 +235,8 @@ pub fn render_mesh_system(
         );
         mesh_render_pass.set_bind_group(1, &view_projection_matrix_bind_group.bind_group, &[]);
 
-        mesh_render_pass.set_vertex_buffer(0, mesh.vertex_buffer.as_ref().unwrap().slice(..));
-        mesh_render_pass.set_index_buffer(
-            mesh.index_buffer.as_ref().unwrap().slice(..),
-            wgpu::IndexFormat::Uint32,
-        );
+        mesh_render_pass.set_vertex_buffer(0, data.vertex_buffer.slice(..));
+        mesh_render_pass.set_index_buffer(data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         mesh_render_pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
     }
 }
