@@ -4,7 +4,10 @@ use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
 use wgpu::util::DeviceExt;
 
-use crate::{RendererHandle, Shaders};
+use crate::{
+    shader::{BindGroupId, UniformId},
+    RendererHandle, Shaders,
+};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -95,7 +98,11 @@ pub fn upload_mesh_system(
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&shader.model_matrix_bind_group_layout],
+                bind_group_layouts: &[&shader
+                    .bind_groups
+                    .get(&BindGroupId::ModelMatrix)
+                    .expect("model matrix bind group not found")
+                    .bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -105,15 +112,7 @@ pub fn upload_mesh_system(
             vertex: wgpu::VertexState {
                 module,
                 entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[wgpu::VertexAttribute {
-                        offset: 0,
-                        shader_location: 0,
-                        format: VERTEX_FORMAT,
-                    }],
-                }],
+                buffers: &[Vertex::layout()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -182,12 +181,21 @@ pub fn render_mesh_system(
 
         mesh_render_pass.set_pipeline(&mesh.render_pipeline.as_ref().expect("no render pipeline"));
 
+        // Update model matrix uniform
+        let model_matrix_bind_group = shader
+            .bind_groups
+            .get(&BindGroupId::ModelMatrix)
+            .expect("model matrix bind group not found");
+        let model_matrix_uniform = model_matrix_bind_group
+            .uniforms
+            .get(&UniformId::ModelMatrix)
+            .expect("model matrix uniform not found");
         renderer.queue.write_buffer(
-            &shader.model_matrix_buffer,
+            &model_matrix_uniform.buffer,
             0,
             bytemuck::cast_slice(global_transform.matrix.as_slice()),
         );
-        mesh_render_pass.set_bind_group(0, &shader.model_matrix_bind_group, &[]);
+        mesh_render_pass.set_bind_group(0, &model_matrix_bind_group.bind_group, &[]);
 
         mesh_render_pass.set_vertex_buffer(0, mesh.vertex_buffer.as_ref().unwrap().slice(..));
         mesh_render_pass.set_index_buffer(
