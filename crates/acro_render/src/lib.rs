@@ -33,6 +33,7 @@ impl Plugin for RenderPlugin {
             let mut assets = world.resources().get_mut::<Assets>();
             assets.register_loader::<Shader>();
             assets.register_loader::<Texture>();
+            assets.queue::<Texture>("crates/acro_render/src/textures/ferris.png");
             assets.queue::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
         }
 

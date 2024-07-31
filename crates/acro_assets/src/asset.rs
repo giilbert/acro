@@ -16,6 +16,15 @@ pub struct Asset<T: Loadable> {
     pub(crate) notify_changes: Arc<RwLock<HashMap<EntityId, HashSet<ComponentId>>>>,
 }
 
+impl<T: Loadable> Clone for Asset<T> {
+    fn clone(&self) -> Self {
+        Self {
+            data: Arc::clone(&self.data),
+            notify_changes: Arc::clone(&self.notify_changes),
+        }
+    }
+}
+
 impl<T: Loadable> Deref for Asset<T> {
     type Target = T;
 

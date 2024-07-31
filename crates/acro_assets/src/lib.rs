@@ -131,7 +131,7 @@ impl Assets {
         });
     }
 
-    pub fn process_queue(&mut self, ctx: &SystemRunContext) {
+    pub fn process_queue(&self, ctx: &SystemRunContext) {
         let mut queue = self.queue.lock();
         while let Some(asset) = queue.pop_front() {
             let file_content = std::fs::read(&asset.path).expect("failed to read file");
@@ -229,7 +229,7 @@ impl Assets {
 
 fn load_queued_system(ctx: SystemRunContext) {
     let world = &ctx.world;
-    let mut assets = world.resources().get_mut::<Assets>();
+    let mut assets = world.resources().get::<Assets>();
     assets.process_queue(&ctx);
 }
 

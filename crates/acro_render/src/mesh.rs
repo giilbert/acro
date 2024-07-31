@@ -3,6 +3,7 @@ use acro_ecs::{Changed, EntityId, Query, Res, SystemRunContext, With};
 use acro_math::{GlobalTransform, Vec2, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
+use tracing::info;
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -113,12 +114,6 @@ pub fn upload_mesh_system(
         let shader = assets.get::<Shader>(&mesh.shader_path);
         shader.notify_changes::<Mesh>(&ctx, entity);
 
-        let texture = mesh.diffuse_texture.as_ref().map(|path| {
-            let texture = assets.get::<Texture>(path);
-            texture.notify_changes::<Mesh>(&ctx, entity);
-            texture
-        });
-
         let module = &shader.module;
 
         let render_pipeline_layout =
@@ -211,8 +206,6 @@ pub fn render_mesh_system(
             .as_ref()
             .map(|path| assets.get::<Texture>(path));
 
-        let texture = texture.expect("diffuse texture not found");
-
         {
             let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -240,7 +233,7 @@ pub fn render_mesh_system(
                 .get(&UniformId::ModelMatrix)
                 .expect("model matrix uniform not found");
             renderer.queue.write_buffer(
-                &model_matrix_uniform.data,
+                &model_matrix_uniform.data_type.assert_buffer(),
                 0,
                 bytemuck::cast_slice(global_transform.matrix.as_slice()),
             );
@@ -256,7 +249,7 @@ pub fn render_mesh_system(
                 .get(&UniformId::ViewMatrix)
                 .expect("view matrix uniform not found");
             renderer.queue.write_buffer(
-                &view_matrix_uniform.data,
+                &view_matrix_uniform.data_type.assert_buffer(),
                 0,
                 bytemuck::cast_slice(camera_transform.matrix.as_slice()),
             );
@@ -265,7 +258,7 @@ pub fn render_mesh_system(
                 .get(&UniformId::ProjectionMatrix)
                 .expect("projection matrix uniform not found");
             renderer.queue.write_buffer(
-                &projection_matrix_uniform.data,
+                &projection_matrix_uniform.data_type.assert_buffer(),
                 0,
                 bytemuck::cast_slice(camera.projection_matrix.as_slice()),
             );
@@ -274,7 +267,7 @@ pub fn render_mesh_system(
             let texture_bind_group = shader
                 .bind_groups
                 .get(&BindGroupId::DiffuseTexture)
-                .expect("view-projection matrix bind group not found");
+                .expect("diffuse texture bind group not found");
             mesh_render_pass.set_bind_group(2, &texture_bind_group.bind_group, &[]);
 
             mesh_render_pass.set_vertex_buffer(0, data.vertex_buffer.slice(..));

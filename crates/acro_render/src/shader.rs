@@ -1,10 +1,10 @@
 use std::{borrow::Cow, collections::HashMap, ops::Deref, sync::Arc};
 
-use acro_assets::Loadable;
+use acro_assets::{Asset, Assets, Loadable};
 use acro_ecs::World;
 use acro_math::{Float, Mat4};
 
-use crate::state::RendererHandle;
+use crate::{state::RendererHandle, Texture};
 
 #[derive(Debug)]
 pub struct Shader {
@@ -41,18 +41,23 @@ pub enum UniformId {
 pub struct UniformData {
     pub(crate) index: u32,
     pub(crate) stage: wgpu::ShaderStages,
-    pub(crate) data: UniformDataType,
+    pub(crate) data_type: UniformDataType,
 }
 
 #[derive(Debug)]
 pub enum UniformDataType {
     Buffer(wgpu::Buffer),
-    Texture(wgpu::Texture),
-    Sampler(wgpu::Sampler),
+    Texture(Asset<Texture>),
+    Sampler(Asset<Texture>),
 }
 
 impl Shader {
-    pub fn new(renderer: &RendererHandle, source: impl ToString, options: ShaderOptions) -> Self {
+    pub fn new(
+        renderer: &RendererHandle,
+        diffuse_texture: Asset<Texture>,
+        source: impl ToString,
+        options: ShaderOptions,
+    ) -> Self {
         let module = renderer
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -67,8 +72,28 @@ impl Shader {
             for (index, uniform_options) in bind_groups_options.uniforms.iter().enumerate() {
                 let (size, label) = match uniform_options.uniform_type {
                     UniformType::Mat4 => (std::mem::size_of::<Mat4>() as u64, "Mat4"),
-                    UniformType::Sampler => continue,
-                    UniformType::Texture2D => continue,
+                    UniformType::Sampler => {
+                        uniform_data.insert(
+                            uniform_options.id.clone(),
+                            UniformData {
+                                index: index as u32,
+                                stage: uniform_options.stage,
+                                data_type: UniformDataType::Sampler(diffuse_texture.clone()),
+                            },
+                        );
+                        continue;
+                    }
+                    UniformType::Texture2D => {
+                        uniform_data.insert(
+                            uniform_options.id.clone(),
+                            UniformData {
+                                index: index as u32,
+                                stage: uniform_options.stage,
+                                data_type: UniformDataType::Texture(diffuse_texture.clone()),
+                            },
+                        );
+                        continue;
+                    }
                 };
 
                 let buffer = renderer.device.create_buffer(&wgpu::BufferDescriptor {
@@ -83,7 +108,7 @@ impl Shader {
                     UniformData {
                         index: index as u32,
                         stage: uniform_options.stage,
-                        data: UniformDataType::Buffer(buffer),
+                        data_type: UniformDataType::Buffer(buffer),
                     },
                 );
             }
@@ -139,9 +164,21 @@ impl Shader {
                     layout: &bind_group_layout,
                     entries: &uniform_data
                         .values()
-                        .map(|data| wgpu::BindGroupEntry {
-                            binding: data.index,
-                            resource: data.data.as_entire_binding(),
+                        .map(|data| match &data.data_type {
+                            UniformDataType::Buffer(buffer) => wgpu::BindGroupEntry {
+                                binding: data.index,
+                                resource: buffer.as_entire_binding(),
+                            },
+                            UniformDataType::Sampler(_) => wgpu::BindGroupEntry {
+                                binding: data.index,
+                                resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                            },
+                            UniformDataType::Texture(_) => wgpu::BindGroupEntry {
+                                binding: data.index,
+                                resource: wgpu::BindingResource::TextureView(
+                                    &diffuse_texture.texture_view,
+                                ),
+                            },
                         })
                         .collect::<Vec<_>>(),
                     label: Some(format!("{:?} bind group", bind_groups_options.id).as_str()),
@@ -166,12 +203,28 @@ impl Shader {
 
 impl Loadable for Shader {
     fn load(world: &World, data: Vec<u8>) -> Result<Self, ()> {
+        // TODO: Add asset dependencies (a foolproof way to ensure all assets are loaded in order)
+        let texture = world
+            .resources()
+            .get::<Assets>()
+            .get::<Texture>("crates/acro_render/src/textures/ferris.png");
+
         let renderer = world.resources().get::<RendererHandle>();
         Ok(Shader::new(
             &renderer,
+            texture,
             String::from_utf8_lossy(&data),
             ShaderOptions::mesh_defaults(),
         ))
+    }
+}
+
+impl UniformDataType {
+    pub fn assert_buffer(&self) -> &wgpu::Buffer {
+        match self {
+            Self::Buffer(buffer) => buffer,
+            _ => panic!("Expected buffer, found texture or sampler"),
+        }
     }
 }
 

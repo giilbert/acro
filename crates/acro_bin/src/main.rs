@@ -18,29 +18,28 @@ impl Plugin for TestPlugin {
 
         let root = world.spawn((Root, GlobalTransform::default(), Transform::default()));
 
-        world
-            .resources()
-            .get_mut::<Assets>()
-            .queue::<Texture>("crates/acro_render/src/textures/ferris.jpeg");
-
         world.spawn((
             Mesh::new(
                 vec![
                     Vertex {
-                        position: [-0.5, -0.5, 0.0].into(),
-                        tex_coords: [0.0, 0.0].into(),
+                        position: [-1.0, -1.0, 0.0].into(),
+                        tex_coords: [0.0, 1.0].into(),
                     },
                     Vertex {
-                        position: [0.5, -0.5, 0.0].into(),
+                        position: [1.0, -1.0, 0.0].into(),
+                        tex_coords: [1.0, 1.0].into(),
+                    },
+                    Vertex {
+                        position: [1.0, 1.0, 0.0].into(),
                         tex_coords: [1.0, 0.0].into(),
                     },
                     Vertex {
-                        position: [0.0, 0.5, 0.0].into(),
-                        tex_coords: [0.5, 1.0].into(),
+                        position: [-1.0, 1.0, 0.0].into(),
+                        tex_coords: [0.0, 0.0].into(),
                     },
                 ],
-                vec![0, 1, 2],
-                Some("crates/acro_render/src/textures/ferris.jpeg"),
+                vec![0, 1, 2, 0, 2, 3],
+                Some("crates/acro_render/src/textures/ferris.png"),
                 "crates/acro_render/src/shaders/basic-mesh.wgsl",
             ),
             GlobalTransform::default(),
@@ -62,7 +61,7 @@ impl Plugin for TestPlugin {
             MainCamera,
             GlobalTransform::default(),
             Transform {
-                position: [0.0, 0.0, -2.0].into(),
+                position: [0.0, 0.0, -4.0].into(),
                 ..Default::default()
             },
             Parent(root),

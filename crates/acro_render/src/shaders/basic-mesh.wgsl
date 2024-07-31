@@ -23,6 +23,7 @@ fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
+    out.tex_coords = model.tex_coords;
     out.clip_position = projection_matrix * view_matrix * model_matrix * vec4<f32>(model.position, 1.0);
     return out;
 }

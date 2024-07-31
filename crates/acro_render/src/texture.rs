@@ -1,9 +1,11 @@
 use acro_assets::Loadable;
 use acro_ecs::World;
 use image::GenericImageView;
+use tracing::info;
 
 use crate::state::RendererHandle;
 
+#[derive(Debug)]
 pub struct Texture {
     pub(crate) texture_view: wgpu::TextureView,
     pub(crate) sampler: wgpu::Sampler,
@@ -19,6 +21,7 @@ impl Loadable for Texture {
 
         let renderer = world.resources().get::<RendererHandle>();
 
+        info!("Loaded image with dimensions {:?}", dimensions);
         let texture_size = wgpu::Extent3d {
             width: dimensions.0,
             height: dimensions.1,
