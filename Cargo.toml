@@ -3,6 +3,6 @@ resolver = "2"
 members = [ "crates/acro_assets",
     "crates/acro_bin",
     "crates/acro_ecs", "crates/acro_log",
-    "crates/acro_math",
+    "crates/acro_math", "crates/acro_reflect",
     "crates/acro_render",
 ]
