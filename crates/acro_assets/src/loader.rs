@@ -1,10 +1,9 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::sync::Arc;
 
-use acro_ecs::{SystemRunContext, World};
-use parking_lot::Mutex;
+use acro_ecs::SystemRunContext;
 use serde::de::DeserializeOwned;
 
-use crate::{Asset, AssetLoader, Assets, QueuedAsset};
+use crate::{Asset, Assets};
 
 pub struct LoaderContext<'w, 'a> {
     pub current_asset: &'a str,
@@ -19,7 +18,7 @@ where
     type Config: DeserializeOwned + Send + Sync;
 
     // TODO: Handle errors
-    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()>;
+    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> eyre::Result<Self>;
 }
 
 impl<'w, 'l> LoaderContext<'w, 'l> {

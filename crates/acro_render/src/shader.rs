@@ -204,8 +204,7 @@ impl Shader {
 impl Loadable for Shader {
     type Config = ShaderOptions;
 
-    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()> {
-        // TODO: Add asset dependencies (a foolproof way to ensure all assets are loaded in order)
+    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> eyre::Result<Self> {
         let texture = ctx.load_dependent(ctx, &config.diffuse_texture);
 
         let renderer = ctx

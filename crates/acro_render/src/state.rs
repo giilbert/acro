@@ -1,16 +1,10 @@
 use std::{
-    cell::{Ref, RefCell, RefMut},
+    cell::{Ref, RefCell},
     ops::Deref,
-    rc::Rc,
     sync::Arc,
 };
 
-use parking_lot::{
-    lock_api::{MappedMutexGuard, MappedRwLockReadGuard},
-    Mutex, MutexGuard, RawMutex, RawRwLock, RwLock, RwLockReadGuard,
-};
 use tracing::info;
-use wgpu::hal::SurfaceConfiguration;
 use winit::dpi::PhysicalSize;
 
 #[derive(Debug, Clone)]

@@ -17,9 +17,9 @@ impl Loadable for Texture {
     // TODO: this
     type Config = String;
 
-    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()> {
+    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> eyre::Result<Self> {
         // TODO: error handling
-        let image = image::load_from_memory(&data).map_err(|_| ())?;
+        let image = image::load_from_memory(&data)?;
         let image_rgba = image.to_rgba8();
 
         let dimensions = image.dimensions();
@@ -31,6 +31,7 @@ impl Loadable for Texture {
             .get::<RendererHandle>();
 
         info!("Loaded image with dimensions {:?}", dimensions);
+
         let texture_size = wgpu::Extent3d {
             width: dimensions.0,
             height: dimensions.1,

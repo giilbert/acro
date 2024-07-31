@@ -54,7 +54,7 @@ pub struct AnyAssetData {
     // When this asset is reloaded, notify these assets
     notify_assets: Arc<RwLock<HashSet<AssetId>>>,
 }
-pub type AssetLoader = Arc<dyn Fn(&LoaderContext, Vec<u8>, Vec<u8>) -> AnyAssetData>;
+pub type AssetLoader = Arc<dyn Fn(&LoaderContext, Vec<u8>, Vec<u8>) -> eyre::Result<AnyAssetData>>;
 
 struct QueuedAsset {
     type_id: TypeId,
@@ -167,7 +167,7 @@ impl Assets {
         system_run_context: &SystemRunContext,
         type_id: TypeId,
         path: &str,
-    ) -> AnyAssetData {
+    ) -> eyre::Result<AnyAssetData> {
         let options_file_content =
             std::fs::read(&format!("{}.meta", path)).expect("failed to read options file");
         let asset_file_content = std::fs::read(&path).expect("failed to read asset file");
@@ -194,12 +194,25 @@ impl Assets {
 
             let mut data = self.data.write();
 
-            match asset.queue_type {
-                QueueType::Init => {
+            match (new_asset_data, asset.queue_type) {
+                (Err(e), QueueType::Init) => {
+                    error!(
+                        "failed to load asset for the first time: {}:\n{:?}",
+                        asset.path, e
+                    );
+                    std::process::exit(1);
+                }
+                (Ok(new_asset_data), QueueType::Init) => {
                     data.insert(asset.path.clone(), new_asset_data);
                     info!("asset loaded: {}", asset.path);
                 }
-                QueueType::Reload => {
+                (Err(e), QueueType::Reload) => {
+                    error!(
+                        "failed to reload asset. keeping old asset: {}:\n{:?}",
+                        asset.path, e
+                    );
+                }
+                (Ok(new_asset_data), QueueType::Reload) => {
                     let existing_asset = data.get_mut(&asset.path).expect("asset not loaded");
                     existing_asset.data = new_asset_data.data;
 
@@ -292,20 +305,15 @@ impl Assets {
         self.asset_loaders.insert(
             TypeId::of::<T>(),
             Arc::new(|ctx, config, data| {
-                let config = Arc::new(
-                    ron::de::from_bytes::<T::Config>(&config)
-                        .expect("failed to deserialize config"),
-                );
+                let config = Arc::new(ron::de::from_bytes::<T::Config>(&config)?);
 
-                AnyAssetData {
-                    data: Arc::new(
-                        T::load(ctx, Arc::clone(&config), data).expect("failed to load asset"),
-                    ),
+                T::load(ctx, Arc::clone(&config), data).map(|data| AnyAssetData {
+                    data: Arc::new(data),
                     config,
                     id: TypeId::of::<T>(),
                     notify_components: Default::default(),
                     notify_assets: Default::default(),
-                }
+                })
             }),
         );
     }
