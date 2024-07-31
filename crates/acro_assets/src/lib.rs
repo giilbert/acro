@@ -8,7 +8,10 @@ use std::{
     sync::Arc,
 };
 
-pub use crate::{asset::Asset, loader::Loadable};
+pub use crate::{
+    asset::Asset,
+    loader::{Loadable, LoaderContext},
+};
 pub use serde;
 
 use acro_ecs::{
@@ -19,10 +22,13 @@ use notify::{event::AccessKind, EventKind, RecursiveMode, Watcher};
 use parking_lot::{Mutex, RwLock};
 use tracing::{error, info};
 
+// TODO: better type?
+type AssetId = String;
+
 pub struct Assets {
     queue: Arc<Mutex<VecDeque<QueuedAsset>>>,
-    data: Arc<RwLock<HashMap<String, AnyAssetData>>>,
-    watcher: notify::RecommendedWatcher,
+    data: Arc<RwLock<HashMap<AssetId, AnyAssetData>>>,
+    watcher: Mutex<notify::RecommendedWatcher>,
     asset_loaders: HashMap<TypeId, AssetLoader>,
 }
 
@@ -43,9 +49,12 @@ pub struct AnyAssetData {
     id: TypeId,
     config: AnyShared,
     data: AnyShared,
-    notify_changes: Arc<RwLock<HashMap<EntityId, HashSet<ComponentId>>>>,
+    // When this asset is reloaded, notify these components
+    notify_components: Arc<RwLock<HashMap<EntityId, HashSet<ComponentId>>>>,
+    // When this asset is reloaded, notify these assets
+    notify_assets: Arc<RwLock<HashSet<AssetId>>>,
 }
-pub type AssetLoader = Arc<dyn Fn(&World, Vec<u8>, Vec<u8>) -> AnyAssetData>;
+pub type AssetLoader = Arc<dyn Fn(&LoaderContext, Vec<u8>, Vec<u8>) -> AnyAssetData>;
 
 struct QueuedAsset {
     type_id: TypeId,
@@ -122,70 +131,82 @@ impl Assets {
         Self {
             queue,
             data,
-            watcher,
+            watcher: Mutex::new(watcher),
             asset_loaders: HashMap::new(),
         }
     }
 
-    pub fn queue<T: Loadable>(&mut self, path: &str) {
-        let path = path.to_string();
-
+    fn watch(&self, path: &str) {
         self.watcher
-            .watch(Path::new(path.as_str()), RecursiveMode::NonRecursive)
+            .lock()
+            .watch(Path::new(path), RecursiveMode::NonRecursive)
             .expect("failed to watch file");
         // Also watch the config file
         self.watcher
+            .lock()
             .watch(
                 Path::new(format!("{}.meta", &path).as_str()),
                 RecursiveMode::NonRecursive,
             )
             .expect("failed to watch file");
+    }
 
+    pub fn queue<T: Loadable>(&self, path: &str) {
+        self.watch(path);
+
+        // TODO: asset ids
         self.queue.lock().push_back(QueuedAsset {
             type_id: TypeId::of::<T>(),
-            path: path.clone(),
+            path: path.to_string(),
             queue_type: QueueType::Init,
         });
     }
 
+    fn load_data(
+        &self,
+        system_run_context: &SystemRunContext,
+        type_id: TypeId,
+        path: &str,
+    ) -> AnyAssetData {
+        let options_file_content =
+            std::fs::read(&format!("{}.meta", path)).expect("failed to read options file");
+        let asset_file_content = std::fs::read(&path).expect("failed to read asset file");
+
+        (self
+            .asset_loaders
+            .get(&type_id)
+            .expect("asset does not exist"))(
+            &LoaderContext {
+                current_asset: path,
+                assets: self,
+                system_run_context,
+            },
+            options_file_content,
+            asset_file_content,
+        )
+    }
+
     pub fn process_queue(&self, ctx: &SystemRunContext) {
         let mut queue = self.queue.lock();
-        while let Some(asset) = queue.pop_front() {
-            let options_file_content = std::fs::read(&format!("{}.meta", asset.path))
-                .expect("failed to read options file");
-            let asset_file_content = std::fs::read(&asset.path).expect("failed to read asset file");
 
-            let new_asset = (self
-                .asset_loaders
-                .get(&asset.type_id)
-                .expect("asset does not exist"))(
-                ctx.world,
-                options_file_content,
-                asset_file_content,
-            );
+        while let Some(asset) = queue.pop_front() {
+            let new_asset_data = self.load_data(&ctx, asset.type_id, &asset.path);
 
             let mut data = self.data.write();
 
             match asset.queue_type {
                 QueueType::Init => {
-                    data.insert(
-                        asset.path.clone(),
-                        AnyAssetData {
-                            data: new_asset.data,
-                            config: new_asset.config,
-                            id: asset.type_id,
-                            notify_changes: Default::default(),
-                        },
-                    );
-
+                    data.insert(asset.path.clone(), new_asset_data);
                     info!("asset loaded: {}", asset.path);
                 }
                 QueueType::Reload => {
-                    let old_asset = data.get_mut(&asset.path).expect("asset not loaded");
-                    old_asset.data = new_asset.data;
+                    let existing_asset = data.get_mut(&asset.path).expect("asset not loaded");
+                    existing_asset.data = new_asset_data.data;
 
+                    // Notify components that this asset changed
                     let mut component_count = 0;
-                    for (&entity, components) in old_asset.notify_changes.write().iter_mut() {
+                    for (&entity, components) in existing_asset.notify_components.write().iter_mut()
+                    {
                         let mut components_to_remove = vec![];
 
                         for &component_id in components.iter() {
@@ -211,10 +232,24 @@ impl Assets {
                         }
                     }
 
+                    // Notify other assets that this asset changed by reloading them
+                    let notify_assets = existing_asset.notify_assets.clone();
+                    let mut notify_assets_count = 0;
+                    for asset_id in notify_assets.write().iter() {
+                        notify_assets_count += 1;
+                        let to_notify = data.get(asset_id).expect("asset not loaded");
+                        queue.push_back(QueuedAsset {
+                            type_id: to_notify.id,
+                            path: asset_id.clone(),
+                            queue_type: QueueType::Reload,
+                        });
+                    }
+
                     info!(
-                        "asset reloaded: {} (notified {component_count} component{})",
+                        "asset reloaded: {} (notified {component_count} component{} and {notify_assets_count} asset{})",
                         asset.path,
                         if component_count == 1 { "" } else { "s" },
+                        if notify_assets_count == 1 { "" } else { "s" },
                     );
                 }
             }
@@ -234,14 +269,29 @@ impl Assets {
                 .clone()
                 .downcast()
                 .expect("failed to downcast asset"),
-            notify_changes: asset.notify_changes.clone(),
+            notify_changes: asset.notify_components.clone(),
         }
+    }
+
+    pub fn get_or_load<T: Loadable>(&self, ctx: &LoaderContext, path: &str) -> Asset<T> {
+        if !self.data.read().contains_key(path) {
+            self.queue::<T>(path);
+            self.process_queue(ctx.system_run_context);
+        }
+
+        self.get(path)
+    }
+
+    pub fn add_notify_asset(&self, asset: &str, notify: &str) {
+        let mut data = self.data.write();
+        let asset_data = data.get_mut(asset).expect("asset not loaded");
+        asset_data.notify_assets.write().insert(notify.to_string());
     }
 
     pub fn register_loader<T: Loadable>(&mut self) {
         self.asset_loaders.insert(
             TypeId::of::<T>(),
-            Arc::new(|world, config, data| {
+            Arc::new(|ctx, config, data| {
                 let config = Arc::new(
                     ron::de::from_bytes::<T::Config>(&config)
                         .expect("failed to deserialize config"),
@@ -249,11 +299,12 @@ impl Assets {
 
                 AnyAssetData {
                     data: Arc::new(
-                        T::load(world, Arc::clone(&config), data).expect("failed to load asset"),
+                        T::load(ctx, Arc::clone(&config), data).expect("failed to load asset"),
                     ),
                     config,
                     id: TypeId::of::<T>(),
-                    notify_changes: Default::default(),
+                    notify_components: Default::default(),
+                    notify_assets: Default::default(),
                 }
             }),
         );
@@ -262,7 +313,7 @@ impl Assets {
 
 fn load_queued_system(ctx: SystemRunContext) {
     let world = &ctx.world;
-    let mut assets = world.resources().get::<Assets>();
+    let assets = world.resources().get::<Assets>();
     assets.process_queue(&ctx);
 }
 

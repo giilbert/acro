@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use acro_assets::Loadable;
+use acro_assets::{Loadable, LoaderContext};
 use acro_ecs::World;
 use image::GenericImageView;
 use tracing::info;
@@ -15,16 +15,20 @@ pub struct Texture {
 
 impl Loadable for Texture {
     // TODO: this
-    type Config = ();
+    type Config = String;
 
-    fn load(world: &World, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()> {
+    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()> {
         // TODO: error handling
         let image = image::load_from_memory(&data).map_err(|_| ())?;
         let image_rgba = image.to_rgba8();
 
         let dimensions = image.dimensions();
 
-        let renderer = world.resources().get::<RendererHandle>();
+        let renderer = ctx
+            .system_run_context
+            .world
+            .resources()
+            .get::<RendererHandle>();
 
         info!("Loaded image with dimensions {:?}", dimensions);
         let texture_size = wgpu::Extent3d {

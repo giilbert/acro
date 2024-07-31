@@ -1,7 +1,16 @@
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
-use acro_ecs::World;
+use acro_ecs::{SystemRunContext, World};
+use parking_lot::Mutex;
 use serde::de::DeserializeOwned;
+
+use crate::{Asset, AssetLoader, Assets, QueuedAsset};
+
+pub struct LoaderContext<'w, 'a> {
+    pub current_asset: &'a str,
+    pub(crate) assets: &'a Assets,
+    pub system_run_context: &'a SystemRunContext<'w>,
+}
 
 pub trait Loadable: Send + Sync
 where
@@ -9,7 +18,14 @@ where
 {
     type Config: DeserializeOwned + Send + Sync;
 
-    // TODO: add a way to pass in an option
     // TODO: Handle errors
-    fn load(world: &World, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()>;
+    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()>;
+}
+
+impl<'w, 'l> LoaderContext<'w, 'l> {
+    pub fn load_dependent<T: Loadable>(&self, ctx: &LoaderContext, path: &str) -> Asset<T> {
+        let asset = self.assets.get_or_load(ctx, path);
+        self.assets.add_notify_asset(path, self.current_asset);
+        asset
+    }
 }

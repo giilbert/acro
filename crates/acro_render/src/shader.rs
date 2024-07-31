@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, ops::Deref, sync::Arc};
 
-use acro_assets::{Asset, Assets, Loadable};
+use acro_assets::{Asset, Assets, Loadable, LoaderContext};
 use acro_ecs::World;
 use acro_math::{Float, Mat4};
 
@@ -204,14 +204,16 @@ impl Shader {
 impl Loadable for Shader {
     type Config = ShaderOptions;
 
-    fn load(world: &World, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()> {
+    fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()> {
         // TODO: Add asset dependencies (a foolproof way to ensure all assets are loaded in order)
-        let texture = world
-            .resources()
-            .get::<Assets>()
-            .get::<Texture>("crates/acro_render/src/textures/ferris.png");
+        let texture = ctx.load_dependent(ctx, &config.diffuse_texture);
 
-        let renderer = world.resources().get::<RendererHandle>();
+        let renderer = ctx
+            .system_run_context
+            .world
+            .resources()
+            .get::<RendererHandle>();
+
         Ok(Shader::new(
             &renderer,
             texture,
@@ -233,6 +235,7 @@ impl UniformDataType {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct ShaderOptions {
+    pub diffuse_texture: String,
     pub bind_groups: Vec<BindGroupOptions>,
 }
 
