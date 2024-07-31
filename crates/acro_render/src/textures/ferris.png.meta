@@ -1,1 +1,8 @@
-"hellasdoaca"
+TextureOptions(
+    address_mode_u: r#clamp-to-edge,
+    address_mode_v: r#clamp-to-edge,
+    address_mode_w: r#clamp-to-edge,
+    mag_filter: linear,
+    min_filter: nearest,
+    mipmap_filter: nearest,
+)

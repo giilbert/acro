@@ -13,9 +13,18 @@ pub struct Texture {
     pub(crate) sampler: wgpu::Sampler,
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub struct TextureOptions {
+    address_mode_u: wgpu::AddressMode,
+    address_mode_v: wgpu::AddressMode,
+    address_mode_w: wgpu::AddressMode,
+    mag_filter: wgpu::FilterMode,
+    min_filter: wgpu::FilterMode,
+    mipmap_filter: wgpu::FilterMode,
+}
+
 impl Loadable for Texture {
-    // TODO: this
-    type Config = String;
+    type Config = TextureOptions;
 
     fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> eyre::Result<Self> {
         // TODO: error handling
@@ -66,12 +75,12 @@ impl Loadable for Texture {
 
         let texture_view = diffuse_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = renderer.device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            address_mode_u: config.address_mode_u,
+            address_mode_v: config.address_mode_v,
+            address_mode_w: config.address_mode_w,
+            mag_filter: config.mag_filter,
+            min_filter: config.min_filter,
+            mipmap_filter: config.mipmap_filter,
             ..Default::default()
         });
 
