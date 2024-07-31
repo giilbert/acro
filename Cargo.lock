@@ -76,6 +76,9 @@ dependencies = [
 [[package]]
 name = "acro_reflect"
 version = "0.1.0"
+dependencies = [
+ "eyre",
+]
 
 [[package]]
 name = "acro_render"
