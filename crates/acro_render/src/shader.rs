@@ -12,7 +12,7 @@ pub struct Shader {
     pub(crate) bind_groups: HashMap<BindGroupId, BindGroupData>,
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, serde::Deserialize)]
 pub enum BindGroupId {
     ModelMatrix,
     ViewProjectionMatrix,
@@ -27,7 +27,7 @@ pub struct BindGroupData {
     pub(crate) bind_group_layout: wgpu::BindGroupLayout,
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, serde::Deserialize)]
 pub enum UniformId {
     ModelMatrix,
     ViewMatrix,
@@ -56,7 +56,7 @@ impl Shader {
         renderer: &RendererHandle,
         diffuse_texture: Asset<Texture>,
         source: impl ToString,
-        options: ShaderOptions,
+        options: Arc<ShaderOptions>,
     ) -> Self {
         let module = renderer
             .device
@@ -202,7 +202,9 @@ impl Shader {
 }
 
 impl Loadable for Shader {
-    fn load(world: &World, data: Vec<u8>) -> Result<Self, ()> {
+    type Config = ShaderOptions;
+
+    fn load(world: &World, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()> {
         // TODO: Add asset dependencies (a foolproof way to ensure all assets are loaded in order)
         let texture = world
             .resources()
@@ -214,7 +216,8 @@ impl Loadable for Shader {
             &renderer,
             texture,
             String::from_utf8_lossy(&data),
-            ShaderOptions::mesh_defaults(),
+            config,
+            // ShaderOptions::mesh_defaults(),
         ))
     }
 }
@@ -228,88 +231,27 @@ impl UniformDataType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize)]
 pub struct ShaderOptions {
     pub bind_groups: Vec<BindGroupOptions>,
 }
-#[derive(Debug)]
+
+#[derive(Debug, serde::Deserialize)]
 pub struct BindGroupOptions {
     pub(crate) id: BindGroupId,
     pub(crate) uniforms: Vec<UniformOptions>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize)]
 pub enum UniformType {
     Mat4,
     Texture2D,
     Sampler,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize)]
 pub struct UniformOptions {
     pub(crate) id: UniformId,
     pub(crate) stage: wgpu::ShaderStages,
     pub(crate) uniform_type: UniformType,
-}
-
-impl ShaderOptions {
-    pub fn mesh_defaults() -> Self {
-        Self {
-            bind_groups: vec![
-                BindGroupOptions {
-                    id: BindGroupId::ModelMatrix,
-                    uniforms: vec![UniformOptions {
-                        id: UniformId::ModelMatrix,
-                        stage: wgpu::ShaderStages::VERTEX,
-                        uniform_type: UniformType::Mat4,
-                    }],
-                },
-                BindGroupOptions {
-                    id: BindGroupId::ViewProjectionMatrix,
-                    uniforms: vec![
-                        UniformOptions {
-                            id: UniformId::ViewMatrix,
-                            stage: wgpu::ShaderStages::VERTEX,
-                            uniform_type: UniformType::Mat4,
-                        },
-                        UniformOptions {
-                            id: UniformId::ProjectionMatrix,
-                            stage: wgpu::ShaderStages::VERTEX,
-                            uniform_type: UniformType::Mat4,
-                        },
-                    ],
-                },
-                BindGroupOptions {
-                    id: BindGroupId::DiffuseTexture,
-                    uniforms: vec![
-                        UniformOptions {
-                            id: UniformId::Texture2D,
-                            stage: wgpu::ShaderStages::FRAGMENT,
-                            uniform_type: UniformType::Texture2D,
-                        },
-                        UniformOptions {
-                            id: UniformId::Sampler,
-                            stage: wgpu::ShaderStages::FRAGMENT,
-                            uniform_type: UniformType::Sampler,
-                        },
-                    ],
-                },
-            ],
-        }
-    }
-}
-
-// TODO: Make a reusuable Handle<T> type and refactor all _Handles?
-#[derive(Debug, Clone)]
-pub struct ShaderHandle {
-    pub name: String,
-    pub(crate) inner: Arc<Shader>,
-}
-
-impl Deref for ShaderHandle {
-    type Target = Shader;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
 }

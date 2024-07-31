@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use acro_assets::Loadable;
 use acro_ecs::World;
 use image::GenericImageView;
@@ -12,7 +14,10 @@ pub struct Texture {
 }
 
 impl Loadable for Texture {
-    fn load(world: &World, data: Vec<u8>) -> Result<Self, ()> {
+    // TODO: this
+    type Config = ();
+
+    fn load(world: &World, config: Arc<Self::Config>, data: Vec<u8>) -> Result<Self, ()> {
         // TODO: error handling
         let image = image::load_from_memory(&data).map_err(|_| ())?;
         let image_rgba = image.to_rgba8();

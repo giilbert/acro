@@ -7,4 +7,6 @@ edition = "2021"
 acro_ecs = { path = "../acro_ecs" }
 parking_lot = "0.12.3"
 notify = "6.1.1"
+serde = { version = "1.0.204", features = ["derive"] }
+ron = "0.8.1"
 tracing = "0.1.40"

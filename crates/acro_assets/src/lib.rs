@@ -9,6 +9,7 @@ use std::{
 };
 
 pub use crate::{asset::Asset, loader::Loadable};
+pub use serde;
 
 use acro_ecs::{
     systems::NotifyChangeError, Application, ComponentId, EntityId, Plugin, Stage,
@@ -36,13 +37,15 @@ impl std::fmt::Debug for Assets {
     }
 }
 
+pub type AnyShared = Arc<dyn Any + Send + Sync>;
 #[derive(Debug)]
 pub struct AnyAssetData {
     id: TypeId,
-    data: Arc<dyn Any + Send + Sync>,
+    config: AnyShared,
+    data: AnyShared,
     notify_changes: Arc<RwLock<HashMap<EntityId, HashSet<ComponentId>>>>,
 }
-pub type AssetLoader = Arc<dyn Fn(&World, Vec<u8>) -> AnyAssetData>;
+pub type AssetLoader = Arc<dyn Fn(&World, Vec<u8>, Vec<u8>) -> AnyAssetData>;
 
 struct QueuedAsset {
     type_id: TypeId,
@@ -79,7 +82,7 @@ impl Assets {
                     if matches!(event.kind, EventKind::Access(AccessKind::Close(_))) {
                         let mut queue = queue_clone.lock();
                         for path in event.paths {
-                            let path = path
+                            let mut path = path
                                 .strip_prefix(
                                     std::env::current_dir()
                                         .expect("unable to get working directory"),
@@ -88,6 +91,13 @@ impl Assets {
                                 .to_str()
                                 .expect("unable to convert path to string")
                                 .to_string();
+
+                            if path.ends_with(".meta") {
+                                path = path
+                                    .strip_suffix(".meta")
+                                    .expect("error stripping .meta suffix")
+                                    .to_string();
+                            }
 
                             let data = data_clone.read();
                             let asset_data: &AnyAssetData =
@@ -123,6 +133,13 @@ impl Assets {
         self.watcher
             .watch(Path::new(path.as_str()), RecursiveMode::NonRecursive)
             .expect("failed to watch file");
+        // Also watch the config file
+        self.watcher
+            .watch(
+                Path::new(format!("{}.meta", &path).as_str()),
+                RecursiveMode::NonRecursive,
+            )
+            .expect("failed to watch file");
 
         self.queue.lock().push_back(QueuedAsset {
             type_id: TypeId::of::<T>(),
@@ -134,13 +151,18 @@ impl Assets {
     pub fn process_queue(&self, ctx: &SystemRunContext) {
         let mut queue = self.queue.lock();
         while let Some(asset) = queue.pop_front() {
-            let file_content = std::fs::read(&asset.path).expect("failed to read file");
+            let options_file_content = std::fs::read(&format!("{}.meta", asset.path))
+                .expect("failed to read options file");
+            let asset_file_content = std::fs::read(&asset.path).expect("failed to read asset file");
 
-            let new_data = (self
+            let new_asset = (self
                 .asset_loaders
                 .get(&asset.type_id)
-                .expect("asset does not exist"))(ctx.world, file_content)
-            .data;
+                .expect("asset does not exist"))(
+                ctx.world,
+                options_file_content,
+                asset_file_content,
+            );
 
             let mut data = self.data.write();
 
@@ -149,7 +171,8 @@ impl Assets {
                     data.insert(
                         asset.path.clone(),
                         AnyAssetData {
-                            data: new_data,
+                            data: new_asset.data,
+                            config: new_asset.config,
                             id: asset.type_id,
                             notify_changes: Default::default(),
                         },
@@ -159,7 +182,7 @@ impl Assets {
                 }
                 QueueType::Reload => {
                     let old_asset = data.get_mut(&asset.path).expect("asset not loaded");
-                    old_asset.data = new_data;
+                    old_asset.data = new_asset.data;
 
                     let mut component_count = 0;
                     for (&entity, components) in old_asset.notify_changes.write().iter_mut() {
@@ -218,10 +241,20 @@ impl Assets {
     pub fn register_loader<T: Loadable>(&mut self) {
         self.asset_loaders.insert(
             TypeId::of::<T>(),
-            Arc::new(|world, data| AnyAssetData {
-                data: Arc::new(T::load(world, data).expect("failed to load asset")),
-                id: TypeId::of::<T>(),
-                notify_changes: Default::default(),
+            Arc::new(|world, config, data| {
+                let config = Arc::new(
+                    ron::de::from_bytes::<T::Config>(&config)
+                        .expect("failed to deserialize config"),
+                );
+
+                AnyAssetData {
+                    data: Arc::new(
+                        T::load(world, Arc::clone(&config), data).expect("failed to load asset"),
+                    ),
+                    config,
+                    id: TypeId::of::<T>(),
+                    notify_changes: Default::default(),
+                }
             }),
         );
     }

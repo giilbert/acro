@@ -1,0 +1,42 @@
+ShaderOptions(
+    bind_groups: [
+        BindGroupOptions(
+            id: ModelMatrix,
+            uniforms: [UniformOptions (
+                id: ModelMatrix,
+                stage: 1,
+                uniform_type: Mat4,
+            )],
+        ),
+        BindGroupOptions(
+            id: ViewProjectionMatrix,
+            uniforms: [
+                UniformOptions(
+                    id: ViewMatrix,
+                    stage: 1,
+                    uniform_type: Mat4,
+                ),
+                UniformOptions (
+                    id: ProjectionMatrix,
+                    stage: 1,
+                    uniform_type: Mat4,
+                ),
+            ],
+        ),
+        BindGroupOptions(
+            id: DiffuseTexture,
+            uniforms: [
+                UniformOptions(
+                    id: Texture2D,
+                    stage: 2,
+                    uniform_type: Texture2D,
+                ),
+                UniformOptions(
+                    id: Sampler,
+                    stage: 2,
+                    uniform_type: Sampler,
+                ),
+            ],
+        ),
+    ],
+)

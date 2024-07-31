@@ -11,8 +11,9 @@ bytemuck = { version = "1.16.1", features = ["derive"] }
 cfg-if = "1.0.0"
 parking_lot = "0.12.3"
 pollster = "0.3.0"
+serde = { version = "1.0.204", features = ["derive"] }
 tracing = "0.1.40"
-wgpu = "0.20.1"
+wgpu = { version = "0.20.1", features = ["serde"] }
 winit = "0.30.2"
 image = "0.25.2"
 
