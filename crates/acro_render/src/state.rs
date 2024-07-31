@@ -100,10 +100,13 @@ impl RendererState {
     }
 
     pub fn resize(&self, size: PhysicalSize<u32>) {
-        self.config.borrow_mut().width = size.width;
-        self.config.borrow_mut().height = size.height;
         *self.size.borrow_mut() = size;
-        self.surface.configure(&self.device, &self.config.borrow());
+
+        if size.width != 0 && size.height != 0 {
+            self.config.borrow_mut().width = size.width;
+            self.config.borrow_mut().height = size.height;
+            self.surface.configure(&self.device, &self.config.borrow());
+        }
     }
 
     pub fn take_frame_state(&self) -> Option<FrameState> {
