@@ -1,11 +1,14 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use acro_ecs::Application;
+use acro_math::{Float, Vec2};
+use tracing::{info, warn};
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
-    event::{self, WindowEvent},
+    event::{self, ElementState, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
 };
 
 use crate::state::{RendererHandle, RendererState};
@@ -17,10 +20,10 @@ pub struct Window {
     application: Option<Application>,
 }
 
-#[derive(Debug)]
-pub struct WindowInfo {
-    pub width: u32,
-    pub height: u32,
+#[derive(Debug, Default)]
+pub struct WindowState {
+    pub mouse_position: Vec2,
+    pub keys_pressed: HashSet<KeyCode>,
 }
 
 impl Window {
@@ -75,6 +78,7 @@ impl ApplicationHandler for Window {
                 .world();
 
             world.insert_resource(state.clone());
+            world.insert_resource(WindowState::default());
 
             self.window = Some(window);
             self.state = Some(state);
@@ -101,6 +105,33 @@ impl ApplicationHandler for Window {
             }
             WindowEvent::Resized(size) => {
                 state.resize(size);
+            }
+            WindowEvent::CursorMoved {
+                position,
+                device_id: _device_id,
+            } => {
+                let mut window_state = application.world().resources().get_mut::<WindowState>();
+                window_state.mouse_position = Vec2::new(position.x as Float, position.y as Float);
+            }
+            WindowEvent::KeyboardInput {
+                event,
+                device_id: _device_id,
+                is_synthetic: _is_synthetic,
+            } => {
+                let mut window_state = application.world().resources().get_mut::<WindowState>();
+
+                match event.physical_key {
+                    PhysicalKey::Code(key_code) => {
+                        if event.state == ElementState::Pressed {
+                            window_state.keys_pressed.insert(key_code);
+                        } else {
+                            window_state.keys_pressed.remove(&key_code);
+                        }
+                    }
+                    PhysicalKey::Unidentified(unknown_key) => {
+                        warn!("unidentified key: {unknown_key:?}");
+                    }
+                }
             }
             _ => {
                 // println!("unhandled event: {:?}", event);

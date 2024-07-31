@@ -201,11 +201,6 @@ pub fn render_mesh_system(
         let data = mesh.data.as_ref().expect("mesh data not loaded");
         let shader = assets.get::<Shader>(&mesh.shader_path);
 
-        let texture = mesh
-            .diffuse_texture
-            .as_ref()
-            .map(|path| assets.get::<Texture>(path));
-
         {
             let mut mesh_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),

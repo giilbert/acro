@@ -1,13 +1,20 @@
 use acro_assets::{Assets, AssetsPlugin};
-use acro_ecs::{Application, Plugin, Query, Stage, SystemRunContext, With};
+use acro_ecs::{Application, Plugin, Query, Res, Stage, SystemRunContext, With};
 use acro_log::LogPlugin;
 use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
-use acro_render::{Camera, CameraType, MainCamera, Mesh, RenderPlugin, Texture, Vertex};
+use acro_render::{
+    Camera, CameraType, MainCamera, Mesh, RenderPlugin, Texture, Vertex, WindowState,
+};
+use tracing::info;
 
-fn update(ctx: SystemRunContext, query: Query<&mut Transform, With<Mesh>>) {
-    for mut transform in query.over(&ctx) {
-        transform.position.x += 0.001;
-    }
+fn update(
+    ctx: SystemRunContext,
+    query: Query<&mut Transform, With<Mesh>>,
+    window: Res<WindowState>,
+) {
+    let mut transform = query.single(&ctx);
+    transform.position.x = window.mouse_position.x / 100.0;
+    transform.position.y = window.mouse_position.y / 100.0;
 }
 
 struct TestPlugin;
@@ -61,7 +68,7 @@ impl Plugin for TestPlugin {
             MainCamera,
             GlobalTransform::default(),
             Transform {
-                position: [0.0, 0.0, -4.0].into(),
+                position: [0.0, 0.0, -20.0].into(),
                 ..Default::default()
             },
             Parent(root),
