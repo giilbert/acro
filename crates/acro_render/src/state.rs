@@ -19,7 +19,7 @@ pub struct RendererState {
     pub(crate) device: wgpu::Device,
     pub(crate) queue: wgpu::Queue,
     pub(crate) config: RefCell<wgpu::SurfaceConfiguration>,
-    pub(crate) size: winit::dpi::PhysicalSize<u32>,
+    pub(crate) size: RefCell<winit::dpi::PhysicalSize<u32>>,
     pub(crate) window: Arc<winit::window::Window>,
     pub(crate) frame_state: RefCell<Option<FrameState>>,
 }
@@ -92,7 +92,7 @@ impl RendererState {
                 device,
                 queue,
                 config: RefCell::new(config),
-                size,
+                size: RefCell::new(size),
                 window,
                 frame_state: RefCell::new(None),
             }),
@@ -102,6 +102,7 @@ impl RendererState {
     pub fn resize(&self, size: PhysicalSize<u32>) {
         self.config.borrow_mut().width = size.width;
         self.config.borrow_mut().height = size.height;
+        *self.size.borrow_mut() = size;
         self.surface.configure(&self.device, &self.config.borrow());
     }
 

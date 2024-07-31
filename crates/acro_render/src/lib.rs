@@ -15,6 +15,7 @@ pub use crate::{
 
 use acro_assets::Assets;
 use acro_ecs::{Application, Plugin, Res, Stage, SystemRunContext};
+use camera::update_projection_matrix;
 use mesh::{render_mesh_system, upload_mesh_system};
 use shader::Shader;
 use state::{FrameState, RendererHandle};
@@ -44,6 +45,7 @@ impl Plugin for RenderPlugin {
 
         app.add_system(Stage::PreRender, [], start_render_system);
         app.add_system(Stage::PreRender, [], upload_mesh_system);
+        app.add_system(Stage::PreRender, [], update_projection_matrix);
         app.add_system(Stage::Render, [], render_mesh_system);
         app.add_system(Stage::PostRender, [], end_render_system);
     }

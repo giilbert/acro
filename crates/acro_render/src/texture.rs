@@ -27,7 +27,6 @@ impl Loadable for Texture {
     type Config = TextureOptions;
 
     fn load(ctx: &LoaderContext, config: Arc<Self::Config>, data: Vec<u8>) -> eyre::Result<Self> {
-        // TODO: error handling
         let image = image::load_from_memory(&data)?;
         let image_rgba = image.to_rgba8();
 

@@ -6,7 +6,6 @@ use winit::{
     dpi::PhysicalSize,
     event::{self, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
-    platform::x11::WindowAttributesExtX11,
 };
 
 use crate::state::{RendererHandle, RendererState};
@@ -16,6 +15,12 @@ pub struct Window {
     window: Option<Arc<winit::window::Window>>,
     state: Option<RendererHandle>,
     application: Option<Application>,
+}
+
+#[derive(Debug)]
+pub struct WindowInfo {
+    pub width: u32,
+    pub height: u32,
 }
 
 impl Window {
@@ -63,14 +68,15 @@ impl ApplicationHandler for Window {
             let state = pollster::block_on(RendererState::new(window.clone()));
             window.set_visible(true);
 
-            self.window = Some(window);
-
-            self.application
+            let world = self
+                .application
                 .as_mut()
                 .expect("application not created")
-                .world()
-                .insert_resource(state.clone());
+                .world();
 
+            world.insert_resource(state.clone());
+
+            self.window = Some(window);
             self.state = Some(state);
         }
     }
