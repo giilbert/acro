@@ -96,8 +96,7 @@ impl<'w> IntoSystemRunContext<'w> for &'w SystemRunContext<'w> {
     }
 }
 
-type SystemResult = Result<(), Box<dyn Error>>;
-pub type SystemFn = Box<dyn Fn(SystemRunContext, &mut dyn Any) -> SystemResult>;
+pub type SystemFn = Box<dyn Fn(SystemRunContext, &mut dyn Any) -> eyre::Result<()>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SystemId {
@@ -179,19 +178,19 @@ pub trait IntoSystem<P> {
 }
 
 pub trait IntoSystemResult {
-    fn into_system_result(self) -> SystemResult;
+    fn into_system_result(self) -> eyre::Result<()>;
 }
 
 impl IntoSystemResult for () {
     #[inline]
-    fn into_system_result(self) -> SystemResult {
+    fn into_system_result(self) -> eyre::Result<()> {
         Ok(())
     }
 }
 
-impl IntoSystemResult for Result<(), Box<dyn Error>> {
+impl IntoSystemResult for eyre::Result<()> {
     #[inline]
-    fn into_system_result(self) -> SystemResult {
+    fn into_system_result(self) -> eyre::Result<()> {
         self
     }
 }

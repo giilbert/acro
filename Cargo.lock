@@ -50,6 +50,7 @@ version = "0.1.0"
 dependencies = [
  "assert_unordered",
  "criterion",
+ "eyre",
  "fnv",
  "itertools 0.13.0",
  "tracing",
@@ -105,10 +106,12 @@ dependencies = [
 name = "acro_scripting"
 version = "0.1.0"
 dependencies = [
+ "acro_assets",
  "acro_ecs",
  "acro_reflect",
  "deno_core",
  "eyre",
+ "serde",
  "tracing",
 ]
 

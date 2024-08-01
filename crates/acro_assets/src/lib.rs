@@ -319,7 +319,7 @@ impl Assets {
     }
 }
 
-fn load_queued_system(ctx: SystemRunContext) {
+pub fn load_queued_assets(ctx: SystemRunContext) {
     let world = &ctx.world;
     let assets = world.resources().get::<Assets>();
     assets.process_queue(&ctx);
@@ -333,6 +333,6 @@ impl Plugin for AssetsPlugin {
             let mut world = app.world();
             world.insert_resource(Assets::new());
         }
-        app.add_system(Stage::PreUpdate, [], load_queued_system);
+        app.add_system(Stage::PreUpdate, [], load_queued_assets);
     }
 }

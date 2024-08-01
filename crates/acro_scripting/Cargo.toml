@@ -5,7 +5,9 @@ edition = "2021"
 
 [dependencies]
 acro_ecs = { path = "../acro_ecs" }
+acro_assets = { path = "../acro_assets" }
 acro_reflect = { path = "../acro_reflect" }
 deno_core = "0.300.0"
 eyre = "0.6.12"
+serde = { version = "1.0.204", features = ["derive"] }
 tracing = "0.1.40"

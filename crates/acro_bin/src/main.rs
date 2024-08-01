@@ -5,7 +5,7 @@ use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
 use acro_render::{
     Camera, CameraType, MainCamera, Mesh, RenderPlugin, Texture, Vertex, WindowState,
 };
-use acro_scripting::ScriptingPlugin;
+use acro_scripting::{Behavior, ScriptingPlugin, SourceFile};
 use tracing::info;
 
 fn update(
@@ -23,6 +23,11 @@ struct TestPlugin;
 impl Plugin for TestPlugin {
     fn build(&mut self, app: &mut Application) {
         let mut world = app.world();
+
+        {
+            let assets = world.resources().get::<Assets>();
+            assets.queue::<SourceFile>("crates/acro_scripting/src/js/test.js");
+        }
 
         let root = world.spawn((Root, GlobalTransform::default(), Transform::default()));
 
@@ -54,6 +59,7 @@ impl Plugin for TestPlugin {
             Transform::default(),
             Parent(root),
             Children(vec![]),
+            Behavior::new("crates/acro_scripting/src/js/test.js"),
         ));
 
         world.spawn((
