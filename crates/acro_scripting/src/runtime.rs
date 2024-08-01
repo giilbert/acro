@@ -1,12 +1,13 @@
 use std::{
     borrow::Cow,
     cell::{RefCell, UnsafeCell},
+    collections::HashMap,
     rc::Rc,
 };
 
 use acro_assets::Assets;
-use acro_ecs::{Changed, EntityId, Query, Res, ResMut, SystemRunContext, World};
-use acro_reflect::{Reflect, ReflectPath};
+use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, World};
+use acro_reflect::{Reflect, ReflectExt, ReflectPath};
 use deno_core::*;
 use tracing::info;
 
@@ -18,24 +19,40 @@ use crate::{
 #[op2(fast)]
 fn op_get_property_number(
     #[state] world: &Rc<RefCell<World>>,
+    #[state] component_ids_to_vtables: &HashMap<ComponentId, *const ()>,
     generation: u32,
     index: u32,
     component_id: u32,
     #[string] path: &str,
 ) -> Result<f64, deno_core::error::AnyError> {
     let path = ReflectPath::parse(path);
+    let data_ptr = world
+        .borrow()
+        .get_ptr(EntityId::new(generation, index), ComponentId(component_id))
+        .expect("component not found");
+    let trait_object = unsafe {
+        std::mem::transmute::<(*const (), *const ()), &dyn Reflect>((
+            data_ptr.as_ptr() as *const (),
+            component_ids_to_vtables[&ComponentId(component_id)] as *const (),
+        ))
+    };
+
+    info!("get property number: {:?}", path);
+
+    Ok(*trait_object.get::<f32>(&path) as f64)
     // world
     //     .borrow()
     //     .get(EntityId::new(generation, index))
     //     .unwrap()
     //     .get_property_number(path);
     // info!("get property number: {:?}", path);
-    Ok(0.0)
+    // Ok(0.0)
 }
 
 #[op2(fast)]
 fn op_set_property_number(
     #[state] world: &Rc<RefCell<World>>,
+    #[state] component_ids_to_vtables: &HashMap<ComponentId, *const ()>,
     generation: u32,
     index: u32,
     component_id: u32,
@@ -46,8 +63,9 @@ fn op_set_property_number(
 }
 
 pub struct ScriptingRuntime {
+    inner: JsRuntime,
     behavior_id: u32,
-    runtime: JsRuntime,
+    component_vtables: Option<HashMap<ComponentId, *const ()>>,
 }
 
 impl std::fmt::Debug for ScriptingRuntime {
@@ -81,7 +99,8 @@ impl ScriptingRuntime {
 
         Self {
             behavior_id: 0,
-            runtime,
+            inner: runtime,
+            component_vtables: Some(HashMap::new()),
         }
     }
 
@@ -90,13 +109,21 @@ impl ScriptingRuntime {
         world: &World,
         name: &str,
     ) -> eyre::Result<()> {
-        // let empty_box: &dyn Reflect = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+        let (_data, vtable_ptr) = unsafe {
+            std::mem::transmute::<&dyn Reflect, (*const (), *const ())>(
+                (&std::mem::MaybeUninit::<T>::uninit().assume_init()) as &dyn Reflect,
+            )
+        };
 
         let component_info = world.get_component_info::<T>();
+        self.component_vtables
+            .as_mut()
+            .unwrap()
+            .insert(component_info.id, vtable_ptr);
 
         let component_id = component_info.id.0;
 
-        self.runtime
+        self.inner
             .execute_script(
                 "<register-component>",
                 format!("acro.COMPONENT_IDS[\"{}\"] = {};", name, component_id),
@@ -107,9 +134,17 @@ impl ScriptingRuntime {
     }
 
     pub fn init_source_file(&mut self, source_file: &SourceFile) -> eyre::Result<()> {
+        if self.component_vtables.is_some() {
+            let component_vtables = self
+                .component_vtables
+                .take()
+                .expect("component vtables taken");
+            self.inner.op_state().borrow_mut().put(component_vtables);
+        }
+
         info!("initializing source file: {:?}", source_file.config.name);
 
-        self.runtime
+        self.inner
             .execute_script("<source>", source_file.code.clone())
             .map_err(|e| eyre::eyre!("failed to execute source init script: {e:?}"))?;
 
@@ -126,7 +161,7 @@ impl ScriptingRuntime {
         self.behavior_id += 1;
         behavior.data = Some(BehaviorData { id });
 
-        self.runtime
+        self.inner
             .execute_script(
                 "<create-behavior>",
                 format!(
@@ -140,7 +175,7 @@ impl ScriptingRuntime {
     }
 
     pub fn update(&mut self) -> eyre::Result<()> {
-        self.runtime
+        self.inner
             .execute_script("<update>", "acro.update()")
             .map_err(|e| eyre::eyre!("failed to execute update script: {e:?}"))?;
 

@@ -30,10 +30,7 @@ pub enum ReflectSetError {
     PathNotFound,
 }
 
-pub trait Reflect
-where
-    Self: Sized,
-{
+pub trait Reflect {
     fn get_field_names(&self) -> &'static [&'static str];
     fn set(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError>;
     fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any>;
@@ -48,7 +45,10 @@ where
             .last()
             .expect("self.get_name() returned nothing")
     }
+}
 
+/// Trait to extend Reflect with some convenience methods
+pub trait ReflectExt: Reflect {
     fn get<T: 'static>(&self, path: &ReflectPath) -> &T {
         self.get_opt(path)
             .unwrap_or_else(|| panic!("field {path:?} not found"))
@@ -60,6 +60,8 @@ where
         self.get(&ReflectPath::End)
     }
 }
+
+impl<T: Reflect + ?Sized> ReflectExt for T {}
 
 fn type_mismatch<T>(_: T) -> ReflectSetError {
     ReflectSetError::TypeMismatch
@@ -113,7 +115,7 @@ impl_reflect_number!(f64);
 mod tests {
     use std::any::Any;
 
-    use super::{Reflect, ReflectPath as R, ReflectSetError};
+    use super::{Reflect, ReflectExt, ReflectPath as R, ReflectSetError};
 
     #[derive(Debug, PartialEq, Eq)]
     struct Inner {

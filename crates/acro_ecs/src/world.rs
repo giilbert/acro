@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use std::{any::TypeId, ptr::NonNull};
 
 use crate::{
     archetype::Archetypes,
@@ -9,6 +9,7 @@ use crate::{
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,
     systems::{IntoSystem, SystemRunContext},
+    ComponentId,
 };
 
 #[derive(Debug)]
@@ -123,12 +124,10 @@ impl World {
             .get_component::<T>(&self.entities, entity, component_info.id)
     }
 
-    pub fn get_any(&self, entity: EntityId, id: TypeId) -> Option<&dyn std::any::Any> {
-        todo!();
-        // let component_info = self.components.get_by_id(id)?;
-        // let untyped_pointer =
-        //     self.archetypes
-        //         .get_component_untyped(&self.entities, entity, component_info.id);
+    pub fn get_ptr(&self, entity: EntityId, component_id: ComponentId) -> Option<NonNull<u8>> {
+        let component_info = self.components.get_info(component_id);
+        self.archetypes
+            .get_component_untyped(&self.entities, entity, component_info.id)
     }
 
     pub fn insert_resource<T: 'static>(&mut self, resource: T) {
