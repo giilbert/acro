@@ -91,9 +91,9 @@ fn main() {
     Application::new()
         .add_plugin(LogPlugin)
         .add_plugin(AssetsPlugin)
+        .add_plugin(ScriptingPlugin)
         .add_plugin(MathPlugin)
         .add_plugin(RenderPlugin)
-        .add_plugin(ScriptingPlugin)
         .add_plugin(TestPlugin)
         .run();
 }

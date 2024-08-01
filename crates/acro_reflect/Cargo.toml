@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 eyre = "0.6.12"
+nalgebra = "0.33.0"
 serde = { version = "1.0.204", features = ["derive"] }

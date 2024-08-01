@@ -4,11 +4,11 @@ mod source_file;
 
 use std::any::Any;
 
-pub use crate::{behavior::Behavior, source_file::SourceFile};
+pub use crate::{behavior::Behavior, runtime::ScriptingRuntime, source_file::SourceFile};
 
 use acro_assets::{load_queued_assets, Assets};
 use acro_ecs::{systems::SystemId, Application, Plugin, Stage, SystemSchedulingRequirement};
-use runtime::{init_behavior, ScriptingRuntime};
+use runtime::init_behavior;
 
 pub struct ScriptingPlugin;
 

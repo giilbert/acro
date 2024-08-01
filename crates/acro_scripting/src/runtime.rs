@@ -6,7 +6,7 @@ use std::{
 
 use acro_assets::Assets;
 use acro_ecs::{Changed, EntityId, Query, Res, ResMut, SystemRunContext, World};
-use acro_reflect::ReflectPath;
+use acro_reflect::{Reflect, ReflectPath};
 use deno_core::*;
 use tracing::info;
 
@@ -80,6 +80,25 @@ impl ScriptingRuntime {
         }
     }
 
+    pub fn register_component<T: Reflect + 'static>(
+        &mut self,
+        world: &World,
+        name: &str,
+    ) -> eyre::Result<()> {
+        let component_info = world.get_component_info::<T>();
+
+        let component_id = component_info.id.0;
+
+        self.runtime
+            .execute_script(
+                "<register-component>",
+                format!("acro.COMPONENT_IDS[\"{}\"] = {};", name, component_id),
+            )
+            .map_err(|e| eyre::eyre!("failed to register component: {e:?}"))?;
+
+        Ok(())
+    }
+
     pub fn init_source_file(&mut self, source_file: &SourceFile) -> eyre::Result<()> {
         info!("initializing source file: {:?}", source_file.config.name);
 
@@ -92,6 +111,7 @@ impl ScriptingRuntime {
 
     pub fn init_behavior(
         &mut self,
+        attached_to: EntityId,
         source_file: &SourceFile,
         behavior: &mut Behavior,
     ) -> eyre::Result<()> {
@@ -103,8 +123,8 @@ impl ScriptingRuntime {
             .execute_script(
                 "<create-behavior>",
                 format!(
-                    "acro.createBehavior({}, \"{}\")",
-                    id, source_file.config.name
+                    "acro.createBehavior({}, {}, {}, \"{}\")",
+                    attached_to.index, attached_to.generation, id, source_file.config.name
                 ),
             )
             .map_err(|e| eyre::eyre!("failed to execute behavior init script: {e:?}"))?;
@@ -122,7 +142,7 @@ pub fn init_behavior(
     for (entity, mut behavior) in behaviors.over(&ctx) {
         let source_file = assets.get::<SourceFile>(&behavior.source_file_path);
         source_file.notify_changes::<Behavior>(&ctx, entity);
-        runtime.init_behavior(&source_file, &mut behavior)?;
+        runtime.init_behavior(entity, &source_file, &mut behavior)?;
     }
 
     Ok(())

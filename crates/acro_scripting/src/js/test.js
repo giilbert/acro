@@ -1,7 +1,7 @@
 class TestBehavior extends Behavior {
-  constructor() {
-    super();
-    Deno.core.print("TestBehavior constructor\n");
+  constructor(entity) {
+    super(entity);
+    console.log(this.transform.position);
   }
 }
 

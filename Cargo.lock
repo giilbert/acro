@@ -70,6 +70,8 @@ name = "acro_math"
 version = "0.1.0"
 dependencies = [
  "acro_ecs",
+ "acro_reflect",
+ "acro_scripting",
  "cfg-if",
  "nalgebra",
  "tracing",
@@ -80,6 +82,7 @@ name = "acro_reflect"
 version = "0.1.0"
 dependencies = [
  "eyre",
+ "nalgebra",
  "serde",
 ]
 

@@ -2,8 +2,8 @@ use crate::archetype::ArchetypeId;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct EntityId {
-    generation: u32,
-    index: u32,
+    pub generation: u32,
+    pub index: u32,
 }
 
 impl EntityId {

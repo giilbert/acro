@@ -34,6 +34,7 @@ pub trait Reflect
 where
     Self: Sized,
 {
+    fn get_field_names(&self) -> &'static [&'static str];
     fn set(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError>;
     fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any>;
 
@@ -46,10 +47,6 @@ where
             .split("::")
             .last()
             .expect("self.get_name() returned nothing")
-    }
-
-    fn get_field_names(&self) -> &'static [&'static str] {
-        &[]
     }
 
     fn get<T: 'static>(&self, path: &ReflectPath) -> &T {
@@ -68,9 +65,13 @@ fn type_mismatch<T>(_: T) -> ReflectSetError {
     ReflectSetError::TypeMismatch
 }
 
-macro_rules! impl_reflect_integer {
+macro_rules! impl_reflect_number {
     ($integer_type:ident) => {
         impl Reflect for $integer_type {
+            fn get_field_names(&self) -> &'static [&'static str] {
+                &[]
+            }
+
             fn set(
                 &mut self,
                 path: &ReflectPath,
@@ -93,18 +94,20 @@ macro_rules! impl_reflect_integer {
     };
 }
 
-impl_reflect_integer!(u8);
-impl_reflect_integer!(u16);
-impl_reflect_integer!(u32);
-impl_reflect_integer!(u64);
-impl_reflect_integer!(u128);
-impl_reflect_integer!(usize);
-impl_reflect_integer!(i8);
-impl_reflect_integer!(i16);
-impl_reflect_integer!(i32);
-impl_reflect_integer!(i64);
-impl_reflect_integer!(i128);
-impl_reflect_integer!(isize);
+impl_reflect_number!(u8);
+impl_reflect_number!(u16);
+impl_reflect_number!(u32);
+impl_reflect_number!(u64);
+impl_reflect_number!(u128);
+impl_reflect_number!(usize);
+impl_reflect_number!(i8);
+impl_reflect_number!(i16);
+impl_reflect_number!(i32);
+impl_reflect_number!(i64);
+impl_reflect_number!(i128);
+impl_reflect_number!(isize);
+impl_reflect_number!(f32);
+impl_reflect_number!(f64);
 
 #[cfg(test)]
 mod tests {

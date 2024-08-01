@@ -1,4 +1,7 @@
+use std::any::Any;
+
 use acro_ecs::{world::World, Changed, EntityId, Query, SystemRunContext};
+use acro_reflect::{Reflect, ReflectPath, ReflectSetError};
 
 use crate::types::{Mat4, UnitQuaternion, Vec3};
 
@@ -24,6 +27,25 @@ impl Default for Transform {
             rotation: UnitQuaternion::identity(),
             scale: [1.0, 1.0, 1.0].into(),
         }
+    }
+}
+
+impl Reflect for Transform {
+    fn get_field_names(&self) -> &'static [&'static str] {
+        &["position", "rotation", "scale"]
+    }
+
+    fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any> {
+        match path {
+            ReflectPath::Property("position", rest) => self.position.get_opt(rest),
+            ReflectPath::Property("rotation", rest) => self.position.get_opt(rest),
+            ReflectPath::Property("scale", rest) => self.position.get_opt(rest),
+            _ => None,
+        }
+    }
+
+    fn set(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
+        todo!();
     }
 }
 
