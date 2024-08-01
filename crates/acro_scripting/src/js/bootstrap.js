@@ -35,10 +35,49 @@ class Transform {
 
 class Vec3 {
   constructor(x, y, z, attachedTo) {
-    this.x = x;
-    this.y = y;
-    this.z = z;
+    this._x = x;
+    this._y = y;
+    this._z = z;
     this.attachedTo = attachedTo;
+  }
+
+  get x() {
+    if (this.attachedTo) {
+      return Deno.core.ops.op_get_property_number(
+        this.attachedTo.entity.generation,
+        this.attachedTo.entity.index,
+        this.attachedTo.componentId,
+        this.attachedTo.path + ".x"
+      );
+    } else {
+      return this._x;
+    }
+  }
+
+  get y() {
+    if (this.attachedTo) {
+      return Deno.core.ops.op_get_property_number(
+        this.attachedTo.entity.generation,
+        this.attachedTo.entity.index,
+        this.attachedTo.componentId,
+        this.attachedTo.path + ".y"
+      );
+    } else {
+      return this._y;
+    }
+  }
+
+  get z() {
+    if (this.attachedTo) {
+      return Deno.core.ops.op_get_property_number(
+        this.attachedTo.entity.generation,
+        this.attachedTo.entity.index,
+        this.attachedTo.componentId,
+        this.attachedTo.path + ".z"
+      );
+    } else {
+      return this._z;
+    }
   }
 }
 

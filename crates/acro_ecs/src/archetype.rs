@@ -1,4 +1,5 @@
 use std::{
+    any::TypeId,
     cell::{RefCell, UnsafeCell},
     collections::HashMap,
     ptr::NonNull,
@@ -179,6 +180,17 @@ impl Archetypes {
             .pointer_to_entity_component(meta.table_index, component_id)?
             .as_ptr() as *const T;
         Some(unsafe { &*component_data })
+    }
+
+    pub fn get_component_untyped(
+        &self,
+        entities: &Entities,
+        entity: EntityId,
+        component_id: ComponentId,
+    ) -> Option<NonNull<u8>> {
+        let meta = entities.get(entity)?;
+        let archetype = self.archetypes.get(&meta.archetype_id)?.borrow();
+        archetype.pointer_to_entity_component(meta.table_index, component_id)
     }
 
     pub fn remove_component<T: 'static>(

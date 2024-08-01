@@ -8,7 +8,7 @@ pub use crate::{behavior::Behavior, runtime::ScriptingRuntime, source_file::Sour
 
 use acro_assets::{load_queued_assets, Assets};
 use acro_ecs::{systems::SystemId, Application, Plugin, Stage, SystemSchedulingRequirement};
-use runtime::init_behavior;
+use runtime::{init_behavior, update_behaviors};
 
 pub struct ScriptingPlugin;
 
@@ -23,6 +23,7 @@ impl Plugin for ScriptingPlugin {
             ))],
             init_behavior,
         );
+        app.add_system(Stage::Update, [], update_behaviors);
 
         let mut world = app.world();
         world.insert_resource(ScriptingRuntime::new(app.world_handle()));

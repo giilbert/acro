@@ -1,7 +1,11 @@
 class TestBehavior extends Behavior {
   constructor(entity) {
     super(entity);
-    console.log(this.transform.position);
+  }
+
+  update() {
+    const a = this.transform.position.x;
+    console.log(this.transform.position.x);
   }
 }
 

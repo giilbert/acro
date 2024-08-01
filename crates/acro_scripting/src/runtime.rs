@@ -22,10 +22,15 @@ fn op_get_property_number(
     index: u32,
     component_id: u32,
     #[string] path: &str,
-    value: f64,
 ) -> Result<f64, deno_core::error::AnyError> {
     let path = ReflectPath::parse(path);
-    todo!()
+    // world
+    //     .borrow()
+    //     .get(EntityId::new(generation, index))
+    //     .unwrap()
+    //     .get_property_number(path);
+    // info!("get property number: {:?}", path);
+    Ok(0.0)
 }
 
 #[op2(fast)]
@@ -85,6 +90,8 @@ impl ScriptingRuntime {
         world: &World,
         name: &str,
     ) -> eyre::Result<()> {
+        // let empty_box: &dyn Reflect = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+
         let component_info = world.get_component_info::<T>();
 
         let component_id = component_info.id.0;
@@ -131,6 +138,14 @@ impl ScriptingRuntime {
 
         Ok(())
     }
+
+    pub fn update(&mut self) -> eyre::Result<()> {
+        self.runtime
+            .execute_script("<update>", "acro.update()")
+            .map_err(|e| eyre::eyre!("failed to execute update script: {e:?}"))?;
+
+        Ok(())
+    }
 }
 
 pub fn init_behavior(
@@ -146,4 +161,11 @@ pub fn init_behavior(
     }
 
     Ok(())
+}
+
+pub fn update_behaviors(
+    ctx: SystemRunContext,
+    mut runtime: ResMut<ScriptingRuntime>,
+) -> eyre::Result<()> {
+    runtime.update()
 }

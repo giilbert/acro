@@ -7,6 +7,14 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Launch",
+            "program": "${workspaceFolder}/target/debug/acro_bin",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in library 'acro_ecs'",
             "cargo": {
                 "args": [

@@ -123,6 +123,14 @@ impl World {
             .get_component::<T>(&self.entities, entity, component_info.id)
     }
 
+    pub fn get_any(&self, entity: EntityId, id: TypeId) -> Option<&dyn std::any::Any> {
+        todo!();
+        // let component_info = self.components.get_by_id(id)?;
+        // let untyped_pointer =
+        //     self.archetypes
+        //         .get_component_untyped(&self.entities, entity, component_info.id);
+    }
+
     pub fn insert_resource<T: 'static>(&mut self, resource: T) {
         self.resources.insert(resource);
     }

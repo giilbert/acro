@@ -13,7 +13,7 @@ pub enum ReflectPath<'a> {
 
 impl ReflectPath<'_> {
     pub fn parse<'a>(path: &'a str) -> Box<ReflectPath<'a>> {
-        let mut parts = path.split('.');
+        let mut parts = path.split('.').rev();
         let mut path = Box::new(ReflectPath::End);
         while let Some(part) = parts.next() {
             let new_path = Box::new(ReflectPath::Property(part, path));
