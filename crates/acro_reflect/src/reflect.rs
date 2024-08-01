@@ -8,7 +8,20 @@ pub enum ReflectPath<'a> {
     /// Refers to the item at the current path
     End,
     /// Refers to a property of the item at the current path
-    Property(&'a str, &'a ReflectPath<'a>),
+    Property(&'a str, Box<ReflectPath<'a>>),
+}
+
+impl ReflectPath<'_> {
+    pub fn parse<'a>(path: &'a str) -> Box<ReflectPath<'a>> {
+        let mut parts = path.split('.');
+        let mut path = Box::new(ReflectPath::End);
+        while let Some(part) = parts.next() {
+            let new_path = Box::new(ReflectPath::Property(part, path));
+            path = new_path;
+        }
+
+        path
+    }
 }
 
 #[derive(Debug)]
@@ -108,9 +121,7 @@ mod tests {
         fn set(&mut self, path: &R, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
             match path {
                 R::End => *self = *data.downcast().map_err(|_| ReflectSetError::TypeMismatch)?,
-                R::Property("b", R::End) => {
-                    self.b = *data.downcast().map_err(|_| ReflectSetError::TypeMismatch)?
-                }
+                R::Property("b", path) => self.b.set(&path, data)?,
                 _ => return Err(ReflectSetError::PathNotFound),
             }
             Ok(())
@@ -119,7 +130,7 @@ mod tests {
         fn get_opt(&self, path: &R) -> Option<&dyn Any> {
             match path {
                 R::End => Some(self),
-                R::Property("b", R::End) => Some(&self.b),
+                R::Property("b", path) => self.b.get_opt(path),
                 _ => None,
             }
         }
@@ -139,9 +150,7 @@ mod tests {
         fn set(&mut self, path: &R, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
             match path {
                 R::End => *self = *data.downcast().map_err(|_| ReflectSetError::TypeMismatch)?,
-                R::Property("a", R::End) => {
-                    self.a = *data.downcast().map_err(|_| ReflectSetError::TypeMismatch)?
-                }
+                R::Property("a", path) => self.a.set(path, data)?,
                 R::Property("inner", path) => self.inner.set(path, data)?,
                 _ => return Err(ReflectSetError::PathNotFound),
             }
@@ -151,7 +160,7 @@ mod tests {
         fn get_opt(&self, path: &R) -> Option<&dyn Any> {
             match path {
                 R::End => Some(self),
-                R::Property("a", R::End) => Some(&self.a),
+                R::Property("a", path) => self.a.get_opt(path),
                 R::Property("inner", rest) => self.inner.get_opt(rest),
                 _ => None,
             }
@@ -169,14 +178,17 @@ mod tests {
             inner: Inner { b: 1 },
         };
 
-        test.set(&R::Property("a", &R::End), Box::new(2u32))
+        test.set(&R::Property("a", Box::new(R::End)), Box::new(2u32))
             .expect("error setting a");
-        assert_eq!(*test.get::<u32>(&R::Property("a", &R::End)), 2);
+        assert_eq!(*test.get::<u32>(&R::Property("a", Box::new(R::End))), 2);
 
-        test.set(&R::Property("inner", &R::End), Box::new(Inner { b: 3 }))
-            .expect("error setting inner");
+        test.set(
+            &R::Property("inner", Box::new(R::End)),
+            Box::new(Inner { b: 3 }),
+        )
+        .expect("error setting inner");
         assert_eq!(
-            *test.get::<Inner>(&R::Property("inner", &R::End)),
+            *test.get::<Inner>(&R::Property("inner", Box::new(R::End))),
             Inner { b: 3 }
         );
 

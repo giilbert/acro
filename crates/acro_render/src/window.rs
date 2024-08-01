@@ -71,7 +71,7 @@ impl ApplicationHandler for Window {
             let state = pollster::block_on(RendererState::new(window.clone()));
             window.set_visible(true);
 
-            let world = self
+            let mut world = self
                 .application
                 .as_mut()
                 .expect("application not created")
@@ -110,7 +110,8 @@ impl ApplicationHandler for Window {
                 position,
                 device_id: _device_id,
             } => {
-                let mut window_state = application.world().resources().get_mut::<WindowState>();
+                let world = &application.world();
+                let mut window_state = world.resources().get_mut::<WindowState>();
                 window_state.mouse_position = Vec2::new(position.x as Float, position.y as Float);
             }
             WindowEvent::KeyboardInput {
@@ -118,7 +119,8 @@ impl ApplicationHandler for Window {
                 device_id: _device_id,
                 is_synthetic: _is_synthetic,
             } => {
-                let mut window_state = application.world().resources().get_mut::<WindowState>();
+                let world = &application.world();
+                let mut window_state = world.resources().get_mut::<WindowState>();
 
                 match event.physical_key {
                     PhysicalKey::Code(key_code) => {

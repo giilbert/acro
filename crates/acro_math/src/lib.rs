@@ -13,7 +13,7 @@ pub struct MathPlugin;
 
 impl Plugin for MathPlugin {
     fn build(&mut self, app: &mut Application) {
-        register_components(app.world());
+        register_components(&mut app.world());
         app.add_system(Stage::PostUpdate, [], propagate_global_transform);
     }
 }

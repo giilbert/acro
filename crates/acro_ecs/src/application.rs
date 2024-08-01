@@ -1,3 +1,7 @@
+use std::{
+    cell::{RefCell, RefMut},
+    rc::Rc,
+};
 
 use crate::{
     plugin::Plugin,
@@ -8,7 +12,7 @@ use crate::{
 };
 
 pub struct Application {
-    world: World,
+    world: Rc<RefCell<World>>,
     current_tick: Tick,
     // systems: Vec<SystemData>,
     schedule: Schedule,
@@ -18,7 +22,7 @@ pub struct Application {
 impl Application {
     pub fn new() -> Self {
         Self {
-            world: World::new(),
+            world: Rc::new(RefCell::new(World::new())),
             current_tick: Tick::new(0),
             schedule: Schedule::new(),
             runner: Box::new(|_app| panic!("no runner set!")),
@@ -30,8 +34,12 @@ impl Application {
         self
     }
 
-    pub fn world(&mut self) -> &mut World {
-        &mut self.world
+    pub fn world(&self) -> RefMut<World> {
+        self.world.borrow_mut()
+    }
+
+    pub fn world_handle(&self) -> Rc<RefCell<World>> {
+        Rc::clone(&self.world)
     }
 
     pub fn add_system<I, P>(
@@ -43,7 +51,7 @@ impl Application {
         I: IntoSystem<P>,
         P: 'static,
     {
-        let parameters = I::init(&self.world);
+        let parameters = I::init(&self.world.borrow_mut());
         self.schedule
             .add_system(
                 stage,
@@ -61,7 +69,7 @@ impl Application {
 
     pub fn run_once(&mut self) {
         // let now = std::time::Instant::now();
-        self.schedule.run_once(&mut self.world);
+        self.schedule.run_once(&mut *self.world.borrow_mut());
         // let elapsed = now.elapsed();
         // println!("run once took {:?}", elapsed);
     }
@@ -102,9 +110,7 @@ mod tests {
         app.add_system(
             Stage::Update,
             [],
-            |ctx: SystemRunContext,
-             number_query: Query<&u32>,
-             string_query: Query<&String>| {
+            |ctx: SystemRunContext, number_query: Query<&u32>, string_query: Query<&String>| {
                 *ctx.world.resources.get_mut::<u32>() += 1;
 
                 for value in number_query.over(&ctx) {

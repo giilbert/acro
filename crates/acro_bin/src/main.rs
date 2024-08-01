@@ -5,6 +5,7 @@ use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
 use acro_render::{
     Camera, CameraType, MainCamera, Mesh, RenderPlugin, Texture, Vertex, WindowState,
 };
+use acro_scripting::ScriptingPlugin;
 use tracing::info;
 
 fn update(
@@ -21,7 +22,7 @@ struct TestPlugin;
 
 impl Plugin for TestPlugin {
     fn build(&mut self, app: &mut Application) {
-        let world = app.world();
+        let mut world = app.world();
 
         let root = world.spawn((Root, GlobalTransform::default(), Transform::default()));
 
@@ -75,6 +76,7 @@ impl Plugin for TestPlugin {
             Children(vec![]),
         ));
 
+        drop(world);
         app.add_system(Stage::FixedUpdate, [], update);
     }
 }
@@ -85,6 +87,7 @@ fn main() {
         .add_plugin(AssetsPlugin)
         .add_plugin(MathPlugin)
         .add_plugin(RenderPlugin)
+        .add_plugin(ScriptingPlugin)
         .add_plugin(TestPlugin)
         .run();
 }

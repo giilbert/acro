@@ -11,13 +11,13 @@ use crate::storage::anyvec::Dropper;
 
 #[derive(Debug, Default)]
 pub struct ComponentRegistry {
-    current_id: usize,
+    current_id: u32,
     native_components: FnvHashMap<TypeId, ComponentId>,
     components: FnvHashMap<ComponentId, ComponentInfo>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentId(pub usize);
+pub struct ComponentId(pub u32);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentInfo {
