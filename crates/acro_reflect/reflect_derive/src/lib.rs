@@ -14,15 +14,6 @@ fn reflect_derive_impl(input: TokenStream) -> TokenStream {
         Data::Struct(struct_data) => reflect_derive_struct(input.ident, struct_data),
         _ => todo!(),
     }
-
-    // Catchall if we don't match on the structure we don't want
-    // TokenStream::from(
-    //     syn::Error::new(
-    //         input.ident.span(),
-    //         "Something went wrong",
-    //     )
-    //     .to_compile_error(),
-    // )
 }
 
 fn reflect_derive_struct(name: Ident, struct_data: DataStruct) -> TokenStream {

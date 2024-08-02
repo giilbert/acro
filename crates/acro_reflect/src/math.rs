@@ -4,33 +4,44 @@ use nalgebra::{self as na, Quaternion};
 
 use crate::{Reflect, ReflectPath, ReflectSetError};
 
-impl<F: Reflect + na::Scalar> Reflect for na::Vector3<F> {
-    fn get_field_names(&self) -> &'static [&'static str] {
-        &["x", "y", "z"]
-    }
+macro_rules! impl_reflect_vector {
+    ($type_name: ty: $($fields: expr),+ => $($fields_as_idents:ident),+) => {
+        impl<F: Reflect + na::Scalar> Reflect for $type_name {
+            fn get_field_names(&self) -> &'static [&'static str] {
+                &[$($fields),+]
+            }
 
-    fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any> {
-        use ReflectPath::*;
+            fn set_any(
+                &mut self,
+                path: &ReflectPath,
+                data: Box<dyn Any>
+            ) -> Result<(), ReflectSetError> {
+                use ReflectPath::*;
 
-        match path {
-            Property("x", rest) => self.x.get_opt(rest),
-            Property("y", rest) => self.y.get_opt(rest),
-            Property("z", rest) => self.z.get_opt(rest),
-            _ => None,
+                match path {
+                    $(
+                        Property($fields, rest) => self.$fields_as_idents.set_any(rest, data),
+                    )+
+                    _ => Err(ReflectSetError::PathNotFound),
+                }
+            }
+
+            fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any> {
+                use ReflectPath::*;
+                match path {
+                    $(
+                        Property($fields, rest) => self.$fields_as_idents.get_opt(rest),
+                    )+
+                    _ => None,
+                }
+            }
         }
-    }
-
-    fn set_any(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
-        use ReflectPath::*;
-
-        match path {
-            Property("x", rest) => self.x.set_any(rest, data),
-            Property("y", rest) => self.y.set_any(rest, data),
-            Property("z", rest) => self.z.set_any(rest, data),
-            _ => return Err(ReflectSetError::PathNotFound),
-        }
-    }
+    };
 }
+
+impl_reflect_vector!(na::Vector2<F>: "x", "y" => x, y);
+impl_reflect_vector!(na::Vector3<F>: "x", "y", "z" => x, y, z);
+impl_reflect_vector!(na::Vector4<F>: "x", "y", "z", "w" => x, y, z, w);
 
 impl<F: Reflect + na::Scalar> Reflect for Quaternion<F> {
     fn get_field_names(&self) -> &'static [&'static str] {
