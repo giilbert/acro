@@ -1,8 +1,13 @@
 [workspace]
 resolver = "2"
-members = [ "crates/acro_assets",
+members = [
+    "crates/acro_assets",
     "crates/acro_bin",
-    "crates/acro_ecs", "crates/acro_log",
-    "crates/acro_math", "crates/acro_reflect",
-    "crates/acro_render", "crates/acro_scripting",
+    "crates/acro_ecs",
+    "crates/acro_log",
+    "crates/acro_math",
+    "crates/acro_reflect",
+    "crates/acro_reflect/reflect_derive",
+    "crates/acro_render",
+    "crates/acro_scripting",
 ]

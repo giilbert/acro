@@ -16,4 +16,4 @@ pub type Mat2 = na::Matrix2<Float>;
 pub type Mat3 = na::Matrix3<Float>;
 pub type Mat4 = na::Matrix4<Float>;
 
-pub type UnitQuaternion = na::UnitQuaternion<Float>;
+pub type Quaternion = na::Quaternion<Float>;

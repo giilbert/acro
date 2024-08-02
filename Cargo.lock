@@ -83,6 +83,7 @@ version = "0.1.0"
 dependencies = [
  "eyre",
  "nalgebra",
+ "reflect_derive",
  "serde",
 ]
 
@@ -2766,6 +2767,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c82cf8cff14456045f55ec4241383baeff27af886adb72ffb2162f99911de0fd"
 dependencies = [
  "bitflags 2.5.0",
+]
+
+[[package]]
+name = "reflect_derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.60",
 ]
 
 [[package]]

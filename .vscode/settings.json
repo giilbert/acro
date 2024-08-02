@@ -1,5 +1,6 @@
 {
     "editor.rulers": [
         100
-    ]
+    ],
+    "rust-analyzer.checkOnSave": true
 }

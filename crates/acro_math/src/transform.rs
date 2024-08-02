@@ -2,20 +2,21 @@ use std::any::Any;
 
 use acro_ecs::{world::World, Changed, EntityId, Query, SystemRunContext};
 use acro_reflect::{Reflect, ReflectPath, ReflectSetError};
+use nalgebra::UnitQuaternion;
 
-use crate::types::{Mat4, UnitQuaternion, Vec3};
+use crate::types::{Mat4, Quaternion, Vec3};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Reflect)]
 pub struct Transform {
     pub position: Vec3,
-    pub rotation: UnitQuaternion,
+    pub rotation: Quaternion,
     pub scale: Vec3,
 }
 
 impl Transform {
     pub fn get_matrix(&self) -> Mat4 {
         Mat4::new_translation(&self.position)
-            * Mat4::from(self.rotation)
+            * UnitQuaternion::new_normalize(self.rotation).to_homogeneous()
             * Mat4::new_nonuniform_scaling(&self.scale)
     }
 }
@@ -24,32 +25,8 @@ impl Default for Transform {
     fn default() -> Self {
         Self {
             position: [0.0, 0.0, 0.0].into(),
-            rotation: UnitQuaternion::identity(),
+            rotation: Quaternion::identity(),
             scale: [1.0, 1.0, 1.0].into(),
-        }
-    }
-}
-
-impl Reflect for Transform {
-    fn get_field_names(&self) -> &'static [&'static str] {
-        &["position", "rotation", "scale"]
-    }
-
-    fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any> {
-        match path {
-            ReflectPath::Property("position", rest) => self.position.get_opt(rest),
-            // ReflectPath::Property("rotation", rest) => self.rotation.get_opt(rest),
-            // ReflectPath::Property("scale", rest) => self.scale.get_opt(rest),
-            _ => None,
-        }
-    }
-
-    fn set_any(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
-        match path {
-            ReflectPath::Property("position", rest) => self.position.set_any(rest, data),
-            // ReflectPath::Property("rotation", rest) => self.rotation.set_any(rest, data),
-            // ReflectPath::Property("scale", rest) => self.scale.set_any(rest, data),
-            _ => Err(ReflectSetError::PathNotFound),
         }
     }
 }
@@ -140,7 +117,7 @@ mod tests {
 
     use crate::{
         transform::Root,
-        types::{Mat4, UnitQuaternion},
+        types::{Mat4, Quaternion},
     };
 
     use super::{
@@ -158,7 +135,7 @@ mod tests {
             root,
             Transform {
                 position: [0.0, 0.0, 0.0].into(),
-                rotation: UnitQuaternion::identity(),
+                rotation: Quaternion::identity(),
                 scale: [1.0, 1.0, 1.0].into(),
             },
         );
@@ -175,7 +152,7 @@ mod tests {
             child_1,
             Transform {
                 position: [0.0, -2.0, 0.0].into(),
-                rotation: UnitQuaternion::identity(),
+                rotation: Quaternion::identity(),
                 scale: [1.0, 1.0, 1.0].into(),
             },
         );
@@ -192,7 +169,7 @@ mod tests {
             child_of_child_1,
             Transform {
                 position: [0.0, 2.0, 0.0].into(),
-                rotation: UnitQuaternion::identity(),
+                rotation: Quaternion::identity(),
                 scale: [1.0, 1.0, 1.0].into(),
             },
         );
@@ -215,7 +192,7 @@ mod tests {
             child_1_global_transform.matrix,
             Transform {
                 position: [0.0, -2.0, 0.0].into(),
-                rotation: UnitQuaternion::identity(),
+                rotation: Quaternion::identity(),
                 scale: [1.0, 1.0, 1.0].into(),
             }
             .get_matrix()
@@ -227,7 +204,7 @@ mod tests {
             child_of_child_1_global_transform.matrix,
             Transform {
                 position: [0.0, 0.0, 0.0].into(),
-                rotation: UnitQuaternion::identity(),
+                rotation: Quaternion::identity(),
                 scale: [1.0, 1.0, 1.0].into(),
             }
             .get_matrix()
