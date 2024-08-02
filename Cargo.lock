@@ -73,6 +73,7 @@ dependencies = [
  "acro_reflect",
  "acro_scripting",
  "cfg-if",
+ "deno_core",
  "nalgebra",
  "tracing",
 ]

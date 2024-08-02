@@ -20,7 +20,12 @@ class Behavior {
           entity: this.entity,
           componentId: acro.COMPONENT_IDS.Transform,
           path: "position",
-        })
+        }),
+        {
+          entity: this.entity,
+          componentId: acro.COMPONENT_IDS.Transform,
+          path: "",
+        }
       );
     }
   }
@@ -28,8 +33,34 @@ class Behavior {
 
 class Transform {
   // TODO: rotation and scale
-  constructor(position) {
-    this.position = position;
+  constructor(position, attachedTo) {
+    this._position = position;
+    this.attachedTo = attachedTo;
+  }
+
+  get position() {
+    if (this.attachedTo) {
+      this._position = Deno.core.op_get_property_vec3(
+        this.attachedTo.entity.generation,
+        this.attachedTo.entity.index,
+        this.attachedTo.componentId,
+        this.attachedTo.path
+      );
+    }
+    return this._position;
+  }
+
+  set position(value) {
+    if (this.attachedTo) {
+      Deno.core.op_set_property_vec3(
+        this.attachedTo.entity.generation,
+        this.attachedTo.entity.index,
+        this.attachedTo.componentId,
+        this.attachedTo.path + ".position",
+        value
+      );
+    }
+    this._position = value;
   }
 }
 
@@ -43,41 +74,38 @@ class Vec3 {
 
   get x() {
     if (this.attachedTo) {
-      return Deno.core.ops.op_get_property_number(
+      this._x = Deno.core.ops.op_get_property_number(
         this.attachedTo.entity.generation,
         this.attachedTo.entity.index,
         this.attachedTo.componentId,
         this.attachedTo.path + ".x"
       );
-    } else {
-      return this._x;
     }
+    return this._x;
   }
 
   get y() {
     if (this.attachedTo) {
-      return Deno.core.ops.op_get_property_number(
+      this._y = Deno.core.ops.op_get_property_number(
         this.attachedTo.entity.generation,
         this.attachedTo.entity.index,
         this.attachedTo.componentId,
         this.attachedTo.path + ".y"
       );
-    } else {
-      return this._y;
     }
+    return this._y;
   }
 
   get z() {
     if (this.attachedTo) {
-      return Deno.core.ops.op_get_property_number(
+      this._z = Deno.core.ops.op_get_property_number(
         this.attachedTo.entity.generation,
         this.attachedTo.entity.index,
         this.attachedTo.componentId,
         this.attachedTo.path + ".z"
       );
-    } else {
-      return this._z;
     }
+    return this._z;
   }
 
   set x(value) {
@@ -89,9 +117,8 @@ class Vec3 {
         this.attachedTo.path + ".x",
         value
       );
-    } else {
-      this._x = value;
     }
+    this._x = value;
   }
 
   set y(value) {
@@ -103,9 +130,8 @@ class Vec3 {
         this.attachedTo.path + ".y",
         value
       );
-    } else {
-      this._y = value;
     }
+    this._y = value;
   }
 
   set z(value) {
@@ -117,9 +143,8 @@ class Vec3 {
         this.attachedTo.path + ".z",
         value
       );
-    } else {
-      this._z = value;
     }
+    this._z = value;
   }
 }
 

@@ -1,10 +1,14 @@
 mod behavior;
+mod reflect;
 mod runtime;
 mod source_file;
 
 use std::any::Any;
 
-pub use crate::{behavior::Behavior, runtime::ScriptingRuntime, source_file::SourceFile};
+pub use crate::{
+    behavior::Behavior, reflect::get_dyn_reflect, runtime::ScriptingRuntime,
+    source_file::SourceFile,
+};
 
 use acro_assets::{load_queued_assets, Assets};
 use acro_ecs::{systems::SystemId, Application, Plugin, Stage, SystemSchedulingRequirement};
