@@ -185,7 +185,10 @@ impl ScriptingRuntime {
         info!("initializing source file: {:?}", source_file.config.name);
 
         self.inner
-            .execute_script("<source>", source_file.code.clone())
+            .execute_script(
+                "<source>",
+                format!("(() => {{{}}})()", source_file.code.clone()),
+            )
             .map_err(|e| eyre::eyre!("failed to execute source init script: {e:?}"))?;
 
         Ok(())

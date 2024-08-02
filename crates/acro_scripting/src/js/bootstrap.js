@@ -125,20 +125,34 @@ class Vec3 {
 
 class AcroGlobalHook {
   constructor() {
-    this.behaviorConstructors = {};
-    this.behaviors = {};
     // maps component names to ids
     this.COMPONENT_IDS = {};
+
+    this.behaviorConstructors = {};
+    this.behaviors = new Map();
   }
 
   update() {
-    for (const behavior of Object.values(this.behaviors)) {
+    for (const behavior of this.behaviors.values()) {
       behavior.update();
     }
   }
 
   registerBehavior(name, behavior) {
+    const shouldReloadBehaviors = !!this.behaviorConstructors[name];
+
     this.behaviorConstructors[name] = behavior;
+
+    if (shouldReloadBehaviors)
+      // The behavior is already registered, recreate behaviors that use it
+      for (const [id, behavior] of this.behaviors) {
+        this.createBehavior(
+          behavior.entity.generation,
+          behavior.entity.index,
+          id,
+          name
+        );
+      }
   }
 
   createBehavior(entityGeneration, entityIndex, id, name, ...args) {
@@ -146,7 +160,7 @@ class AcroGlobalHook {
       new Entity(entityGeneration, entityIndex),
       ...args
     );
-    this.behaviors[behavior.id] = behavior;
+    this.behaviors.set(id, behavior);
   }
 }
 

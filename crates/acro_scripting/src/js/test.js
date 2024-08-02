@@ -5,7 +5,7 @@ class TestBehavior extends Behavior {
 
   update() {
     // console.log(this.transform.position.x);
-    this.transform.position.x += 0.0001;
+    this.transform.position.x -= 0.00001;
     // console.log(this.transform.position.x);
   }
 }
