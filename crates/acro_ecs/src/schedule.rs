@@ -31,6 +31,7 @@ pub enum Stage {
     PostRender,
 }
 
+#[derive(Debug)]
 pub enum SystemSchedulingRequirement {
     RunBefore(SystemId),
     RunAfter(SystemId),

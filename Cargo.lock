@@ -75,6 +75,7 @@ dependencies = [
  "cfg-if",
  "deno_core",
  "nalgebra",
+ "serde",
  "tracing",
 ]
 
@@ -82,6 +83,7 @@ dependencies = [
 name = "acro_reflect"
 version = "0.1.0"
 dependencies = [
+ "acro_ecs",
  "eyre",
  "nalgebra",
  "reflect_derive",

@@ -13,8 +13,11 @@ use crate::{
 };
 
 pub struct ScriptingRuntime {
-    inner: JsRuntime,
+    world_handle: Rc<RefCell<World>>,
     behavior_id: u32,
+    name_to_component_id: HashMap<String, ComponentId>,
+    decl: Option<Vec<OpDecl>>,
+    inner: Option<JsRuntime>,
     component_vtables: Option<HashMap<ComponentId, *const ()>>,
 }
 
@@ -28,31 +31,26 @@ impl std::fmt::Debug for ScriptingRuntime {
 
 impl ScriptingRuntime {
     pub fn new(world_handle: Rc<RefCell<World>>) -> Self {
-        const GET_PROPERTY_NUMBER: OpDecl = op_get_property_number();
-        const SET_PROPERTY_NUMBER: OpDecl = op_set_property_number();
-
-        let ext = Extension {
-            name: "components",
-            ops: Cow::Borrowed(&[GET_PROPERTY_NUMBER, SET_PROPERTY_NUMBER]),
-            ..Default::default()
-        };
-
-        let mut runtime = JsRuntime::new(RuntimeOptions {
-            extensions: vec![ext],
-            ..Default::default()
-        });
-
-        runtime.op_state().borrow_mut().put(world_handle);
-
-        runtime
-            .execute_script("<init>", include_str!("js/bootstrap.js"))
-            .expect("failed to execute bootstrap script");
-
         Self {
             behavior_id: 0,
-            inner: runtime,
+            world_handle,
+            name_to_component_id: HashMap::new(),
+            decl: Some(vec![]),
+            inner: None,
             component_vtables: Some(HashMap::new()),
         }
+    }
+
+    pub fn inner(&self) -> &JsRuntime {
+        self.inner
+            .as_ref()
+            .expect("js runtime has not been initialized")
+    }
+
+    pub fn inner_mut(&mut self) -> &mut JsRuntime {
+        self.inner
+            .as_mut()
+            .expect("js runtime has not been initialized")
     }
 
     pub fn register_component<T: Reflect + 'static>(
@@ -72,14 +70,8 @@ impl ScriptingRuntime {
             .unwrap()
             .insert(component_info.id, vtable_ptr);
 
-        let component_id = component_info.id.0;
-
-        self.inner
-            .execute_script(
-                "<register-component>",
-                format!("acro.COMPONENT_IDS[\"{}\"] = {};", name, component_id),
-            )
-            .map_err(|e| eyre::eyre!("failed to register component: {e:?}"))?;
+        self.name_to_component_id
+            .insert(name.to_string(), component_info.id);
 
         Ok(())
     }
@@ -90,12 +82,15 @@ impl ScriptingRuntime {
                 .component_vtables
                 .take()
                 .expect("component vtables taken");
-            self.inner.op_state().borrow_mut().put(component_vtables);
+            self.inner_mut()
+                .op_state()
+                .borrow_mut()
+                .put(component_vtables);
         }
 
         info!("initializing source file: {:?}", source_file.config.name);
 
-        self.inner
+        self.inner_mut()
             .execute_script(
                 "<source>",
                 format!("(() => {{{}}})()", source_file.code.clone()),
@@ -115,7 +110,7 @@ impl ScriptingRuntime {
         self.behavior_id += 1;
         behavior.data = Some(BehaviorData { id });
 
-        self.inner
+        self.inner_mut()
             .execute_script(
                 "<create-behavior>",
                 format!(
@@ -129,14 +124,77 @@ impl ScriptingRuntime {
     }
 
     pub fn update(&mut self, tick: Tick) -> eyre::Result<()> {
-        self.inner.op_state().borrow_mut().put(tick);
+        self.inner_mut().op_state().borrow_mut().put(tick);
 
-        self.inner
+        self.inner_mut()
             .execute_script("<update>", "acro.update()")
             .map_err(|e| eyre::eyre!("failed to execute update script: {e:?}"))?;
 
         Ok(())
     }
+
+    pub fn add_op(&mut self, decl: OpDecl) -> &mut Self {
+        self.decl
+            .as_mut()
+            .expect("ops already initialized")
+            .push(decl);
+        self
+    }
+
+    pub fn take_ops(&mut self) -> Vec<OpDecl> {
+        self.decl.take().expect("ops already initialized")
+    }
+}
+
+pub fn init_scripting_runtime(
+    _ctx: SystemRunContext,
+    mut runtime: ResMut<ScriptingRuntime>,
+) -> eyre::Result<()> {
+    if runtime.inner.is_some() {
+        return Ok(());
+    }
+
+    let mut registered_ops = runtime.take_ops();
+
+    registered_ops.push(op_get_property_number());
+    registered_ops.push(op_set_property_number());
+
+    let ext = Extension {
+        name: "reflect",
+        ops: Cow::Owned(registered_ops),
+        ..Default::default()
+    };
+
+    let mut inner = JsRuntime::new(RuntimeOptions {
+        extensions: vec![ext],
+        ..Default::default()
+    });
+
+    inner
+        .op_state()
+        .borrow_mut()
+        .put(runtime.world_handle.clone());
+
+    inner
+        .execute_script("<init>", include_str!("js/bootstrap.js"))
+        .map_err(|e| eyre::eyre!("failed to execute init script: {e:?}"))?;
+
+    inner
+        .execute_script(
+            "<register-component>",
+            runtime
+                .name_to_component_id
+                .iter()
+                .map(|(name, ComponentId(component_id))| {
+                    format!("acro.COMPONENT_IDS['{}']={};", name, component_id)
+                })
+                .collect::<String>(),
+        )
+        .map_err(|e| eyre::eyre!("failed to register component: {e:?}"))?;
+
+    runtime.inner = Some(inner);
+
+    Ok(())
 }
 
 pub fn init_behavior(

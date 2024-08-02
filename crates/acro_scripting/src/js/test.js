@@ -5,7 +5,7 @@ class TestBehavior extends Behavior {
 
   update() {
     // console.log(this.transform.position.x);
-    this.transform.position = 0.00001;
+    this.transform.position = new Vec3(-11, 4, 3);
     // console.log(this.transform.position.x);
   }
 }

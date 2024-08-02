@@ -1,7 +1,10 @@
 use std::{
+    any::Any,
     cell::{RefCell, RefMut},
     rc::Rc,
 };
+
+use tracing::info;
 
 use crate::{
     plugin::Plugin,
@@ -48,7 +51,7 @@ impl Application {
         scheduling_requirements: impl IntoIterator<Item = SystemSchedulingRequirement>,
         system: I,
     ) where
-        I: IntoSystem<P>,
+        I: IntoSystem<P> + 'static,
         P: 'static,
     {
         let parameters = I::init(&self.world.borrow_mut());
@@ -56,7 +59,7 @@ impl Application {
             .add_system(
                 stage,
                 SystemData {
-                    id: SystemId::Native(std::any::TypeId::of::<P>()),
+                    id: SystemId::Native(system.type_id()),
                     name: std::any::type_name_of_val(&system).to_string(),
                     run: system.into_system(),
                     last_run_tick: Tick::new(0),

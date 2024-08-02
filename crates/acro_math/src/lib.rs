@@ -8,6 +8,7 @@ pub use crate::{
 
 use acro_ecs::{schedule::Stage, Application, Plugin};
 use acro_scripting::ScriptingRuntime;
+use tracing::info;
 use transform::register_components;
 
 pub struct MathPlugin;
@@ -22,6 +23,14 @@ impl Plugin for MathPlugin {
             runtime
                 .register_component::<Transform>(&world, "Transform")
                 .expect("failed to register Transform component");
+
+            runtime.add_op(op_get_property_vec2());
+            runtime.add_op(op_get_property_vec3());
+            runtime.add_op(op_get_property_vec4());
+
+            runtime.add_op(op_set_property_vec2());
+            runtime.add_op(op_set_property_vec3());
+            runtime.add_op(op_set_property_vec4());
         }
 
         app.add_system(Stage::PostUpdate, [], propagate_global_transform);

@@ -120,6 +120,7 @@ impl std::fmt::Debug for SystemData {
             .field("run", &(self.run.as_ref() as *const _))
             .field("last_run_tick", &self.last_run_tick)
             .field("parameters", &self.parameters)
+            .field("scheduling_requirements", &self.scheduling_requirements)
             .finish()
     }
 }

@@ -2,7 +2,7 @@ use std::any::Any;
 
 use nalgebra::{self as na, Quaternion};
 
-use crate::{Reflect, ReflectPath, ReflectSetError};
+use crate::{type_mismatch, Reflect, ReflectPath, ReflectSetError};
 
 macro_rules! impl_reflect_vector {
     ($type_name: ty: $($fields: expr),+ => $($fields_as_idents:ident),+) => {
@@ -22,6 +22,10 @@ macro_rules! impl_reflect_vector {
                     $(
                         Property($fields, rest) => self.$fields_as_idents.set_any(rest, data),
                     )+
+                    End => {
+                        *self = *data.downcast::<$type_name>().map_err(type_mismatch)?;
+                        Ok(())
+                    },
                     _ => Err(ReflectSetError::PathNotFound),
                 }
             }
@@ -56,6 +60,7 @@ impl<F: Reflect + na::Scalar> Reflect for Quaternion<F> {
             Property("y", rest) => self.coords.y.get_opt(rest),
             Property("z", rest) => self.coords.z.get_opt(rest),
             Property("w", rest) => self.coords.w.get_opt(rest),
+            End => Some(self),
             _ => None,
         }
     }
@@ -68,6 +73,10 @@ impl<F: Reflect + na::Scalar> Reflect for Quaternion<F> {
             Property("y", rest) => self.coords.y.set_any(rest, data),
             Property("z", rest) => self.coords.z.set_any(rest, data),
             Property("w", rest) => self.coords.w.set_any(rest, data),
+            End => {
+                *self = *data.downcast::<Quaternion<F>>().map_err(type_mismatch)?;
+                Ok(())
+            }
             _ => return Err(ReflectSetError::PathNotFound),
         }
     }

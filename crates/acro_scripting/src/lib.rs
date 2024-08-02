@@ -12,7 +12,7 @@ pub use crate::{
 
 use acro_assets::{load_queued_assets, Assets};
 use acro_ecs::{systems::SystemId, Application, Plugin, Stage, SystemSchedulingRequirement};
-use runtime::{init_behavior, update_behaviors};
+use runtime::{init_behavior, init_scripting_runtime, update_behaviors};
 
 pub struct ScriptingPlugin;
 
@@ -20,13 +20,15 @@ impl Plugin for ScriptingPlugin {
     fn build(&mut self, app: &mut Application) {
         app.world().init_component::<Behavior>();
 
+        app.add_system(Stage::PreUpdate, [], init_behavior);
         app.add_system(
             Stage::PreUpdate,
-            [SystemSchedulingRequirement::RunAfter(SystemId::Native(
+            [SystemSchedulingRequirement::RunBefore(SystemId::Native(
                 load_queued_assets.type_id(),
             ))],
-            init_behavior,
+            init_scripting_runtime,
         );
+        app.add_system(Stage::Update, [], update_behaviors);
         app.add_system(Stage::Update, [], update_behaviors);
 
         let mut world = app.world();

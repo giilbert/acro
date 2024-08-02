@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use crate::type_mismatch;
+
 // a_property.b_property.c_property
 // => Property("a..", Property("b..", Property("c..", End)))
 // Nested properties can be passsed down to further objects that are Reflect
@@ -68,10 +70,6 @@ pub trait ReflectExt: Reflect {
 }
 
 impl<T: Reflect + ?Sized> ReflectExt for T {}
-
-fn type_mismatch<T>(_: T) -> ReflectSetError {
-    ReflectSetError::TypeMismatch
-}
 
 macro_rules! impl_reflect_number {
     ($integer_type:ident) => {
