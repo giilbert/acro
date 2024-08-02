@@ -104,7 +104,7 @@ impl Schedule {
         Ok(())
     }
 
-    pub fn run_stage(&mut self, stage: Stage, world: &mut World) {
+    pub fn run_stage(&mut self, stage: Stage, world: &World) {
         let systems = match self.stages.get_mut(&stage) {
             Some(systems) => systems,
             None => return,
@@ -132,7 +132,7 @@ impl Schedule {
         }
     }
 
-    pub fn run_once(&mut self, world: &mut World) {
+    pub fn run_once(&mut self, world: &World) {
         let now = std::time::SystemTime::now();
         let time_since_last_render = now
             .duration_since(self.last_render_run)

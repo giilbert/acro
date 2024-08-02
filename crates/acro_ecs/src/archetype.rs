@@ -6,6 +6,9 @@ use std::{
     rc::Rc,
 };
 
+use fnv::FnvHashMap;
+use tracing::info;
+
 use crate::{
     entity::{Entities, EntityId, EntityMeta},
     pointer::change_detection::{ChangeDetectionContext, Tick},
@@ -18,8 +21,8 @@ pub struct Archetypes {
     pub(crate) generation: usize,
     current_id: usize,
     /// The generation is used to know if query archetype ids needs to recomputed
-    archetypes: HashMap<ArchetypeId, RefCell<Archetype>>,
-    components: HashMap<ComponentGroup, ArchetypeId>,
+    archetypes: FnvHashMap<ArchetypeId, RefCell<Archetype>>,
+    components: FnvHashMap<ComponentGroup, ArchetypeId>,
     // Maps from an old archetype to a set of new archetypes based on components added or removed
     pub(crate) edges: Edges,
 }
@@ -32,8 +35,8 @@ pub enum ArchetypeOperation {
 
 impl Archetypes {
     pub fn new() -> Self {
-        let mut archetypes = HashMap::new();
-        let mut components = HashMap::new();
+        let mut archetypes = FnvHashMap::default();
+        let mut components = FnvHashMap::default();
 
         // Create the archetype with no components
         archetypes.insert(

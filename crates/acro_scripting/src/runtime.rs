@@ -3,6 +3,7 @@ use std::{
     cell::{RefCell, UnsafeCell},
     collections::HashMap,
     rc::Rc,
+    time::Instant,
 };
 
 use acro_assets::Assets;
@@ -29,7 +30,8 @@ fn op_get_property_number(
     let data_ptr = world
         .borrow()
         .get_ptr(EntityId::new(generation, index), ComponentId(component_id))
-        .expect("component not found");
+        .ok_or_else(|| deno_core::anyhow::anyhow!("entity or component not found"))?;
+
     let trait_object = unsafe {
         std::mem::transmute::<(*const (), *const ()), &dyn Reflect>((
             data_ptr.as_ptr() as *const (),
@@ -37,16 +39,7 @@ fn op_get_property_number(
         ))
     };
 
-    info!("get property number: {:?}", path);
-
     Ok(*trait_object.get::<f32>(&path) as f64)
-    // world
-    //     .borrow()
-    //     .get(EntityId::new(generation, index))
-    //     .unwrap()
-    //     .get_property_number(path);
-    // info!("get property number: {:?}", path);
-    // Ok(0.0)
 }
 
 #[op2(fast)]
@@ -166,7 +159,7 @@ impl ScriptingRuntime {
                 "<create-behavior>",
                 format!(
                     "acro.createBehavior({}, {}, {}, \"{}\")",
-                    attached_to.index, attached_to.generation, id, source_file.config.name
+                    attached_to.generation, attached_to.index, id, source_file.config.name
                 ),
             )
             .map_err(|e| eyre::eyre!("failed to execute behavior init script: {e:?}"))?;

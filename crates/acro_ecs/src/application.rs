@@ -69,7 +69,7 @@ impl Application {
 
     pub fn run_once(&mut self) {
         // let now = std::time::Instant::now();
-        self.schedule.run_once(&mut *self.world.borrow_mut());
+        self.schedule.run_once(&*self.world.borrow());
         // let elapsed = now.elapsed();
         // println!("run once took {:?}", elapsed);
     }
