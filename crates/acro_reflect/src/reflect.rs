@@ -32,7 +32,8 @@ pub enum ReflectSetError {
 
 pub trait Reflect {
     fn get_field_names(&self) -> &'static [&'static str];
-    fn set(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError>;
+
+    fn set_any(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError>;
     fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any>;
 
     fn get_full_name(&self) -> &'static str {
@@ -56,6 +57,11 @@ pub trait ReflectExt: Reflect {
             .expect("type mismatch")
     }
 
+    fn set<T: 'static>(&mut self, path: &ReflectPath, value: T) {
+        self.set_any(path, Box::new(value))
+            .expect("error setting value");
+    }
+
     fn downcast<T: 'static>(&self) -> &T {
         self.get(&ReflectPath::End)
     }
@@ -74,7 +80,7 @@ macro_rules! impl_reflect_number {
                 &[]
             }
 
-            fn set(
+            fn set_any(
                 &mut self,
                 path: &ReflectPath,
                 data: Box<dyn Any>,
@@ -123,10 +129,10 @@ mod tests {
     }
 
     impl Reflect for Inner {
-        fn set(&mut self, path: &R, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
+        fn set_any(&mut self, path: &R, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
             match path {
                 R::End => *self = *data.downcast().map_err(|_| ReflectSetError::TypeMismatch)?,
-                R::Property("b", path) => self.b.set(&path, data)?,
+                R::Property("b", path) => self.b.set_any(&path, data)?,
                 _ => return Err(ReflectSetError::PathNotFound),
             }
             Ok(())
@@ -152,11 +158,11 @@ mod tests {
     }
 
     impl Reflect for ReflectedStruct {
-        fn set(&mut self, path: &R, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
+        fn set_any(&mut self, path: &R, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
             match path {
                 R::End => *self = *data.downcast().map_err(|_| ReflectSetError::TypeMismatch)?,
-                R::Property("a", path) => self.a.set(path, data)?,
-                R::Property("inner", path) => self.inner.set(path, data)?,
+                R::Property("a", path) => self.a.set_any(path, data)?,
+                R::Property("inner", path) => self.inner.set_any(path, data)?,
                 _ => return Err(ReflectSetError::PathNotFound),
             }
             Ok(())
@@ -183,11 +189,11 @@ mod tests {
             inner: Inner { b: 1 },
         };
 
-        test.set(&R::Property("a", Box::new(R::End)), Box::new(2u32))
+        test.set_any(&R::Property("a", Box::new(R::End)), Box::new(2u32))
             .expect("error setting a");
         assert_eq!(*test.get::<u32>(&R::Property("a", Box::new(R::End))), 2);
 
-        test.set(
+        test.set_any(
             &R::Property("inner", Box::new(R::End)),
             Box::new(Inner { b: 3 }),
         )

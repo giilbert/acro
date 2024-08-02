@@ -79,6 +79,48 @@ class Vec3 {
       return this._z;
     }
   }
+
+  set x(value) {
+    if (this.attachedTo) {
+      Deno.core.ops.op_set_property_number(
+        this.attachedTo.entity.generation,
+        this.attachedTo.entity.index,
+        this.attachedTo.componentId,
+        this.attachedTo.path + ".x",
+        value
+      );
+    } else {
+      this._x = value;
+    }
+  }
+
+  set y(value) {
+    if (this.attachedTo) {
+      Deno.core.ops.op_set_property_number(
+        this.attachedTo.entity.generation,
+        this.attachedTo.entity.index,
+        this.attachedTo.componentId,
+        this.attachedTo.path + ".y",
+        value
+      );
+    } else {
+      this._y = value;
+    }
+  }
+
+  set z(value) {
+    if (this.attachedTo) {
+      Deno.core.ops.op_set_property_number(
+        this.attachedTo.entity.generation,
+        this.attachedTo.entity.index,
+        this.attachedTo.componentId,
+        this.attachedTo.path + ".z",
+        value
+      );
+    } else {
+      this._z = value;
+    }
+  }
 }
 
 class AcroGlobalHook {

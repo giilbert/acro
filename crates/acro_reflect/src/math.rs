@@ -20,9 +20,14 @@ impl<F: Reflect + na::Scalar> Reflect for na::Vector3<F> {
         }
     }
 
-    fn set(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
+    fn set_any(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
         use ReflectPath::*;
 
-        todo!();
+        match path {
+            Property("x", rest) => self.x.set_any(rest, data),
+            Property("y", rest) => self.y.set_any(rest, data),
+            Property("z", rest) => self.z.set_any(rest, data),
+            _ => return Err(ReflectSetError::PathNotFound),
+        }
     }
 }

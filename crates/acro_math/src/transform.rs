@@ -38,14 +38,19 @@ impl Reflect for Transform {
     fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any> {
         match path {
             ReflectPath::Property("position", rest) => self.position.get_opt(rest),
-            ReflectPath::Property("rotation", rest) => self.position.get_opt(rest),
-            ReflectPath::Property("scale", rest) => self.position.get_opt(rest),
+            // ReflectPath::Property("rotation", rest) => self.rotation.get_opt(rest),
+            // ReflectPath::Property("scale", rest) => self.scale.get_opt(rest),
             _ => None,
         }
     }
 
-    fn set(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
-        todo!();
+    fn set_any(&mut self, path: &ReflectPath, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
+        match path {
+            ReflectPath::Property("position", rest) => self.position.set_any(rest, data),
+            // ReflectPath::Property("rotation", rest) => self.rotation.set_any(rest, data),
+            // ReflectPath::Property("scale", rest) => self.scale.set_any(rest, data),
+            _ => Err(ReflectSetError::PathNotFound),
+        }
     }
 }
 

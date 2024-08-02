@@ -180,7 +180,7 @@ impl Archetypes {
         let meta = entities.get(entity)?;
         let archetype = self.archetypes.get(&meta.archetype_id)?.borrow();
         let component_data = archetype
-            .pointer_to_entity_component(meta.table_index, component_id)?
+            .pointer_to_entity_component(meta.table_index, component_id, None)?
             .as_ptr() as *const T;
         Some(unsafe { &*component_data })
     }
@@ -190,10 +190,15 @@ impl Archetypes {
         entities: &Entities,
         entity: EntityId,
         component_id: ComponentId,
+        update_change_detection: Option<Tick>,
     ) -> Option<NonNull<u8>> {
         let meta = entities.get(entity)?;
         let archetype = self.archetypes.get(&meta.archetype_id)?.borrow();
-        archetype.pointer_to_entity_component(meta.table_index, component_id)
+        archetype.pointer_to_entity_component(
+            meta.table_index,
+            component_id,
+            update_change_detection,
+        )
     }
 
     pub fn remove_component<T: 'static>(
@@ -216,7 +221,7 @@ impl Archetypes {
 
         let removed_component_data = old_archetype
             .borrow_mut()
-            .pointer_to_entity_component(meta.table_index, remove_component)
+            .pointer_to_entity_component(meta.table_index, remove_component, None)
             .expect("component data not found")
             .as_ptr() as *const T;
 
@@ -283,8 +288,15 @@ impl Archetype {
         &self,
         table_index: usize,
         component: ComponentId,
+        update_change_detection: Option<Tick>,
     ) -> Option<NonNull<u8>> {
-        unsafe { (&*self.table.columns[&component].data.get() as &AnyVec).get_ptr(table_index) }
+        let column = &self.table.columns[&component];
+        if let Some(tick) = update_change_detection {
+            let changed_tick = unsafe { &mut *column.change_detection.get() };
+            changed_tick.changed_ticks[table_index] = tick;
+        }
+
+        unsafe { (&*column.data.get() as &AnyVec).get_ptr(table_index) }
     }
 
     pub fn remove(&mut self, entity_meta: &EntityMeta) -> Option<EntityId> {
@@ -313,7 +325,7 @@ impl Archetype {
                     if self.components.contains(info.id) {
                         Some(
                             old_archetype
-                                .pointer_to_entity_component(entity_meta.table_index, info.id)
+                                .pointer_to_entity_component(entity_meta.table_index, info.id, None)
                                 .map(|ptr| (info.id, ptr.as_ptr() as *const u8))
                                 .expect("entity not found in old archetype"),
                         )

@@ -1,10 +1,10 @@
-use std::{any::TypeId, ptr::NonNull};
+use std::{any::TypeId, cell::UnsafeCell, ptr::NonNull};
 
 use crate::{
     archetype::Archetypes,
     bundle::Bundle,
     entity::{Entities, EntityId, EntityMeta},
-    pointer::change_detection::Tick,
+    pointer::change_detection::{ChangeDetectionContext, Tick},
     query::{Query, QueryFilter, ToQueryInfo},
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,
@@ -124,10 +124,19 @@ impl World {
             .get_component::<T>(&self.entities, entity, component_info.id)
     }
 
-    pub fn get_ptr(&self, entity: EntityId, component_id: ComponentId) -> Option<NonNull<u8>> {
+    pub fn get_ptr(
+        &self,
+        entity: EntityId,
+        component_id: ComponentId,
+        update_change_detection: Option<Tick>,
+    ) -> Option<NonNull<u8>> {
         let component_info = self.components.get_info(component_id);
-        self.archetypes
-            .get_component_untyped(&self.entities, entity, component_info.id)
+        self.archetypes.get_component_untyped(
+            &self.entities,
+            entity,
+            component_info.id,
+            update_change_detection,
+        )
     }
 
     pub fn insert_resource<T: 'static>(&mut self, resource: T) {

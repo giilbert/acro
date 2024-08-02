@@ -15,9 +15,9 @@ fn update(
     query: Query<&mut Transform, With<Mesh>>,
     window: Res<WindowState>,
 ) {
-    let mut transform = query.single(&ctx);
-    transform.position.x = window.mouse_position.x / 100.0;
-    transform.position.y = window.mouse_position.y / 100.0;
+    // let mut transform = query.single(&ctx);
+    // transform.position.x = window.mouse_position.x / 100.0;
+    // transform.position.y = window.mouse_position.y / 100.0;
 }
 
 struct TestPlugin;
