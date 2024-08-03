@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::archetype::ArchetypeId;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct EntityId {
     pub generation: u32,
     pub index: u32,

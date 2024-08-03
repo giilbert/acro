@@ -1,29 +1,42 @@
-use std::any::Any;
+use std::{any::Any, collections::HashMap};
 
 use acro_ecs::{EntityId, Name, World};
 use acro_math::{Children, Parent, Root};
+use tracing::warn;
+
+use crate::{ComponentLoader, ComponentLoaders};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Scene {
-    entities: Vec<SerializedEntity>,
+    entities: Vec<Entity>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct SerializedEntity {
+struct Entity {
     name: String,
-    components: Vec<ron::Value>,
-    children: Vec<SerializedEntity>,
+    components: Vec<Component>,
+    children: Vec<Entity>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Component {
+    pub name: String,
+    #[serde(flatten)]
+    data: ron::Value,
 }
 
 impl Scene {
-    pub fn load(&self, world: &mut World) {
+    pub fn load(self, world: &mut World) {
         world.clear_all_entities();
 
         let root_entity = world.spawn((Name("Root".to_string()), Root));
 
+        let component_loaders = world.resources().get::<ComponentLoaders>().take();
+
         let mut root_children = vec![];
-        for entity in &self.entities {
-            let entity_id = Self::spawn_entity_with_parent(world, root_entity, entity);
+        for entity in self.entities.into_iter() {
+            let entity_id =
+                Self::spawn_entity_with_parent(world, root_entity, entity, &component_loaders);
             root_children.push(entity_id);
         }
 
@@ -33,21 +46,33 @@ impl Scene {
     fn spawn_entity_with_parent(
         world: &mut World,
         parent: EntityId,
-        entity: &SerializedEntity,
+        entity: Entity,
+        component_loaders: &HashMap<String, ComponentLoader>,
     ) -> EntityId {
         let entity_id = world.spawn((Name(entity.name.clone()),));
 
         let mut children = vec![];
-        for child in &entity.children {
-            let child_id = Self::spawn_entity_with_parent(world, entity_id, child);
+        for child in entity.children.into_iter() {
+            let child_id =
+                Self::spawn_entity_with_parent(world, entity_id, child, component_loaders);
             children.push(child_id);
         }
 
         world.insert(entity_id, Children(children));
         world.insert(entity_id, Parent(parent));
 
-        // TODO: init the components of this entity
-        println!("{:?}", entity.components);
+        // println!("{:?}", entity.components);
+
+        for component in entity.components.into_iter() {
+            if let Some(loader) = component_loaders.get(&component.name) {
+                let result = loader(world, entity_id, component.data);
+                if let Err(err) = result {
+                    warn!("Failed to load component `{}`: {:?}", component.name, err);
+                }
+            } else {
+                warn!("No loader for component `{}`. Ignoring..", component.name);
+            }
+        }
 
         entity_id
     }
@@ -59,29 +84,33 @@ mod tests {
     use acro_math::{Children, MathPlugin};
     use tracing::info;
 
+    use crate::ScenePlugin;
+
     use super::Scene;
 
     const TEST_SCENE: &str = r#"
 Scene(
     entities: [
-        SerializedEntity(
+        Entity(
             name: "parent",
             components: [
-                Transform(
+                {
+                    name: "Transform",
                     position: Vec3(0.0, 0.0, 0.0),
                     rotation: Vec3(0.0, 0.0, 0.0),
                     scale: Vec3(1.0, 1.0, 1.0) 
-                ),
+                },
             ],
             children: [
-                SerializedEntity(
+                Entity(
                     name: "child",
                     components: [
-                        Transform(
+                        {
+                            name: "Transform",
                             position: Vec3(1.0, 0.0, 0.0),
                             rotation: Vec3(0.0, 0.0, 0.0),
                             scale: Vec3(1.0, 1.0, 1.0) 
-                        ),
+                        },
                     ],
                     children: []
                 )
@@ -94,7 +123,9 @@ Scene(
     #[test]
     fn scene_loading() {
         let scene: Scene = ron::de::from_str(TEST_SCENE).unwrap();
-        let app = Application::new().add_plugin(MathPlugin { scripting: false });
+        let app = Application::new()
+            .add_plugin(ScenePlugin)
+            .add_plugin(MathPlugin { scripting: false });
         let mut world = app.world();
         scene.load(&mut world);
 
@@ -102,7 +133,5 @@ Scene(
         for (name, children) in query.over(&*world) {
             println!("{name:?}: {children:?}");
         }
-
-        panic!();
     }
 }

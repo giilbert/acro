@@ -6,17 +6,17 @@ use nalgebra::UnitQuaternion;
 
 use crate::types::{Mat4, Quaternion, Vec3};
 
-#[derive(Debug, Clone, Copy, Reflect)]
+#[derive(Debug, Clone, Copy, Reflect, serde::Serialize, serde::Deserialize)]
 pub struct Transform {
     pub position: Vec3,
-    pub rotation: Quaternion,
+    pub rotation: Vec3,
     pub scale: Vec3,
 }
 
 impl Transform {
     pub fn get_matrix(&self) -> Mat4 {
         Mat4::new_translation(&self.position)
-            * UnitQuaternion::new_normalize(self.rotation).to_homogeneous()
+            * Mat4::new_rotation(self.rotation)
             * Mat4::new_nonuniform_scaling(&self.scale)
     }
 }
@@ -25,7 +25,7 @@ impl Default for Transform {
     fn default() -> Self {
         Self {
             position: [0.0, 0.0, 0.0].into(),
-            rotation: Quaternion::identity(),
+            rotation: [0.0, 0.0, 0.0].into(),
             scale: [1.0, 1.0, 1.0].into(),
         }
     }
@@ -135,7 +135,7 @@ mod tests {
             root,
             Transform {
                 position: [0.0, 0.0, 0.0].into(),
-                rotation: Quaternion::identity(),
+                rotation: [0.0, 0.0, 0.0].into(),
                 scale: [1.0, 1.0, 1.0].into(),
             },
         );
@@ -152,7 +152,7 @@ mod tests {
             child_1,
             Transform {
                 position: [0.0, -2.0, 0.0].into(),
-                rotation: Quaternion::identity(),
+                rotation: [0.0, 0.0, 0.0].into(),
                 scale: [1.0, 1.0, 1.0].into(),
             },
         );
@@ -169,7 +169,7 @@ mod tests {
             child_of_child_1,
             Transform {
                 position: [0.0, 2.0, 0.0].into(),
-                rotation: Quaternion::identity(),
+                rotation: [0.0, 0.0, 0.0].into(),
                 scale: [1.0, 1.0, 1.0].into(),
             },
         );
@@ -192,7 +192,7 @@ mod tests {
             child_1_global_transform.matrix,
             Transform {
                 position: [0.0, -2.0, 0.0].into(),
-                rotation: Quaternion::identity(),
+                rotation: [0.0, 0.0, 0.0].into(),
                 scale: [1.0, 1.0, 1.0].into(),
             }
             .get_matrix()
@@ -204,7 +204,7 @@ mod tests {
             child_of_child_1_global_transform.matrix,
             Transform {
                 position: [0.0, 0.0, 0.0].into(),
-                rotation: Quaternion::identity(),
+                rotation: [0.0, 0.0, 0.0].into(),
                 scale: [1.0, 1.0, 1.0].into(),
             }
             .get_matrix()

@@ -9,5 +9,6 @@ acro_ecs = { path = "../acro_ecs" }
 acro_log = { path = "../acro_log" }
 acro_math = { path = "../acro_math" }
 acro_render = { path = "../acro_render" }
+acro_scene = { path = "../acro_scene" }
 acro_scripting = { path = "../acro_scripting" }
 tracing = "0.1.40"

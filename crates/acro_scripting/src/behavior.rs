@@ -1,10 +1,10 @@
 use acro_assets::Asset;
+use serde::{Deserialize, Serialize};
 
-use crate::source_file::SourceFile;
-
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Behavior {
     pub(crate) source_file_path: String,
+    #[serde(skip)]
     pub(crate) data: Option<BehaviorData>,
 }
 

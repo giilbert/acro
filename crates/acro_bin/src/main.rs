@@ -7,6 +7,7 @@ use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
 use acro_render::{
     Camera, CameraType, MainCamera, Mesh, RenderPlugin, Texture, Vertex, WindowState,
 };
+use acro_scene::ScenePlugin;
 use acro_scripting::{Behavior, ScriptingPlugin, SourceFile};
 use tracing::info;
 
@@ -95,6 +96,7 @@ fn main() {
         .add_plugin(AssetsPlugin)
         .add_plugin(ScriptingPlugin)
         .add_plugin(MathPlugin::default())
+        .add_plugin(ScenePlugin)
         .add_plugin(RenderPlugin)
         .add_plugin(TestPlugin)
         .run();
