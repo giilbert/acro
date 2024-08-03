@@ -84,7 +84,7 @@ mod tests {
     fn test_change_detection() {
         let mut app = Application::new();
 
-        app.world().init_component::<u32>();
+        let component_id = app.world().init_component::<u32>().id;
 
         app.world().spawn((40u32,));
         app.world().spawn((42u32,));
@@ -113,7 +113,7 @@ mod tests {
                     .borrow()
                     .table
                     .columns
-                    .get(&ComponentId(0))
+                    .get(&component_id)
                     .unwrap()
                     .change_detection
                     .get()
