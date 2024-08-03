@@ -18,6 +18,9 @@ impl ReflectPath<'_> {
         let mut parts = path.split('.').rev();
         let mut path = Box::new(ReflectPath::End);
         while let Some(part) = parts.next() {
+            if part == "" {
+                continue;
+            }
             let new_path = Box::new(ReflectPath::Property(part, path));
             path = new_path;
         }

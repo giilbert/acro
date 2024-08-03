@@ -5,152 +5,154 @@ class Entity {
     this.generation = generation;
     this.index = index;
   }
+
+  newAttachment(componentId, path) {
+    return new Attachment(this, componentId, path);
+  }
+}
+
+class Attachment {
+  constructor(entity, componentId, path) {
+    this.entity = entity;
+    this.componentId = componentId;
+    this.path = path;
+  }
+
+  add(pathSegment) {
+    return new Attachment(
+      this.entity,
+      this.componentId,
+      this.path + "." + pathSegment
+    );
+  }
+}
+
+function getPropertyNumber(attachment) {
+  return Deno.core.ops.op_get_property_number(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path
+  );
+}
+
+function setPropertyNumber(attachment, value) {
+  Deno.core.ops.op_set_property_number(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path,
+    value
+  );
+}
+
+function getPropertyVec3(attachment) {
+  const value = Deno.core.ops.op_get_property_vec3(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path
+  );
+
+  Object.setPrototypeOf(value, Vec3.prototype);
+  value.attachedTo = attachment;
+
+  return value;
+}
+
+function setPropertyVec3(attachment, value) {
+  Deno.core.ops.op_set_property_vec3(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path,
+    value.x,
+    value.y,
+    value.z
+  );
 }
 
 class Behavior {
   constructor(entity) {
     this.entity = entity;
-    this.transform = this.getComponent("Transform");
+    this.transform = this.getComponent(Transform);
   }
 
-  getComponent(name) {
-    if (name === "Transform") {
+  getComponent(ComponentClass) {
+    const attachment = this.entity.newAttachment(
+      ComponentClass.getComponentId(),
+      ""
+    );
+
+    if (ComponentClass === Transform) {
       return new Transform(
-        new Vec3(0, 0, 0, {
-          entity: this.entity,
-          componentId: acro.COMPONENT_IDS.Transform,
-          path: "position",
-        }),
-        {
-          entity: this.entity,
-          componentId: acro.COMPONENT_IDS.Transform,
-          path: "",
-        }
+        new Vec3(0, 0, 0, attachment.add("position")),
+        attachment
       );
     }
+
+    throw new Error(`Unknown component class: ${ComponentClass}`);
   }
 }
 
 class Transform {
-  // TODO: rotation and scale
-  constructor(position, attachedTo) {
+  static getComponentId() {
+    return acro.COMPONENT_IDS.Transform;
+  }
+
+  constructor(position, attachment) {
     this._position = position;
-    this.attachedTo = attachedTo;
+    this.attachment = attachment;
   }
 
   get position() {
-    if (this.attachedTo) {
-      const value = Deno.core.ops.op_get_property_vec3(
-        this.attachedTo.entity.generation,
-        this.attachedTo.entity.index,
-        this.attachedTo.componentId,
-        this.attachedTo.path
-      );
-
-      Object.setPrototypeOf(value, Vec3.prototype);
-      value.attachedTo = this._position.attachedTo;
-
-      this._position = value;
-    }
+    if (this.attachment)
+      this._position = getPropertyVec3(this.attachment.add("position"));
     return this._position;
   }
 
   set position(value) {
-    if (this.attachedTo) {
-      Deno.core.ops.op_set_property_vec3(
-        this.attachedTo.entity.generation,
-        this.attachedTo.entity.index,
-        this.attachedTo.componentId,
-        this.attachedTo.path + "position",
-        value.x,
-        value.y,
-        value.z
-      );
-    }
+    if (this.attachment)
+      setPropertyVec3(this.attachment.add("position"), value);
     this._position = value;
   }
 }
 
 class Vec3 {
-  constructor(x, y, z, attachedTo) {
+  constructor(x, y, z, attachment) {
     this._x = x;
     this._y = y;
     this._z = z;
-    this.attachedTo = attachedTo;
+    this.attachment = attachment;
   }
 
   get x() {
-    if (this.attachedTo) {
-      this._x = Deno.core.ops.op_get_property_number(
-        this.attachedTo.entity.generation,
-        this.attachedTo.entity.index,
-        this.attachedTo.componentId,
-        this.attachedTo.path + ".x"
-      );
-    }
+    if (this.attachment) this._z = getPropertyNumber(this.attachment.add("x"));
     return this._x;
   }
 
   get y() {
-    if (this.attachedTo) {
-      this._y = Deno.core.ops.op_get_property_number(
-        this.attachedTo.entity.generation,
-        this.attachedTo.entity.index,
-        this.attachedTo.componentId,
-        this.attachedTo.path + ".y"
-      );
-    }
+    if (this.attachment) this._y = getPropertyNumber(this.attachment.add("y"));
     return this._y;
   }
 
   get z() {
-    if (this.attachedTo) {
-      this._z = Deno.core.ops.op_get_property_number(
-        this.attachedTo.entity.generation,
-        this.attachedTo.entity.index,
-        this.attachedTo.componentId,
-        this.attachedTo.path + ".z"
-      );
-    }
+    if (this.attachment) this._z = getPropertyNumber(this.attachment.add("z"));
     return this._z;
   }
 
   set x(value) {
-    if (this.attachedTo) {
-      Deno.core.ops.op_set_property_number(
-        this.attachedTo.entity.generation,
-        this.attachedTo.entity.index,
-        this.attachedTo.componentId,
-        this.attachedTo.path + ".x",
-        value
-      );
-    }
+    if (this.attachment) setPropertyNumber(this.attachment.add("x"), value);
     this._x = value;
   }
 
   set y(value) {
-    if (this.attachedTo) {
-      Deno.core.ops.op_set_property_number(
-        this.attachedTo.entity.generation,
-        this.attachedTo.entity.index,
-        this.attachedTo.componentId,
-        this.attachedTo.path + ".y",
-        value
-      );
-    }
+    if (this.attachment) setPropertyNumber(this.attachment.add("y"), value);
     this._y = value;
   }
 
   set z(value) {
-    if (this.attachedTo) {
-      Deno.core.ops.op_set_property_number(
-        this.attachedTo.entity.generation,
-        this.attachedTo.entity.index,
-        this.attachedTo.componentId,
-        this.attachedTo.path + ".z",
-        value
-      );
-    }
+    if (this.attachment) setPropertyNumber(this.attachment.add("z"), value);
     this._z = value;
   }
 }
