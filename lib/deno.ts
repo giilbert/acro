@@ -1,0 +1,89 @@
+// interface Deno {}
+
+import { Attachment } from "./core";
+import { Vec3 } from "./vec3";
+
+declare global {
+  interface Deno {
+    core: {
+      print: (message: string) => void;
+      ops: {
+        op_get_property_number: (
+          generation: number,
+          index: number,
+          componentId: number,
+          path: string
+        ) => number;
+        op_set_property_number: (
+          generation: number,
+          index: number,
+          componentId: number,
+          path: string,
+          value: number
+        ) => void;
+
+        op_get_property_vec3: (
+          generation: number,
+          index: number,
+          componentId: number,
+          path: string
+        ) => { x: number; y: number; z: number };
+        op_set_property_vec3: (
+          generation: number,
+          index: number,
+          componentId: number,
+          path: string,
+          x: number,
+          y: number,
+          z: number
+        ) => void;
+      };
+    };
+  }
+  export const Deno: Deno;
+}
+
+export function getPropertyNumber(attachment: Attachment): number {
+  return Deno.core.ops.op_get_property_number(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path
+  );
+}
+
+export function setPropertyNumber(attachment: Attachment, value: number) {
+  Deno.core.ops.op_set_property_number(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path,
+    value
+  );
+}
+
+export function getPropertyVec3(attachment: Attachment): Vec3 {
+  const value = Deno.core.ops.op_get_property_vec3(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path
+  ) as Vec3;
+
+  Object.setPrototypeOf(value, Vec3.prototype);
+  value.attachment = attachment;
+
+  return value;
+}
+
+export function setPropertyVec3(attachment: Attachment, value: Vec3) {
+  Deno.core.ops.op_set_property_vec3(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path,
+    value.x,
+    value.y,
+    value.z
+  );
+}
