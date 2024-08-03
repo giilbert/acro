@@ -7,7 +7,7 @@ use tracing::warn;
 use crate::{ComponentLoader, ComponentLoaders};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct Scene {
+pub struct Scene {
     entities: Vec<Entity>,
 }
 

@@ -7,7 +7,7 @@ use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
 use acro_render::{
     Camera, CameraType, MainCamera, Mesh, RenderPlugin, Texture, Vertex, WindowState,
 };
-use acro_scene::ScenePlugin;
+use acro_scene::{SceneManager, ScenePlugin};
 use acro_scripting::{Behavior, ScriptingPlugin, SourceFile};
 use tracing::info;
 
@@ -25,68 +25,73 @@ struct TestPlugin;
 
 impl Plugin for TestPlugin {
     fn build(&mut self, app: &mut Application) {
-        let mut world = app.world();
+        let world = app.world();
 
-        {
-            let assets = world.resources().get::<Assets>();
-            assets.queue::<SourceFile>("crates/acro_scripting/src/js/test.js");
-        }
+        world
+            .resources()
+            .get_mut::<SceneManager>()
+            .queue("examples/main.scene");
 
-        let root = world.spawn((Root, GlobalTransform::default(), Transform::default()));
+        // {
+        //     let assets = world.resources().get::<Assets>();
+        //     assets.queue::<SourceFile>("crates/acro_scripting/src/js/test.js");
+        // }
 
-        world.spawn((
-            Mesh::new(
-                vec![
-                    Vertex {
-                        position: [-1.0, -1.0, 0.0].into(),
-                        tex_coords: [0.0, 1.0].into(),
-                    },
-                    Vertex {
-                        position: [1.0, -1.0, 0.0].into(),
-                        tex_coords: [1.0, 1.0].into(),
-                    },
-                    Vertex {
-                        position: [1.0, 1.0, 0.0].into(),
-                        tex_coords: [1.0, 0.0].into(),
-                    },
-                    Vertex {
-                        position: [-1.0, 1.0, 0.0].into(),
-                        tex_coords: [0.0, 0.0].into(),
-                    },
-                ],
-                vec![0, 1, 2, 0, 2, 3],
-                Some("crates/acro_render/src/textures/ferris.png"),
-                "crates/acro_render/src/shaders/basic-mesh.wgsl",
-            ),
-            GlobalTransform::default(),
-            Transform::default(),
-            Parent(root),
-            Children(vec![]),
-            Behavior::new("crates/acro_scripting/src/js/test.js"),
-        ));
+        // let root = world.spawn((Root, GlobalTransform::default(), Transform::default()));
 
-        world.spawn((
-            Camera::new(
-                CameraType::Perspective {
-                    fov: 70.0,
-                    near: 0.01,
-                    far: 1_000.0,
-                },
-                800,
-                600,
-            ),
-            MainCamera,
-            GlobalTransform::default(),
-            Transform {
-                position: [0.0, 0.0, -20.0].into(),
-                ..Default::default()
-            },
-            Parent(root),
-            Children(vec![]),
-        ));
+        // world.spawn((
+        //     Mesh::new(
+        //         vec![
+        //             Vertex {
+        //                 position: [-1.0, -1.0, 0.0].into(),
+        //                 tex_coords: [0.0, 1.0].into(),
+        //             },
+        //             Vertex {
+        //                 position: [1.0, -1.0, 0.0].into(),
+        //                 tex_coords: [1.0, 1.0].into(),
+        //             },
+        //             Vertex {
+        //                 position: [1.0, 1.0, 0.0].into(),
+        //                 tex_coords: [1.0, 0.0].into(),
+        //             },
+        //             Vertex {
+        //                 position: [-1.0, 1.0, 0.0].into(),
+        //                 tex_coords: [0.0, 0.0].into(),
+        //             },
+        //         ],
+        //         vec![0, 1, 2, 0, 2, 3],
+        //         Some("crates/acro_render/src/textures/ferris.png"),
+        //         "crates/acro_render/src/shaders/basic-mesh.wgsl",
+        //     ),
+        //     GlobalTransform::default(),
+        //     Transform::default(),
+        //     Parent(root),
+        //     Children(vec![]),
+        //     Behavior::new("crates/acro_scripting/src/js/test.js"),
+        // ));
 
-        drop(world);
-        app.add_system(Stage::FixedUpdate, [], update);
+        // world.spawn((
+        //     Camera::new(
+        //         CameraType::Perspective {
+        //             fov: 70.0,
+        //             near: 0.01,
+        //             far: 1_000.0,
+        //         },
+        //         800,
+        //         600,
+        //     ),
+        //     MainCamera,
+        //     GlobalTransform::default(),
+        //     Transform {
+        //         position: [0.0, 0.0, -20.0].into(),
+        //         ..Default::default()
+        //     },
+        //     Parent(root),
+        //     Children(vec![]),
+        // ));
+
+        // drop(world);
+        // app.add_system(Stage::FixedUpdate, [], update);
     }
 }
 

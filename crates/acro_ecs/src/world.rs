@@ -1,4 +1,8 @@
-use std::{any::TypeId, cell::UnsafeCell, ptr::NonNull};
+use std::{
+    any::TypeId,
+    cell::{RefCell, UnsafeCell},
+    ptr::NonNull,
+};
 
 use crate::{
     archetype::Archetypes,
@@ -12,12 +16,24 @@ use crate::{
     ComponentId,
 };
 
-#[derive(Debug)]
 pub struct World {
     components: ComponentRegistry,
     entities: Entities,
     pub(crate) resources: ResourceRegistry,
     pub(crate) archetypes: Archetypes,
+    pub(crate) swap_fn: RefCell<Option<Box<dyn FnOnce(&mut World)>>>,
+}
+
+impl std::fmt::Debug for World {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("World")
+            .field("components", &self.components)
+            .field("entities", &self.entities)
+            .field("resources", &self.resources)
+            .field("archetypes", &self.archetypes)
+            .field("swap_fn", &"...")
+            .finish()
+    }
 }
 
 impl World {
@@ -27,6 +43,7 @@ impl World {
             entities: Entities::new(),
             resources: ResourceRegistry::new(),
             archetypes: Archetypes::new(),
+            swap_fn: RefCell::new(None),
         }
     }
 
@@ -101,7 +118,7 @@ impl World {
         Query::<T, F>::new(self)
     }
 
-    pub fn run_system<I, P>(&mut self, system: I, tick: Tick)
+    pub fn run_system<I, P>(&mut self, system: I, tick: Tick) -> eyre::Result<()>
     where
         I: IntoSystem<P>,
         P: 'static,
@@ -115,7 +132,7 @@ impl World {
                 last_run_tick: Tick::new(0),
             },
             system_init.as_mut(),
-        );
+        )
     }
 
     pub fn get<T: 'static>(&self, entity: EntityId) -> Option<&T> {
@@ -146,6 +163,16 @@ impl World {
     pub fn clear_all_entities(&mut self) {
         self.entities.clear();
         self.archetypes.clear();
+    }
+
+    pub fn queue_swap(&self, swapper: impl FnOnce(&mut World) + 'static) {
+        *self.swap_fn.borrow_mut() = Some(Box::new(swapper));
+    }
+
+    pub fn check_swap(&mut self) {
+        if let Some(swap_fn) = self.swap_fn.replace(None) {
+            swap_fn(self);
+        }
     }
 }
 

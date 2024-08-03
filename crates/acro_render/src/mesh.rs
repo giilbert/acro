@@ -3,6 +3,7 @@ use acro_ecs::{Changed, EntityId, Query, Res, SystemRunContext, With};
 use acro_math::{GlobalTransform, Vec2, Vec3};
 use bytemuck::{Pod, Zeroable};
 use cfg_if::cfg_if;
+use serde::{Deserialize, Serialize};
 use tracing::info;
 use wgpu::util::DeviceExt;
 
@@ -14,7 +15,7 @@ use crate::{
 };
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Vertex {
     pub position: Vec3,
     pub tex_coords: Vec2,
@@ -54,12 +55,13 @@ impl Vertex {
 unsafe impl Zeroable for Vertex {}
 unsafe impl Pod for Vertex {}
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
-    pub diffuse_texture: Option<String>,
     pub(crate) shader_path: String,
+    pub diffuse_texture: Option<String>,
+    #[serde(skip)]
     pub(crate) data: Option<MeshData>,
 }
 

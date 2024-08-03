@@ -14,9 +14,10 @@ pub use crate::{
     window::WindowState,
 };
 
-use acro_assets::Assets;
+use acro_assets::{AssetLoader, Assets};
 use acro_ecs::{Application, Plugin, Res, Stage, SystemRunContext};
-use camera::update_projection_matrix;
+use acro_scene::ComponentLoaders;
+use camera::{update_projection_matrix, CameraOptions};
 use mesh::{render_mesh_system, upload_mesh_system};
 use shader::Shader;
 use state::{FrameState, RendererHandle};
@@ -37,6 +38,34 @@ impl Plugin for RenderPlugin {
             assets.register_loader::<Texture>();
             assets.queue::<Texture>("crates/acro_render/src/textures/ferris.png");
             assets.queue::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
+
+            let mut loaders = world.resources().get_mut::<ComponentLoaders>();
+            loaders.register("Mesh", |world, entity, serialized| {
+                let mesh_data = serialized.into_rust::<Mesh>()?;
+
+                world
+                    .resources()
+                    .get_mut::<Assets>()
+                    .queue::<Shader>(&mesh_data.shader_path);
+                if let Some(diffuse_texture) = &mesh_data.diffuse_texture {
+                    world
+                        .resources()
+                        .get_mut::<Assets>()
+                        .queue::<Texture>(diffuse_texture);
+                }
+
+                world.insert(entity, mesh_data);
+                Ok(())
+            });
+            loaders.register("Camera", |world, entity, serialized| {
+                let options = serialized.into_rust::<CameraOptions>()?;
+                world.insert(entity, Camera::new(options.get_camera_type()?, 800, 600));
+                if options.is_main_camera {
+                    world.insert(entity, MainCamera);
+                }
+
+                Ok(())
+            });
         }
 
         let window = Window::new();

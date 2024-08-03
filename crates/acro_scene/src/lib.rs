@@ -1,11 +1,17 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc};
 
-use acro_ecs::{Application, EntityId, Plugin, World};
+use acro_assets::load_queued_assets;
+use acro_ecs::{
+    systems::SystemId, Application, EntityId, Plugin, Stage, SystemSchedulingRequirement, World,
+};
 
+mod manager;
 mod scene;
 
 use acro_math::{GlobalTransform, Transform};
 use eyre::Result;
+use manager::load_queued_scene;
+pub use manager::SceneManager;
 pub use ron;
 
 pub type ComponentLoader = fn(&mut World, EntityId, ron::Value) -> Result<()>;
@@ -44,6 +50,14 @@ pub struct ScenePlugin;
 
 impl Plugin for ScenePlugin {
     fn build(&mut self, app: &mut Application) {
+        app.add_system(
+            Stage::PreUpdate,
+            [SystemSchedulingRequirement::RunBefore(SystemId::Native(
+                load_queued_assets.type_id(),
+            ))],
+            load_queued_scene,
+        );
+
         let mut loaders = ComponentLoaders::default();
         loaders.register("Transform", |world, entity, serialized| {
             world.insert(entity, serialized.into_rust::<Transform>()?);
@@ -51,5 +65,6 @@ impl Plugin for ScenePlugin {
             Ok(())
         });
         app.world().insert_resource(loaders);
+        app.world().insert_resource(SceneManager::default());
     }
 }

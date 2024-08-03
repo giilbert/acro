@@ -9,11 +9,35 @@ Scene(
                     rotation: Vec3(0.0, 0.0, 0.0),
                     scale: Vec3(1.0, 1.0, 1.0) 
                 },
+                {
+                    name: "Mesh",
+                    vertices: [
+                        Vertex(
+                            position: [-1.0, -1.0, 0.0],
+                            tex_coords: [0.0, 1.0],
+                        ),
+                        Vertex(
+                            position: [1.0, -1.0, 0.0],
+                            tex_coords: [1.0, 1.0],
+                        ),
+                        Vertex(
+                            position: [1.0, 1.0, 0.0],
+                            tex_coords: [1.0, 0.0],
+                        ),
+                        Vertex(
+                            position: [-1.0, 1.0, 0.0],
+                            tex_coords: [0.0, 0.0],
+                        ),
+                    ],
+                    indices: [0, 1, 2, 0, 2, 3],
+                    diffuse_texture: Some("crates/acro_render/src/textures/ferris.png"),
+                    shader_path: "crates/acro_render/src/shaders/basic-mesh.wgsl",
+                }
             ],
             children: [],
         ),
         Entity(
-            name: "Camera"
+            name: "Camera",
             components: [
                 {
                     name: "Transform",
@@ -21,6 +45,14 @@ Scene(
                     rotation: Vec3(0.0, 0.0, 0.0),
                     scale: Vec3(1.0, 1.0, 1.0) 
                 },
+                {
+                    name: "Camera",
+                    is_main_camera: true,
+                    camera_type: "Perspective",
+                    fov: 70.0,
+                    near: 0.01,
+                    far: 1000.0,
+                }
             ],
             children: [],
         )

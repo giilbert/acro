@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant, SystemTime};
+use std::{
+    cell::RefCell,
+    time::{Duration, Instant, SystemTime},
+};
 
 use fnv::FnvHashMap;
 use tracing::{error, info, warn};
@@ -105,7 +108,10 @@ impl Schedule {
         Ok(())
     }
 
-    pub fn run_stage(&mut self, stage: Stage, world: &World) {
+    pub fn run_stage(&mut self, stage: Stage, world: &RefCell<World>) {
+        world.borrow_mut().check_swap();
+        let world = &*world.borrow();
+
         let systems = match self.stages.get_mut(&stage) {
             Some(systems) => systems,
             None => return,
@@ -133,7 +139,7 @@ impl Schedule {
         }
     }
 
-    pub fn run_once(&mut self, world: &World) {
+    pub fn run_once(&mut self, world: &RefCell<World>) {
         let now = std::time::SystemTime::now();
         let time_since_last_render = now
             .duration_since(self.last_render_run)
@@ -189,7 +195,6 @@ impl Schedule {
 
 #[cfg(test)]
 mod tests {
-
     use crate::{
         pointer::change_detection::Tick,
         systems::{SystemData, SystemId},

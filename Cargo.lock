@@ -99,6 +99,7 @@ dependencies = [
  "acro_assets",
  "acro_ecs",
  "acro_math",
+ "acro_scene",
  "bytemuck",
  "cfg-if",
  "eyre",
@@ -882,6 +883,9 @@ name = "cursor-icon"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96a6ac251f4a2aca6b3f91340350eab87ae57c3f127ffeb585e92bd336717991"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "d3d12"
@@ -1008,6 +1012,9 @@ name = "dpi"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "either"
@@ -4289,6 +4296,7 @@ dependencies = [
  "redox_syscall 0.4.1",
  "rustix",
  "sctk-adwaita",
+ "serde",
  "smithay-client-toolkit",
  "smol_str",
  "tracing",

@@ -185,7 +185,9 @@ mod tests {
         world.insert(root, Children(vec![child_1]));
         world.insert(child_1, Children(vec![child_of_child_1]));
 
-        world.run_system(propagate_global_transform, Tick::new(1));
+        world
+            .run_system(propagate_global_transform, Tick::new(1))
+            .expect("system failed to run");
 
         let child_1_global_transform = world.get::<GlobalTransform>(child_1).unwrap();
         assert_eq!(

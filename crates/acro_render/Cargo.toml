@@ -7,6 +7,7 @@ edition = "2021"
 acro_assets = { path = "../acro_assets" }
 acro_ecs = { path = "../acro_ecs" }
 acro_math = { path = "../acro_math" }
+acro_scene = { path = "../acro_scene" }
 bytemuck = { version = "1.16.1", features = ["derive"] }
 cfg-if = "1.0.0"
 eyre = "0.6.12"
@@ -15,7 +16,7 @@ pollster = "0.3.0"
 serde = { version = "1.0.204", features = ["derive"] }
 tracing = "0.1.40"
 wgpu = { version = "0.20.1", features = ["serde"] }
-winit = "0.30.2"
+winit = { version = "0.30.2", features = ["serde"] }
 image = "0.25.2"
 
 [features]
