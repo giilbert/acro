@@ -23,3 +23,6 @@ pub use resource::{Res, ResMut};
 pub use schedule::{Schedule, Stage, SystemSchedulingRequirement};
 pub use systems::SystemRunContext;
 pub use world::World;
+
+#[derive(Debug)]
+pub struct Name(pub String);

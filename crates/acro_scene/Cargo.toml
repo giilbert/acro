@@ -1,0 +1,14 @@
+[package]
+name = "acro_scene"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+acro_assets = { path = "../acro_assets" }
+acro_ecs = { path = "../acro_ecs" }
+acro_math = { path = "../acro_math" }
+eyre = "0.6.12"
+parking_lot = "0.12.3"
+serde = { version = "1.0.204", features = ["derive"] }
+ron = "0.8.1"
+tracing = "0.1.40"

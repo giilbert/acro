@@ -33,6 +33,11 @@ impl Entities {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.entities.clear();
+        self.free_list.clear();
+    }
+
     pub fn spawn(&mut self, empty_archetype_table_index: usize) -> EntityId {
         // If an entity has been freed, reuse that location instead of creating a new one
         if let Some(index) = self.free_list.pop() {

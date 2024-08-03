@@ -142,6 +142,11 @@ impl World {
     pub fn insert_resource<T: 'static>(&mut self, resource: T) {
         self.resources.insert(resource);
     }
+
+    pub fn clear_all_entities(&mut self) {
+        self.entities.clear();
+        self.archetypes.clear();
+    }
 }
 
 #[cfg(test)]

@@ -11,7 +11,15 @@ use acro_scripting::ScriptingRuntime;
 use tracing::info;
 use transform::register_components;
 
-pub struct MathPlugin;
+pub struct MathPlugin {
+    pub scripting: bool,
+}
+
+impl Default for MathPlugin {
+    fn default() -> Self {
+        Self { scripting: true }
+    }
+}
 
 impl Plugin for MathPlugin {
     fn build(&mut self, app: &mut Application) {
@@ -19,18 +27,20 @@ impl Plugin for MathPlugin {
             let mut world = app.world();
             register_components(&mut world);
 
-            let mut runtime = world.resources().get_mut::<ScriptingRuntime>();
-            runtime
-                .register_component::<Transform>(&world, "Transform")
-                .expect("failed to register Transform component");
+            if self.scripting {
+                let mut runtime = world.resources().get_mut::<ScriptingRuntime>();
+                runtime
+                    .register_component::<Transform>(&world, "Transform")
+                    .expect("failed to register Transform component");
 
-            runtime.add_op(op_get_property_vec2());
-            runtime.add_op(op_get_property_vec3());
-            runtime.add_op(op_get_property_vec4());
+                runtime.add_op(op_get_property_vec2());
+                runtime.add_op(op_get_property_vec3());
+                runtime.add_op(op_get_property_vec4());
 
-            runtime.add_op(op_set_property_vec2());
-            runtime.add_op(op_set_property_vec3());
-            runtime.add_op(op_set_property_vec4());
+                runtime.add_op(op_set_property_vec2());
+                runtime.add_op(op_set_property_vec3());
+                runtime.add_op(op_set_property_vec4());
+            }
         }
 
         app.add_system(Stage::PostUpdate, [], propagate_global_transform);

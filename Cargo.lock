@@ -110,6 +110,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "acro_scene"
+version = "0.1.0"
+dependencies = [
+ "acro_assets",
+ "acro_ecs",
+ "acro_math",
+ "eyre",
+ "parking_lot",
+ "ron",
+ "serde",
+ "tracing",
+]
+
+[[package]]
 name = "acro_scripting"
 version = "0.1.0"
 dependencies = [

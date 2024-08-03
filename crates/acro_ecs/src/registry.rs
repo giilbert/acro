@@ -7,7 +7,7 @@ use std::{
 
 use fnv::FnvHashMap;
 
-use crate::storage::anyvec::Dropper;
+use crate::{storage::anyvec::Dropper, Name};
 
 #[derive(Debug, Default)]
 pub struct ComponentRegistry {
@@ -37,11 +37,15 @@ pub enum ComponentType {
 
 impl ComponentRegistry {
     pub fn new() -> Self {
-        Self {
+        let mut registry = Self {
             current_id: 0,
             native_components: HashMap::default(),
             components: HashMap::default(),
-        }
+        };
+
+        registry.init_rust_type::<Name>();
+
+        registry
     }
 
     fn next_id(&mut self) -> ComponentId {

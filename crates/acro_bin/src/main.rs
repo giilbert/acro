@@ -94,7 +94,7 @@ fn main() {
         .add_plugin(LogPlugin)
         .add_plugin(AssetsPlugin)
         .add_plugin(ScriptingPlugin)
-        .add_plugin(MathPlugin)
+        .add_plugin(MathPlugin::default())
         .add_plugin(RenderPlugin)
         .add_plugin(TestPlugin)
         .run();

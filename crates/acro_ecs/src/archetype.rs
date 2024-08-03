@@ -38,6 +38,22 @@ impl Archetypes {
         let mut archetypes = FnvHashMap::default();
         let mut components = FnvHashMap::default();
 
+        Self::init_defaults(&mut archetypes, &mut components);
+
+        Self {
+            // Skip ArchetypeId(0) because it's reserved for ArchetypeId::NONE
+            current_id: 1,
+            generation: 0,
+            archetypes,
+            components,
+            edges: Edges::new(),
+        }
+    }
+
+    fn init_defaults(
+        archetypes: &mut FnvHashMap<ArchetypeId, RefCell<Archetype>>,
+        components: &mut FnvHashMap<ComponentGroup, ArchetypeId>,
+    ) {
         // Create the archetype with no components
         archetypes.insert(
             ArchetypeId(0),
@@ -51,15 +67,6 @@ impl Archetypes {
             )),
         );
         components.insert(ComponentGroup::new(vec![]), ArchetypeId(0));
-
-        Self {
-            // Skip ArchetypeId(0) because it's reserved for ArchetypeId::NONE
-            current_id: 1,
-            generation: 0,
-            archetypes,
-            components,
-            edges: Edges::new(),
-        }
     }
 
     fn new_archetype(&mut self, components: ComponentGroup) -> ArchetypeId {
@@ -261,6 +268,13 @@ impl Archetypes {
                 }
             })
             .collect()
+    }
+
+    pub fn clear(&mut self) {
+        self.archetypes.clear();
+        self.components.clear();
+        self.edges = Edges::new();
+        Self::init_defaults(&mut self.archetypes, &mut self.components);
     }
 }
 
