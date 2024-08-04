@@ -18,22 +18,20 @@ pub struct ScriptingPlugin;
 
 impl Plugin for ScriptingPlugin {
     fn build(&mut self, app: &mut Application) {
-        app.world().init_component::<Behavior>();
-
-        app.add_system(Stage::PreUpdate, [], init_behavior);
-        app.add_system(
-            Stage::PreUpdate,
-            [SystemSchedulingRequirement::RunBefore(SystemId::Native(
-                load_queued_assets.type_id(),
-            ))],
-            init_scripting_runtime,
-        );
-        app.add_system(Stage::Update, [], update_behaviors);
-
-        let mut world = app.world();
-        world.insert_resource(ScriptingRuntime::new(app.get_world_handle()));
-
-        let mut assets = world.resources().get_mut::<Assets>();
-        assets.register_loader::<SourceFile>();
+        let world_handle = app.get_world_handle();
+        app.init_component::<Behavior>()
+            .insert_resource(ScriptingRuntime::new(world_handle))
+            .with_resource::<Assets>(|mut assets| {
+                assets.register_loader::<SourceFile>();
+            })
+            .add_system(Stage::PreUpdate, [], init_behavior)
+            .add_system(
+                Stage::PreUpdate,
+                [SystemSchedulingRequirement::RunBefore(SystemId::Native(
+                    load_queued_assets.type_id(),
+                ))],
+                init_scripting_runtime,
+            )
+            .add_system(Stage::Update, [], update_behaviors);
     }
 }

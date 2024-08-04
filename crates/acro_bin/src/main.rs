@@ -28,70 +28,8 @@ impl Plugin for TestPlugin {
         let world = app.world();
 
         world
-            .resources()
-            .get_mut::<SceneManager>()
+            .resource_mut::<SceneManager>()
             .queue("examples/simple/main.scene");
-
-        // {
-        //     let assets = world.resources().get::<Assets>();
-        //     assets.queue::<SourceFile>("crates/acro_scripting/src/js/test.js");
-        // }
-
-        // let root = world.spawn((Root, GlobalTransform::default(), Transform::default()));
-
-        // world.spawn((
-        //     Mesh::new(
-        //         vec![
-        //             Vertex {
-        //                 position: [-1.0, -1.0, 0.0].into(),
-        //                 tex_coords: [0.0, 1.0].into(),
-        //             },
-        //             Vertex {
-        //                 position: [1.0, -1.0, 0.0].into(),
-        //                 tex_coords: [1.0, 1.0].into(),
-        //             },
-        //             Vertex {
-        //                 position: [1.0, 1.0, 0.0].into(),
-        //                 tex_coords: [1.0, 0.0].into(),
-        //             },
-        //             Vertex {
-        //                 position: [-1.0, 1.0, 0.0].into(),
-        //                 tex_coords: [0.0, 0.0].into(),
-        //             },
-        //         ],
-        //         vec![0, 1, 2, 0, 2, 3],
-        //         Some("crates/acro_render/src/textures/ferris.png"),
-        //         "crates/acro_render/src/shaders/basic-mesh.wgsl",
-        //     ),
-        //     GlobalTransform::default(),
-        //     Transform::default(),
-        //     Parent(root),
-        //     Children(vec![]),
-        //     Behavior::new("crates/acro_scripting/src/js/test.js"),
-        // ));
-
-        // world.spawn((
-        //     Camera::new(
-        //         CameraType::Perspective {
-        //             fov: 70.0,
-        //             near: 0.01,
-        //             far: 1_000.0,
-        //         },
-        //         800,
-        //         600,
-        //     ),
-        //     MainCamera,
-        //     GlobalTransform::default(),
-        //     Transform {
-        //         position: [0.0, 0.0, -20.0].into(),
-        //         ..Default::default()
-        //     },
-        //     Parent(root),
-        //     Children(vec![]),
-        // ));
-
-        // drop(world);
-        // app.add_system(Stage::FixedUpdate, [], update);
     }
 }
 

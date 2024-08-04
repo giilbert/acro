@@ -15,7 +15,7 @@ pub use crate::{
     window::WindowState,
 };
 
-use acro_assets::{AssetLoader, Assets};
+use acro_assets::Assets;
 use acro_ecs::{Application, Plugin, Res, Stage, SystemRunContext};
 use acro_scene::ComponentLoaders;
 use acro_scripting::ScriptingRuntime;
@@ -24,57 +24,51 @@ use mesh::{render_mesh_system, upload_mesh_system};
 use ops::op_get_key_press;
 use shader::Shader;
 use state::{FrameState, RendererHandle};
-use tracing::info;
 use window::Window;
 
 pub struct RenderPlugin;
 
 impl Plugin for RenderPlugin {
     fn build(&mut self, app: &mut Application) {
-        app.world().init_component::<Mesh>();
-        app.world().init_component::<Camera>();
-        app.world().init_component::<MainCamera>();
+        app.init_component::<Mesh>()
+            .init_component::<Camera>()
+            .init_component::<MainCamera>()
+            .with_resource::<ScriptingRuntime>(|mut runtime| {
+                runtime.add_op(op_get_key_press());
+            })
+            .with_resource::<Assets>(|mut assets| {
+                assets.register_loader::<Shader>();
+                assets.register_loader::<Texture>();
+            })
+            .with_resource::<ComponentLoaders>(|loaders| {
+                loaders.register("Mesh", |world, entity, serialized| {
+                    let mesh_data = serialized.into_rust::<Mesh>()?;
 
-        {
-            let world = app.world();
-            let mut assets = world.resources().get_mut::<Assets>();
-            assets.register_loader::<Shader>();
-            assets.register_loader::<Texture>();
-
-            // assets.queue::<Texture>("crates/acro_render/src/textures/ferris.png");
-            // assets.queue::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
-
-            let loaders = world.resources().get_mut::<ComponentLoaders>();
-            loaders.register("Mesh", |world, entity, serialized| {
-                let mesh_data = serialized.into_rust::<Mesh>()?;
-
-                world
-                    .resources()
-                    .get_mut::<Assets>()
-                    .queue::<Shader>(&mesh_data.shader_path);
-                if let Some(diffuse_texture) = &mesh_data.diffuse_texture {
                     world
                         .resources()
                         .get_mut::<Assets>()
-                        .queue::<Texture>(diffuse_texture);
-                }
+                        .queue::<Shader>(&mesh_data.shader_path);
+                    if let Some(diffuse_texture) = &mesh_data.diffuse_texture {
+                        world
+                            .resources()
+                            .get_mut::<Assets>()
+                            .queue::<Texture>(diffuse_texture);
+                    }
 
-                world.insert(entity, mesh_data);
-                Ok(())
+                    world.insert(entity, mesh_data);
+                    Ok(())
+                });
+
+                loaders.register("Camera", |world, entity, serialized| {
+                    let options = serialized.into_rust::<CameraOptions>()?;
+                    world.insert(entity, Camera::new(options.get_camera_type()?, 800, 600));
+                    if options.is_main_camera {
+                        world.insert(entity, MainCamera);
+                    }
+
+                    Ok(())
+                });
             });
-            loaders.register("Camera", |world, entity, serialized| {
-                let options = serialized.into_rust::<CameraOptions>()?;
-                world.insert(entity, Camera::new(options.get_camera_type()?, 800, 600));
-                if options.is_main_camera {
-                    world.insert(entity, MainCamera);
-                }
-
-                Ok(())
-            });
-
-            let mut runtime = world.resources().get_mut::<ScriptingRuntime>();
-            runtime.add_op(op_get_key_press());
-        }
 
         let window = Window::new();
         app.set_runner(move |app| {

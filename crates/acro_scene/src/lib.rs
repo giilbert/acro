@@ -14,7 +14,6 @@ use eyre::Result;
 use manager::load_queued_scene;
 pub use manager::SceneManager;
 pub use ron;
-use tracing::info;
 
 pub type ComponentLoader = fn(&mut World, EntityId, ron::Value) -> Result<()>;
 
@@ -41,14 +40,6 @@ pub struct ScenePlugin;
 
 impl Plugin for ScenePlugin {
     fn build(&mut self, app: &mut Application) {
-        app.add_system(
-            Stage::PreUpdate,
-            [SystemSchedulingRequirement::RunBefore(SystemId::Native(
-                load_queued_assets.type_id(),
-            ))],
-            load_queued_scene,
-        );
-
         let loaders = ComponentLoaders::default();
         loaders.register("Transform", |world, entity, serialized| {
             world.insert(entity, serialized.into_rust::<Transform>()?);
@@ -64,7 +55,15 @@ impl Plugin for ScenePlugin {
             world.insert(entity, behavior);
             Ok(())
         });
-        app.world().insert_resource(loaders);
-        app.world().insert_resource(SceneManager::default());
+
+        app.insert_resource(loaders)
+            .insert_resource(SceneManager::default())
+            .add_system(
+                Stage::PreUpdate,
+                [SystemSchedulingRequirement::RunBefore(SystemId::Native(
+                    load_queued_assets.type_id(),
+                ))],
+                load_queued_scene,
+            );
     }
 }

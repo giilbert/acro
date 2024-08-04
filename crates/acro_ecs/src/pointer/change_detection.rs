@@ -84,10 +84,15 @@ mod tests {
     fn test_change_detection() {
         let mut app = Application::new();
 
-        let component_id = app.world().init_component::<u32>().id;
+        let component_id = {
+            let mut world = app.world();
+            let component_id = world.init_component::<u32>().id;
 
-        app.world().spawn((40u32,));
-        app.world().spawn((42u32,));
+            world.spawn((40u32,));
+            world.spawn((42u32,));
+
+            component_id
+        };
 
         app.add_system(
             Stage::Update,

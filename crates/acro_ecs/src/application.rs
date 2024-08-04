@@ -42,22 +42,32 @@ impl Application {
         self.world.borrow_mut()
     }
 
+    pub fn insert_resource<T: Any>(&mut self, resource: T) -> &mut Self {
+        self.world.borrow_mut().resources.insert(resource);
+        self
+    }
+
+    pub fn with_resource<T: Any>(&mut self, f: impl FnOnce(ResMut<T>) -> ()) -> &mut Self {
+        f(self.world.borrow().resources.get_mut::<T>());
+        self
+    }
+
+    pub fn init_component<T: 'static>(&mut self) -> &mut Self {
+        self.world.borrow_mut().init_component::<T>();
+        self
+    }
+
     pub fn get_world_handle(&self) -> Rc<RefCell<World>> {
         Rc::clone(&self.world)
     }
-
-    // pub fn resource<T: Any>(&self) -> Res<T> {}
-
-    // pub fn resource_mut<T: Any>(&self) -> ResMut<T> {
-    //     // self.world.borrow_mut().resources.get_mut::<T>()
-    // }
 
     pub fn add_system<I, P>(
         &mut self,
         stage: Stage,
         scheduling_requirements: impl IntoIterator<Item = SystemSchedulingRequirement>,
         system: I,
-    ) where
+    ) -> &mut Self
+    where
         I: IntoSystem<P> + 'static,
         P: 'static,
     {
@@ -75,6 +85,8 @@ impl Application {
                 },
             )
             .expect("add system failed");
+
+        self
     }
 
     pub fn run_once(&mut self) {
@@ -111,22 +123,26 @@ mod tests {
     #[test]
     fn test_application() {
         let mut app = Application::new();
-        app.world().init_component::<u32>();
-        app.world().init_component::<String>();
 
-        app.world().resources.insert(4u32);
+        {
+            let mut world = app.world();
 
-        let entity1 = app.world().spawn_empty();
-        app.world().insert(entity1, 42u32);
+            world.init_component::<u32>();
+            world.init_component::<String>();
+            world.insert_resource(4u32);
 
-        let entity2 = app.world().spawn_empty();
-        app.world().insert(entity2, "hello".to_string());
+            let entity1 = world.spawn_empty();
+            world.insert(entity1, 42u32);
+
+            let entity2 = world.spawn_empty();
+            world.insert(entity2, "hello".to_string());
+        }
 
         app.add_system(
             Stage::Update,
             [],
             |ctx: SystemRunContext, number_query: Query<&u32>, string_query: Query<&String>| {
-                *ctx.world.resources.get_mut::<u32>() += 1;
+                *ctx.world.resource_mut::<u32>() += 1;
 
                 for value in number_query.over(&ctx) {
                     assert_eq!(value, &42);

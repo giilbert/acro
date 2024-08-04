@@ -2,9 +2,8 @@ use std::any::Any;
 
 use acro_ecs::{world::World, Changed, EntityId, Query, SystemRunContext};
 use acro_reflect::{Reflect, ReflectPath, ReflectSetError};
-use nalgebra::UnitQuaternion;
 
-use crate::types::{Mat4, Quaternion, Vec3};
+use crate::types::{Mat4, Vec3};
 
 #[derive(Debug, Clone, Copy, Reflect, serde::Serialize, serde::Deserialize)]
 pub struct Transform {
@@ -103,32 +102,22 @@ fn recurse_propagate(
     }
 }
 
-pub fn register_components(world: &mut World) {
-    world.init_component::<Transform>();
-    world.init_component::<GlobalTransform>();
-    world.init_component::<Parent>();
-    world.init_component::<Children>();
-    world.init_component::<Root>();
-}
-
 #[cfg(test)]
 mod tests {
     use acro_ecs::{pointer::change_detection::Tick, world::World};
 
-    use crate::{
-        transform::Root,
-        types::{Mat4, Quaternion},
-    };
+    use crate::{transform::Root, types::Mat4};
 
-    use super::{
-        propagate_global_transform, register_components, Children, GlobalTransform, Parent,
-        Transform,
-    };
+    use super::{propagate_global_transform, Children, GlobalTransform, Parent, Transform};
 
     #[test]
     fn transform_propagation() {
         let mut world = World::new();
-        register_components(&mut world);
+        world.init_component::<Transform>();
+        world.init_component::<GlobalTransform>();
+        world.init_component::<Parent>();
+        world.init_component::<Children>();
+        world.init_component::<Root>();
 
         let root = world.spawn_empty();
         world.insert(

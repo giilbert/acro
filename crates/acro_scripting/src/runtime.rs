@@ -58,11 +58,8 @@ impl ScriptingRuntime {
             .expect("js runtime has not been initialized")
     }
 
-    pub fn register_component<T: Reflect + 'static>(
-        &mut self,
-        world: &World,
-        name: &str,
-    ) -> eyre::Result<()> {
+    pub fn register_component<T: Reflect + 'static>(&mut self, name: &str) -> eyre::Result<()> {
+        let world = self.world_handle.borrow();
         let (_data, vtable_ptr) = unsafe {
             std::mem::transmute::<&dyn Reflect, (*const (), *const ())>(
                 (&std::mem::MaybeUninit::<T>::uninit().assume_init()) as &dyn Reflect,

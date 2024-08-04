@@ -333,10 +333,7 @@ pub struct AssetsPlugin;
 
 impl Plugin for AssetsPlugin {
     fn build(&mut self, app: &mut Application) {
-        {
-            let mut world = app.world();
-            world.insert_resource(Assets::new());
-        }
-        app.add_system(Stage::PreUpdate, [], load_queued_assets);
+        app.add_system(Stage::PreUpdate, [], load_queued_assets)
+            .insert_resource(Assets::new());
     }
 }

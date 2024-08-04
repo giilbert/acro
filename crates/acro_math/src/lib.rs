@@ -8,8 +8,6 @@ pub use crate::{
 
 use acro_ecs::{schedule::Stage, Application, Plugin};
 use acro_scripting::ScriptingRuntime;
-use tracing::info;
-use transform::register_components;
 
 pub struct MathPlugin {
     pub scripting: bool,
@@ -23,15 +21,17 @@ impl Default for MathPlugin {
 
 impl Plugin for MathPlugin {
     fn build(&mut self, app: &mut Application) {
-        {
-            let mut world = app.world();
-            register_components(&mut world);
+        app.init_component::<Transform>()
+            .init_component::<GlobalTransform>()
+            .init_component::<Parent>()
+            .init_component::<Children>()
+            .init_component::<Root>()
+            .add_system(Stage::PostUpdate, [], propagate_global_transform);
 
-            if self.scripting {
-                let mut runtime = world.resources().get_mut::<ScriptingRuntime>();
-
+        if self.scripting {
+            app.with_resource::<ScriptingRuntime>(|mut runtime| {
                 runtime
-                    .register_component::<Transform>(&world, "Transform")
+                    .register_component::<Transform>("Transform")
                     .expect("failed to register Transform component");
 
                 runtime.add_op(op_get_property_vec2());
@@ -41,9 +41,7 @@ impl Plugin for MathPlugin {
                 runtime.add_op(op_set_property_vec2());
                 runtime.add_op(op_set_property_vec3());
                 runtime.add_op(op_set_property_vec4());
-            }
+            });
         }
-
-        app.add_system(Stage::PostUpdate, [], propagate_global_transform);
     }
 }

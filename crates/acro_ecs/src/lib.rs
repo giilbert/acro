@@ -5,7 +5,6 @@ pub mod entity;
 pub mod plugin;
 pub mod pointer;
 pub mod query;
-mod ref_map;
 pub mod registry;
 pub mod resource;
 pub mod schedule;

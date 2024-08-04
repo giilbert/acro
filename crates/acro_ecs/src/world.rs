@@ -13,7 +13,7 @@ use crate::{
     registry::{ComponentInfo, ComponentRegistry},
     resource::ResourceRegistry,
     systems::{IntoSystem, SystemRunContext},
-    ComponentId,
+    ComponentId, Res, ResMut,
 };
 
 pub struct World {
@@ -158,6 +158,14 @@ impl World {
 
     pub fn insert_resource<T: 'static>(&mut self, resource: T) {
         self.resources.insert(resource);
+    }
+
+    pub fn resource<T: 'static>(&self) -> Res<T> {
+        self.resources.get::<T>()
+    }
+
+    pub fn resource_mut<T: 'static>(&self) -> ResMut<T> {
+        self.resources.get_mut::<T>()
     }
 
     pub fn clear_all_entities(&mut self) {
