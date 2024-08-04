@@ -1,8 +1,8 @@
 import { getPropertyVec3, setPropertyVec3 } from "./deno.ts";
-import { Attachment, Vec3 } from "./core.ts";
+import type { Attachment, Vec3 } from "./core.ts";
 
 export class Transform {
-  _position: Vec3;
+  private _position: Vec3;
   attachment: Attachment | undefined;
 
   static getComponentId() {
@@ -21,8 +21,10 @@ export class Transform {
   }
 
   set position(value) {
-    if (this.attachment)
-      setPropertyVec3(this.attachment.add("position"), value);
+    if (this.attachment) {
+      value.attachment = this.attachment.add("position");
+      setPropertyVec3(value.attachment, value);
+    }
     this._position = value;
   }
 }

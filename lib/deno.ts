@@ -1,6 +1,6 @@
 // interface Deno {}
 
-import { Attachment } from "./core.ts";
+import type { Attachment } from "./core.ts";
 import { Vec3 } from "./vec3.ts";
 
 declare namespace Deno.core.ops {
@@ -60,12 +60,9 @@ export function getPropertyVec3(attachment: Attachment): Vec3 {
     attachment.entity.index,
     attachment.componentId,
     attachment.path
-  ) as Vec3;
+  ) as { x: number; y: number; z: number };
 
-  Object.setPrototypeOf(value, Vec3.prototype);
-  value.attachment = attachment;
-
-  return value;
+  return new Vec3(value.x, value.y, value.z, attachment);
 }
 
 export function setPropertyVec3(attachment: Attachment, value: Vec3) {

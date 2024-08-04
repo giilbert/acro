@@ -1,10 +1,10 @@
 import { getPropertyNumber, setPropertyNumber } from "./deno.ts";
-import { Attachment } from "./core.ts";
+import type { Attachment } from "./core.ts";
 
 export class Vec3 {
-  _x: number;
-  _y: number;
-  _z: number;
+  private _x: number;
+  private _y: number;
+  private _z: number;
   attachment: Attachment | undefined;
 
   constructor(x: number, y: number, z: number, attachment?: Attachment) {
@@ -14,14 +14,30 @@ export class Vec3 {
     this.attachment = attachment;
   }
 
+  set x(value: number) {
+    if (this.attachment) setPropertyNumber(this.attachment.add("x"), value);
+    this._x = value;
+  }
+
   get x() {
-    if (this.attachment) this._z = getPropertyNumber(this.attachment.add("x"));
+    if (this.attachment) this._x = getPropertyNumber(this.attachment.add("x"));
     return this._x;
   }
 
+  set y(value: number) {
+    if (this.attachment) setPropertyNumber(this.attachment.add("y"), value);
+    this._y = value;
+  }
+
   get y() {
+    console.log("get");
     if (this.attachment) this._y = getPropertyNumber(this.attachment.add("y"));
     return this._y;
+  }
+
+  set z(value: number) {
+    if (this.attachment) setPropertyNumber(this.attachment.add("z"), value);
+    this._z = value;
   }
 
   get z() {
@@ -29,18 +45,7 @@ export class Vec3 {
     return this._z;
   }
 
-  set x(value) {
-    if (this.attachment) setPropertyNumber(this.attachment.add("x"), value);
-    this._x = value;
-  }
-
-  set y(value) {
-    if (this.attachment) setPropertyNumber(this.attachment.add("y"), value);
-    this._y = value;
-  }
-
-  set z(value) {
-    if (this.attachment) setPropertyNumber(this.attachment.add("z"), value);
-    this._z = value;
+  get hello() {
+    return "Hello";
   }
 }

@@ -262,5 +262,8 @@ pub fn update_behaviors(
     ctx: SystemRunContext,
     mut runtime: ResMut<ScriptingRuntime>,
 ) -> eyre::Result<()> {
-    runtime.update(ctx.tick)
+    // let now = std::time::Instant::now();
+    runtime.update(ctx.tick)?;
+    // info!("update_behaviors: {:?}", now.elapsed());
+    Ok(())
 }
