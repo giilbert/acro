@@ -179,6 +179,10 @@ pub fn init_scripting_runtime(
         .execute_script("<init>", include_str!("js/bootstrap.js"))
         .map_err(|e| eyre::eyre!("failed to execute init script: {e:?}"))?;
 
+    info!(
+        "registered {} component(s)",
+        runtime.name_to_component_id.len()
+    );
     inner
         .execute_script(
             "<register-component>",
@@ -204,7 +208,7 @@ pub fn init_behavior(
     mut runtime: ResMut<ScriptingRuntime>,
 ) -> eyre::Result<()> {
     for (entity, mut behavior) in behaviors.over(&ctx) {
-        let source_file = assets.get::<SourceFile>(&behavior.source_file_path);
+        let source_file = assets.get::<SourceFile>(&behavior.source);
         source_file.notify_changes::<Behavior>(&ctx, entity);
         runtime.init_behavior(entity, &source_file, &mut behavior)?;
     }

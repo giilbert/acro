@@ -57,7 +57,7 @@ pub trait Reflect {
 pub trait ReflectExt: Reflect {
     fn get<T: 'static>(&self, path: &ReflectPath) -> &T {
         self.get_opt(path)
-            .unwrap_or_else(|| panic!("field {path:?} not found"))
+            .unwrap_or_else(|| panic!("field {path:?} not found on {}", self.get_name()))
             .downcast_ref()
             .expect("type mismatch")
     }

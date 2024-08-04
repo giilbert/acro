@@ -1,9 +1,5 @@
-
 use crate::{
-    archetype::Archetype,
-    entity::EntityId,
-    pointer::change_detection::{Mut},
-    registry::ComponentId,
+    archetype::Archetype, entity::EntityId, pointer::change_detection::Mut, registry::ComponentId,
     systems::SystemRunContext,
 };
 

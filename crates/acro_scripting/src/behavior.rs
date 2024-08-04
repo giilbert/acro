@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Behavior {
-    pub(crate) source_file_path: String,
+    pub source: String,
     #[serde(skip)]
     pub(crate) data: Option<BehaviorData>,
 }
@@ -16,7 +16,7 @@ pub struct BehaviorData {
 impl Behavior {
     pub fn new(source_file_path: impl ToString) -> Self {
         Self {
-            source_file_path: source_file_path.to_string(),
+            source: source_file_path.to_string(),
             data: None,
         }
     }

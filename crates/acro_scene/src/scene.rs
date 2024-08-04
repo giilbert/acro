@@ -1,7 +1,7 @@
 use std::{any::Any, collections::HashMap};
 
 use acro_ecs::{EntityId, Name, World};
-use acro_math::{Children, Parent, Root};
+use acro_math::{Children, GlobalTransform, Parent, Root, Transform};
 use tracing::warn;
 
 use crate::{ComponentLoader, ComponentLoaders};
@@ -29,14 +29,20 @@ impl Scene {
     pub fn load(self, world: &mut World) {
         world.clear_all_entities();
 
-        let root_entity = world.spawn((Name("Root".to_string()), Root));
+        let root_entity = world.spawn((
+            Name("Root".to_string()),
+            Root,
+            Transform::default(),
+            GlobalTransform::default(),
+        ));
 
-        let component_loaders = world.resources().get::<ComponentLoaders>().take();
+        let component_loaders = world.resources().get::<ComponentLoaders>().loaders.clone();
+        let component_loaders = &*component_loaders.borrow();
 
         let mut root_children = vec![];
         for entity in self.entities.into_iter() {
             let entity_id =
-                Self::spawn_entity_with_parent(world, root_entity, entity, &component_loaders);
+                Self::spawn_entity_with_parent(world, root_entity, entity, component_loaders);
             root_children.push(entity_id);
         }
 

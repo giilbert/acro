@@ -1,4 +1,5 @@
 use acro_ecs::{ResMut, SystemRunContext};
+use tracing::info;
 
 use crate::scene::Scene;
 
@@ -15,14 +16,17 @@ impl SceneManager {
 }
 
 pub fn load_queued_scene(
-    mut ctx: SystemRunContext,
-    scene_manager: ResMut<SceneManager>,
+    ctx: SystemRunContext,
+    mut scene_manager: ResMut<SceneManager>,
 ) -> eyre::Result<()> {
     if let Some(scene_path) = &scene_manager.queued_scene {
         let scene = ron::from_str::<Scene>(&std::fs::read_to_string(scene_path)?)?;
         ctx.world.queue_swap(move |world| {
+            let now = std::time::Instant::now();
             scene.load(world);
+            info!("loading scene took {:?}", now.elapsed());
         });
+        scene_manager.queued_scene = None;
     }
 
     Ok(())

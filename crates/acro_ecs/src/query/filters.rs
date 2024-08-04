@@ -323,6 +323,11 @@ impl<T: 'static> QueryFilter for Changed<T> {
         init.column
             .as_ref()
             .map(|column| {
+                // println!(
+                //     "{:?} > {:?} ?",
+                //     column.get_changed_tick(entity_index),
+                //     ctx.last_run_tick
+                // );
                 column
                     .get_changed_tick(entity_index)
                     .is_newer_than(&ctx.last_run_tick)

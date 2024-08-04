@@ -73,6 +73,7 @@ impl Application {
     pub fn run_once(&mut self) {
         // let now = std::time::Instant::now();
         self.schedule.run_once(&self.world);
+
         // let elapsed = now.elapsed();
         // println!("run once took {:?}", elapsed);
     }
@@ -85,6 +86,7 @@ impl Application {
         for system in &self.schedule.stages[&Stage::PreUpdate] {
             info!("{}", system.name);
         }
+
         let runner = std::mem::replace(
             &mut self.runner,
             Box::new(|_app| panic!("runner replaced!")),

@@ -119,6 +119,7 @@ dependencies = [
  "acro_assets",
  "acro_ecs",
  "acro_math",
+ "acro_scripting",
  "eyre",
  "parking_lot",
  "ron",

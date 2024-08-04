@@ -29,7 +29,6 @@ impl Plugin for ScriptingPlugin {
             init_scripting_runtime,
         );
         app.add_system(Stage::Update, [], update_behaviors);
-        app.add_system(Stage::Update, [], update_behaviors);
 
         let mut world = app.world();
         world.insert_resource(ScriptingRuntime::new(app.world_handle()));

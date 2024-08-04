@@ -29,6 +29,7 @@ impl Plugin for MathPlugin {
 
             if self.scripting {
                 let mut runtime = world.resources().get_mut::<ScriptingRuntime>();
+
                 runtime
                     .register_component::<Transform>(&world, "Transform")
                     .expect("failed to register Transform component");

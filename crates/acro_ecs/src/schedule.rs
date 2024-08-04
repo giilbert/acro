@@ -109,9 +109,6 @@ impl Schedule {
     }
 
     pub fn run_stage(&mut self, stage: Stage, world: &RefCell<World>) {
-        world.borrow_mut().check_swap();
-        let world = &*world.borrow();
-
         let systems = match self.stages.get_mut(&stage) {
             Some(systems) => systems,
             None => return,
@@ -120,14 +117,19 @@ impl Schedule {
         for system in systems.iter_mut() {
             self.current_tick = self.current_tick.next();
 
+            // info!("running system {}", system.name);
+
             let result = (system.run)(
                 SystemRunContext {
-                    world,
+                    world: &*world.borrow(),
                     tick: self.current_tick,
                     last_run_tick: system.last_run_tick,
                 },
                 system.parameters.as_mut(),
             );
+
+            world.borrow_mut().check_swap();
+
             match result {
                 Ok(()) => {}
                 Err(err) => {
@@ -136,6 +138,8 @@ impl Schedule {
             }
 
             system.last_run_tick = self.current_tick;
+
+            // world.borrow().archetypes.print_debug();
         }
     }
 

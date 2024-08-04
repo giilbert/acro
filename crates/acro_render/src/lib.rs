@@ -21,6 +21,7 @@ use camera::{update_projection_matrix, CameraOptions};
 use mesh::{render_mesh_system, upload_mesh_system};
 use shader::Shader;
 use state::{FrameState, RendererHandle};
+use tracing::info;
 use window::Window;
 
 pub struct RenderPlugin;
@@ -39,7 +40,7 @@ impl Plugin for RenderPlugin {
             assets.queue::<Texture>("crates/acro_render/src/textures/ferris.png");
             assets.queue::<Shader>("crates/acro_render/src/shaders/basic-mesh.wgsl");
 
-            let mut loaders = world.resources().get_mut::<ComponentLoaders>();
+            let loaders = world.resources().get_mut::<ComponentLoaders>();
             loaders.register("Mesh", |world, entity, serialized| {
                 let mesh_data = serialized.into_rust::<Mesh>()?;
 

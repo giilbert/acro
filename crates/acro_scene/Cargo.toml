@@ -7,6 +7,7 @@ edition = "2021"
 acro_assets = { path = "../acro_assets" }
 acro_ecs = { path = "../acro_ecs" }
 acro_math = { path = "../acro_math" }
+acro_scripting = { path = "../acro_scripting" }
 eyre = "0.6.12"
 parking_lot = "0.12.3"
 serde = { version = "1.0.204", features = ["derive"] }

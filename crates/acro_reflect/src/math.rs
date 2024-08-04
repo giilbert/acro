@@ -36,6 +36,7 @@ macro_rules! impl_reflect_vector {
                     $(
                         Property($fields, rest) => self.$fields_as_idents.get_opt(rest),
                     )+
+                    End => Some(self),
                     _ => None,
                 }
             }

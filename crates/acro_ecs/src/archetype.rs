@@ -14,6 +14,7 @@ use crate::{
     pointer::change_detection::{ChangeDetectionContext, Tick},
     registry::{ComponentGroup, ComponentId, ComponentRegistry},
     storage::{anyvec::AnyVec, table::Table},
+    ComponentType,
 };
 
 #[derive(Debug)]
@@ -94,8 +95,6 @@ impl Archetypes {
         match self.edges.get(current_archetype, operation, new_component) {
             Some(id) => id,
             None => {
-                self.generation += 1;
-
                 let new_archetype_components = {
                     let old_components = &self.archetypes[&current_archetype].borrow().components;
                     let new_component_info = component_registry.get_info(new_component).clone();
@@ -275,6 +274,22 @@ impl Archetypes {
         self.components.clear();
         self.edges = Edges::new();
         Self::init_defaults(&mut self.archetypes, &mut self.components);
+    }
+
+    pub fn print_debug(&self) {
+        info!("Archetypes:");
+        for (id, archetype) in &self.archetypes {
+            let archetype = archetype.borrow();
+            let components = archetype
+                .components
+                .iter()
+                .map(|info| match &info.component_type {
+                    ComponentType::Native { name, .. } => name.clone(),
+                })
+                .collect::<Vec<_>>()
+                .join("\n    ");
+            info!("Archetype {:?} with components {}", id, components);
+        }
     }
 }
 

@@ -32,6 +32,10 @@ Scene(
                     indices: [0, 1, 2, 0, 2, 3],
                     diffuse_texture: Some("crates/acro_render/src/textures/ferris.png"),
                     shader_path: "crates/acro_render/src/shaders/basic-mesh.wgsl",
+                },
+                {
+                    name: "Behavior",
+                    source: "crates/acro_scripting/src/js/test.js"
                 }
             ],
             children: [],
@@ -41,7 +45,7 @@ Scene(
             components: [
                 {
                     name: "Transform",
-                    position: Vec3(0.0, 0.0, -0.0),
+                    position: Vec3(0.0, 0.0, -20.0),
                     rotation: Vec3(0.0, 0.0, 0.0),
                     scale: Vec3(1.0, 1.0, 1.0) 
                 },
@@ -49,7 +53,7 @@ Scene(
                     name: "Camera",
                     is_main_camera: true,
                     camera_type: "Perspective",
-                    fov: 70.0,
+                    fov: Some(70.0),
                     near: 0.01,
                     far: 1000.0,
                 }
