@@ -1,5 +1,6 @@
 mod camera;
 mod mesh;
+mod ops;
 mod shader;
 mod state;
 mod texture;
@@ -17,8 +18,10 @@ pub use crate::{
 use acro_assets::{AssetLoader, Assets};
 use acro_ecs::{Application, Plugin, Res, Stage, SystemRunContext};
 use acro_scene::ComponentLoaders;
+use acro_scripting::ScriptingRuntime;
 use camera::{update_projection_matrix, CameraOptions};
 use mesh::{render_mesh_system, upload_mesh_system};
+use ops::op_get_key_press;
 use shader::Shader;
 use state::{FrameState, RendererHandle};
 use tracing::info;
@@ -68,6 +71,9 @@ impl Plugin for RenderPlugin {
 
                 Ok(())
             });
+
+            let mut runtime = world.resources().get_mut::<ScriptingRuntime>();
+            runtime.add_op(op_get_key_press());
         }
 
         let window = Window::new();
