@@ -1,6 +1,6 @@
 use std::{
     any::Any,
-    cell::{RefCell, RefMut},
+    cell::{Ref, RefCell, RefMut},
     rc::Rc,
 };
 
@@ -12,6 +12,7 @@ use crate::{
     schedule::{Schedule, Stage, SystemSchedulingRequirement},
     systems::{IntoSystem, SystemData, SystemId, SystemRunContext},
     world::World,
+    EntityId, Res, ResMut,
 };
 
 pub struct Application {
@@ -41,9 +42,15 @@ impl Application {
         self.world.borrow_mut()
     }
 
-    pub fn world_handle(&self) -> Rc<RefCell<World>> {
+    pub fn get_world_handle(&self) -> Rc<RefCell<World>> {
         Rc::clone(&self.world)
     }
+
+    // pub fn resource<T: Any>(&self) -> Res<T> {}
+
+    // pub fn resource_mut<T: Any>(&self) -> ResMut<T> {
+    //     // self.world.borrow_mut().resources.get_mut::<T>()
+    // }
 
     pub fn add_system<I, P>(
         &mut self,

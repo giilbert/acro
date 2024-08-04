@@ -9,6 +9,8 @@ edition = "2021"
 eyre = "0.6.12"
 fnv = "1.0.7"
 itertools = "0.13.0"
+ouroboros = "0.18.4"
+ron = "0.8.1"
 serde = { version = "1.0.204", features = ["derive"] }
 tracing = "0.1.40"
 

@@ -60,7 +60,7 @@ impl ResourceRegistry {
 }
 
 pub struct Res<'b, T> {
-    inner: Ref<'b, T>,
+    pub(crate) inner: Ref<'b, T>,
 }
 
 impl<T> Deref for Res<'_, T> {
