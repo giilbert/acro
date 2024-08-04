@@ -61,6 +61,8 @@ export class Behavior {
     if (ComponentClass === Transform) {
       return new Transform(
         new Vec3(0, 0, 0, attachment.add("position")),
+        new Vec3(0, 0, 0, attachment.add("rotation")),
+        new Vec3(0, 0, 0, attachment.add("scale")),
         attachment
       ) as T;
     }

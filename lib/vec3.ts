@@ -1,6 +1,12 @@
 import { getPropertyNumber, setPropertyNumber } from "./deno.ts";
 import type { Attachment } from "./core.ts";
 
+interface Vec3Like {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export class Vec3 {
   private _x: number;
   private _y: number;
@@ -12,6 +18,32 @@ export class Vec3 {
     this._y = y;
     this._z = z;
     this.attachment = attachment;
+  }
+
+  public add(rhs: Vec3Like): Vec3 {
+    return new Vec3(this.x + rhs.x, this.y + rhs.y, this.z + rhs.z);
+  }
+
+  public addAssign(rhs: Vec3Like) {
+    this.x += rhs.x;
+    this.y += rhs.y;
+    this.z += rhs.z;
+  }
+
+  public scale(scalar: number): Vec3 {
+    return new Vec3(this.x * scalar, this.y * scalar, this.z * scalar);
+  }
+
+  public dot(rhs: Vec3Like): number {
+    return this.x * rhs.x + this.y * rhs.y + this.z * rhs.z;
+  }
+
+  public cross(rhs: Vec3Like): Vec3 {
+    return new Vec3(
+      this.y * rhs.z - this.z * rhs.y,
+      this.z * rhs.x - this.x * rhs.z,
+      this.x * rhs.y - this.y * rhs.x
+    );
   }
 
   set x(value: number) {
@@ -30,7 +62,6 @@ export class Vec3 {
   }
 
   get y() {
-    console.log("get");
     if (this.attachment) this._y = getPropertyNumber(this.attachment.add("y"));
     return this._y;
   }

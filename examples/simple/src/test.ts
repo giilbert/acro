@@ -1,4 +1,4 @@
-import { Behavior, Entity } from "jsr:@acro/lib";
+import { Behavior, Entity, Vec3 } from "jsr:@acro/lib";
 
 class TestBehavior extends Behavior {
   constructor(entity: Entity) {
@@ -6,7 +6,9 @@ class TestBehavior extends Behavior {
   }
 
   update() {
-    this.transform.position.x += 0.0001;
+    this.transform.position.addAssign({ x: 0.0001, y: 0.0001, z: 0 });
+    this.transform.rotation.z += 0.0001;
+    this.transform.scale = new Vec3(2, 2, 2);
   }
 }
 
