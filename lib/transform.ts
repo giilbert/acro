@@ -1,6 +1,6 @@
-import { getPropertyVec3, setPropertyVec3 } from "deno";
-import { Attachment } from "./core";
-import { Vec3 } from "./vec3";
+import { getPropertyVec3, setPropertyVec3 } from "./deno.ts";
+import { Attachment } from "./core.ts";
+import { Vec3 } from "./vec3.ts";
 
 export class Transform {
   _position: Vec3;

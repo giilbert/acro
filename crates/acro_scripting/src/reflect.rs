@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_ecs::{ComponentId, EntityId, Tick, World};
 use acro_reflect::{Reflect, ReflectExt, ReflectPath};
-use deno_core::op2;
+use rustyscript::deno_core::{self, anyhow, error::AnyError, op2};
 use tracing::info;
 
 pub fn get_dyn_reflect<'a>(
@@ -13,7 +13,7 @@ pub fn get_dyn_reflect<'a>(
     index: u32,
     component_id: u32,
     notify_change_detection: bool,
-) -> Result<&'a mut dyn Reflect, deno_core::error::AnyError> {
+) -> Result<&'a mut dyn Reflect, AnyError> {
     let entity = EntityId::new(generation, index);
     let component = ComponentId(component_id);
 
@@ -28,7 +28,7 @@ pub fn get_dyn_reflect<'a>(
                 None
             },
         )
-        .ok_or_else(|| deno_core::anyhow::anyhow!("entity or component not found"))?;
+        .ok_or_else(|| anyhow::anyhow!("entity or component not found"))?;
 
     Ok(unsafe {
         std::mem::transmute::<(*const (), *const ()), &mut dyn Reflect>((
@@ -47,7 +47,7 @@ pub fn op_get_property_number(
     index: u32,
     component_id: u32,
     #[string] path: &str,
-) -> Result<f64, deno_core::error::AnyError> {
+) -> Result<f64, AnyError> {
     let path = ReflectPath::parse(path);
     let object = get_dyn_reflect(
         world,
@@ -72,7 +72,7 @@ pub fn op_set_property_number(
     component_id: u32,
     #[string] path: &str,
     value: f64,
-) -> Result<(), deno_core::error::AnyError> {
+) -> Result<(), AnyError> {
     let path = ReflectPath::parse(path);
 
     let object = get_dyn_reflect(

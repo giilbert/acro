@@ -1,5 +1,7 @@
-import { Transform } from "./transform";
-import { Vec3 } from "./vec3";
+import { Transform } from "./transform.ts";
+import { Vec3 } from "./vec3.ts";
+
+export { Vec3 };
 
 export class Entity {
   generation: number;
@@ -40,7 +42,7 @@ interface ComponentConstructor<T> {
   getComponentId(): number;
 }
 
-class Behavior {
+export class Behavior {
   entity: Entity;
   transform: Transform;
 

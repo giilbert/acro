@@ -1,10 +1,10 @@
-import { Entity } from "./core";
+import { Entity } from "./core.ts";
 
 interface ConstructableBehavior {
   new (entity: Entity, ...args: any[]): any;
 }
 
-class AcroGlobalHook {
+export class AcroGlobalHook {
   COMPONENT_IDS: Record<string, number>;
   behaviorConstructors: Record<string, ConstructableBehavior>;
   behaviors: Map<number, any>;
@@ -53,18 +53,4 @@ class AcroGlobalHook {
     );
     this.behaviors.set(id, behavior);
   }
-}
-
-globalThis.console = {
-  log: function (...args: any[]) {
-    Deno.core.print(
-      args.map((value) => JSON.stringify(value)).join(" ") + "\n"
-    );
-  },
-};
-
-acro = new AcroGlobalHook();
-
-declare global {
-  export let acro: AcroGlobalHook;
 }

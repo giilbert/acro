@@ -1,5 +1,5 @@
-import { getPropertyNumber, setPropertyNumber } from "deno";
-import { Attachment } from "./core";
+import { getPropertyNumber, setPropertyNumber } from "./deno.ts";
+import { Attachment } from "./core.ts";
 
 export class Vec3 {
   _x: number;

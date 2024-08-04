@@ -1,3 +1,5 @@
+import { Behavior, Vec3 } from "./core.ts";
+
 class TestBehavior extends Behavior {
   constructor(entity) {
     super(entity);
@@ -10,4 +12,4 @@ class TestBehavior extends Behavior {
   }
 }
 
-acro.registerBehavior("TestBehavior", TestBehavior);
+export const init = () => acro.registerBehavior("TestBehavior", TestBehavior);

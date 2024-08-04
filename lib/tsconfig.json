@@ -1,8 +1,10 @@
 {
-  "compilerOptions": {
-    "target": "ES6",
-    "lib": [
-      "ES6"
-    ]
-  }
+    "compilerOptions": {
+        "target": "ES6",
+        "lib": [
+            "ES6"
+        ],
+        "noEmit": true,
+        "allowImportingTsExtensions": true,
+    }
 }

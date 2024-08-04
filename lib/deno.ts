@@ -1,7 +1,7 @@
 // interface Deno {}
 
-import { Attachment } from "./core";
-import { Vec3 } from "./vec3";
+import { Attachment } from "./core.ts";
+import { Vec3 } from "./vec3.ts";
 
 declare global {
   interface Deno {

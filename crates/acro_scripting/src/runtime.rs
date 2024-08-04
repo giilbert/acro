@@ -3,7 +3,7 @@ use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
 use acro_assets::Assets;
 use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
 use acro_reflect::Reflect;
-use deno_core::*;
+use rustyscript::{deno_core, json_args, Module, Runtime as JsRuntime, RuntimeOptions, Undefined};
 use tracing::info;
 
 use crate::{
@@ -16,7 +16,7 @@ pub struct ScriptingRuntime {
     world_handle: Rc<RefCell<World>>,
     behavior_id: u32,
     name_to_component_id: HashMap<String, ComponentId>,
-    decl: Option<Vec<OpDecl>>,
+    decl: Option<Vec<deno_core::OpDecl>>,
     inner: Option<JsRuntime>,
     component_vtables: Option<HashMap<ComponentId, *const ()>>,
 }
@@ -83,6 +83,7 @@ impl ScriptingRuntime {
                 .take()
                 .expect("component vtables taken");
             self.inner_mut()
+                .deno_runtime()
                 .op_state()
                 .borrow_mut()
                 .put(component_vtables);
@@ -90,12 +91,20 @@ impl ScriptingRuntime {
 
         info!("initializing source file: {:?}", source_file.config.name);
 
+        let module_handle = self.inner_mut().load_module(&Module::new(
+            &format!("./lib/{}.ts", source_file.config.name),
+            &source_file.code,
+        ))?;
         self.inner_mut()
-            .execute_script(
-                "<source>",
-                format!("(() => {{{}}})()", source_file.code.clone()),
-            )
-            .map_err(|e| eyre::eyre!("failed to execute source init script: {e:?}"))?;
+            .call_entrypoint::<Undefined>(&module_handle, json_args!())?;
+
+        // self.inner_mut()
+        //     .deno_runtime()
+        //     .execute_script(
+        //         "<source>",
+        //         format!("(() => {{{}}})()", source_file.code.clone()),
+        //     )
+        //     .map_err(|e| eyre::eyre!("failed to execute source init script: {e:?}"))?;
 
         Ok(())
     }
@@ -111,6 +120,7 @@ impl ScriptingRuntime {
         behavior.data = Some(BehaviorData { id });
 
         self.inner_mut()
+            .deno_runtime()
             .execute_script(
                 "<create-behavior>",
                 format!(
@@ -124,16 +134,21 @@ impl ScriptingRuntime {
     }
 
     pub fn update(&mut self, tick: Tick) -> eyre::Result<()> {
-        self.inner_mut().op_state().borrow_mut().put(tick);
+        self.inner_mut()
+            .deno_runtime()
+            .op_state()
+            .borrow_mut()
+            .put(tick);
 
         self.inner_mut()
+            .deno_runtime()
             .execute_script("<update>", "acro.update()")
             .map_err(|e| eyre::eyre!("failed to execute update script: {e:?}"))?;
 
         Ok(())
     }
 
-    pub fn add_op(&mut self, decl: OpDecl) -> &mut Self {
+    pub fn add_op(&mut self, decl: deno_core::OpDecl) -> &mut Self {
         self.decl
             .as_mut()
             .expect("ops already initialized")
@@ -141,7 +156,7 @@ impl ScriptingRuntime {
         self
     }
 
-    pub fn take_ops(&mut self) -> Vec<OpDecl> {
+    pub fn take_ops(&mut self) -> Vec<deno_core::OpDecl> {
         self.decl.take().expect("ops already initialized")
     }
 }
@@ -159,31 +174,42 @@ pub fn init_scripting_runtime(
     registered_ops.push(op_get_property_number());
     registered_ops.push(op_set_property_number());
 
-    let ext = Extension {
+    let ext = deno_core::Extension {
         name: "reflect",
         ops: Cow::Owned(registered_ops),
         ..Default::default()
     };
 
-    let mut inner = JsRuntime::new(RuntimeOptions {
+    let mut inner_runtime = JsRuntime::new(RuntimeOptions {
         extensions: vec![ext],
+        default_entrypoint: Some("init".to_string()),
         ..Default::default()
-    });
+    })?;
 
-    inner
+    inner_runtime
+        .deno_runtime()
         .op_state()
         .borrow_mut()
         .put(runtime.world_handle.clone());
 
-    inner
-        .execute_script("<init>", include_str!("js/bootstrap.js"))
-        .map_err(|e| eyre::eyre!("failed to execute init script: {e:?}"))?;
+    let main_module = Module::load("lib/init.ts")?;
+    let main_module_handle = inner_runtime
+        .load_module(&main_module)
+        .expect("error loading init module");
+
+    inner_runtime.call_entrypoint::<Undefined>(&main_module_handle, json_args!())?;
+
+    // inner_runtime
+    //     .deno_runtime()
+    //     .execute_script("<init>", include_str!("js/bootstrap.js"))
+    //     .map_err(|e| eyre::eyre!("failed to execute init script: {e:?}"))?;
 
     info!(
         "registered {} component(s)",
         runtime.name_to_component_id.len()
     );
-    inner
+    inner_runtime
+        .deno_runtime()
         .execute_script(
             "<register-component>",
             runtime
@@ -196,7 +222,7 @@ pub fn init_scripting_runtime(
         )
         .map_err(|e| eyre::eyre!("failed to register component: {e:?}"))?;
 
-    runtime.inner = Some(inner);
+    runtime.inner = Some(inner_runtime);
 
     Ok(())
 }
