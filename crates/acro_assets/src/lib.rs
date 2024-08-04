@@ -187,9 +187,13 @@ impl Assets {
     }
 
     pub fn process_queue(&self, ctx: &SystemRunContext) {
-        let mut queue = self.queue.lock();
+        loop {
+            // Need to lock the queue here and drop the lock to avoid a deadlock
+            let asset = match self.queue.lock().pop_front() {
+                None => break,
+                Some(asset) => asset,
+            };
 
-        while let Some(asset) = queue.pop_front() {
             let new_asset_data = self.load_data(&ctx, asset.type_id, &asset.path);
 
             let mut data = self.data.write();
@@ -251,7 +255,7 @@ impl Assets {
                     for asset_id in notify_assets.write().iter() {
                         notify_assets_count += 1;
                         let to_notify = data.get(asset_id).expect("asset not loaded");
-                        queue.push_back(QueuedAsset {
+                        self.queue.lock().push_back(QueuedAsset {
                             type_id: to_notify.id,
                             path: asset_id.clone(),
                             queue_type: QueueType::Reload,

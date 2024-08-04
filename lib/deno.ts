@@ -3,44 +3,36 @@
 import { Attachment } from "./core.ts";
 import { Vec3 } from "./vec3.ts";
 
-declare global {
-  interface Deno {
-    core: {
-      print: (message: string) => void;
-      ops: {
-        op_get_property_number: (
-          generation: number,
-          index: number,
-          componentId: number,
-          path: string
-        ) => number;
-        op_set_property_number: (
-          generation: number,
-          index: number,
-          componentId: number,
-          path: string,
-          value: number
-        ) => void;
+declare namespace Deno.core.ops {
+  const op_get_property_number: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string
+  ) => number;
+  const op_set_property_number: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string,
+    value: number
+  ) => void;
 
-        op_get_property_vec3: (
-          generation: number,
-          index: number,
-          componentId: number,
-          path: string
-        ) => { x: number; y: number; z: number };
-        op_set_property_vec3: (
-          generation: number,
-          index: number,
-          componentId: number,
-          path: string,
-          x: number,
-          y: number,
-          z: number
-        ) => void;
-      };
-    };
-  }
-  export const Deno: Deno;
+  const op_get_property_vec3: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string
+  ) => { x: number; y: number; z: number };
+  const op_set_property_vec3: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string,
+    x: number,
+    y: number,
+    z: number
+  ) => void;
 }
 
 export function getPropertyNumber(attachment: Attachment): number {

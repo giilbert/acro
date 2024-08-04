@@ -30,7 +30,7 @@ impl Plugin for TestPlugin {
         world
             .resources()
             .get_mut::<SceneManager>()
-            .queue("examples/main.scene");
+            .queue("examples/simple/main.scene");
 
         // {
         //     let assets = world.resources().get::<Assets>();

@@ -1,13 +1,12 @@
 import { getPropertyVec3, setPropertyVec3 } from "./deno.ts";
-import { Attachment } from "./core.ts";
-import { Vec3 } from "./vec3.ts";
+import { Attachment, Vec3 } from "./core.ts";
 
 export class Transform {
   _position: Vec3;
   attachment: Attachment | undefined;
 
   static getComponentId() {
-    return acro.COMPONENT_IDS.Transform;
+    return acro.COMPONENT_IDS["Transform"];
   }
 
   constructor(position: Vec3, attachment?: Attachment) {

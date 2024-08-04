@@ -1,13 +1,13 @@
-import { Entity } from "./core.ts";
+import { type Behavior, Entity } from "./core.ts";
 
 interface ConstructableBehavior {
-  new (entity: Entity, ...args: any[]): any;
+  new (entity: Entity, ...args: unknown[]): unknown;
 }
 
 export class AcroGlobalHook {
   COMPONENT_IDS: Record<string, number>;
   behaviorConstructors: Record<string, ConstructableBehavior>;
-  behaviors: Map<number, any>;
+  behaviors: Map<number, Behavior>;
 
   constructor() {
     // maps component names to ids
@@ -45,12 +45,12 @@ export class AcroGlobalHook {
     entityIndex: number,
     id: number,
     name: string,
-    ...args: any[]
+    ...args: unknown[]
   ) {
     const behavior = new this.behaviorConstructors[name](
       new Entity(entityGeneration, entityIndex),
       ...args
-    );
+    ) as Behavior;
     this.behaviors.set(id, behavior);
   }
 }

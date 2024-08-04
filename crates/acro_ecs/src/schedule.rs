@@ -117,8 +117,6 @@ impl Schedule {
         for system in systems.iter_mut() {
             self.current_tick = self.current_tick.next();
 
-            // info!("running system {}", system.name);
-
             let result = (system.run)(
                 SystemRunContext {
                     world: &*world.borrow(),

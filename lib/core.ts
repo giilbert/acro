@@ -38,6 +38,7 @@ export class Attachment {
 }
 
 interface ComponentConstructor<T> {
+  // deno-lint-ignore no-explicit-any
   new (...args: any[]): T;
   getComponentId(): number;
 }
@@ -66,4 +67,6 @@ export class Behavior {
 
     throw new Error(`Unknown component class: ${ComponentClass}`);
   }
+
+  update() {}
 }

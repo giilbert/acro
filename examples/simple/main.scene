@@ -30,12 +30,12 @@ Scene(
                         ),
                     ],
                     indices: [0, 1, 2, 0, 2, 3],
-                    diffuse_texture: Some("crates/acro_render/src/textures/ferris.png"),
-                    shader_path: "crates/acro_render/src/shaders/basic-mesh.wgsl",
+                    diffuse_texture: Some("examples/simple/textures/ferris.png"),
+                    shader_path: "examples/simple/shaders/basic-mesh.wgsl",
                 },
                 {
                     name: "Behavior",
-                    source: "crates/acro_scripting/src/js/test.js"
+                    source: "examples/simple/src/test.ts"
                 }
             ],
             children: [],

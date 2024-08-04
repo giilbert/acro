@@ -1,5 +1,5 @@
 ShaderOptions(
-    diffuse_texture: "crates/acro_render/src/textures/ferris.png",
+    diffuse_texture: "examples/simple/textures/ferris.png",
     bind_groups: [
         BindGroupOptions(
             id: ModelMatrix,

@@ -1,7 +1,7 @@
-import { Behavior, Vec3 } from "./core.ts";
+import { Behavior, Entity, Vec3 } from "jsr:@acro/lib";
 
 class TestBehavior extends Behavior {
-  constructor(entity) {
+  constructor(entity: Entity) {
     super(entity);
   }
 

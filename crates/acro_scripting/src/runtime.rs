@@ -1,9 +1,14 @@
+use core::panic;
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_assets::Assets;
 use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
 use acro_reflect::Reflect;
-use rustyscript::{deno_core, json_args, Module, Runtime as JsRuntime, RuntimeOptions, Undefined};
+use deno_core::url::Url;
+use rustyscript::{
+    deno_core, json_args, module_loader::ImportProvider, Module, Runtime as JsRuntime,
+    RuntimeOptions, Undefined,
+};
 use tracing::info;
 
 use crate::{
@@ -91,20 +96,13 @@ impl ScriptingRuntime {
 
         info!("initializing source file: {:?}", source_file.config.name);
 
+        // TODO: cleanup module after it has been unloaded
         let module_handle = self.inner_mut().load_module(&Module::new(
             &format!("./lib/{}.ts", source_file.config.name),
             &source_file.code,
         ))?;
         self.inner_mut()
             .call_entrypoint::<Undefined>(&module_handle, json_args!())?;
-
-        // self.inner_mut()
-        //     .deno_runtime()
-        //     .execute_script(
-        //         "<source>",
-        //         format!("(() => {{{}}})()", source_file.code.clone()),
-        //     )
-        //     .map_err(|e| eyre::eyre!("failed to execute source init script: {e:?}"))?;
 
         Ok(())
     }
@@ -161,6 +159,28 @@ impl ScriptingRuntime {
     }
 }
 
+#[derive(Default)]
+pub struct AcroLibImportProvider;
+
+impl ImportProvider for AcroLibImportProvider {
+    fn resolve(
+        &mut self,
+        specifier: &deno_core::ModuleSpecifier,
+        _referrer: &str,
+        _kind: deno_core::ResolutionKind,
+    ) -> Option<Result<deno_core::ModuleSpecifier, deno_core::anyhow::Error>> {
+        match specifier.scheme() {
+            "jsr" if specifier.path() == "@acro/lib" => {
+                let mut cwd = std::env::current_dir().expect("failed to get current directory");
+                cwd.push("lib/mod.ts");
+                cwd.to_str()
+                    .map(|path| Ok(Url::parse(&format!("file://{}", path)).unwrap()))
+            }
+            _ => None,
+        }
+    }
+}
+
 pub fn init_scripting_runtime(
     _ctx: SystemRunContext,
     mut runtime: ResMut<ScriptingRuntime>,
@@ -183,6 +203,7 @@ pub fn init_scripting_runtime(
     let mut inner_runtime = JsRuntime::new(RuntimeOptions {
         extensions: vec![ext],
         default_entrypoint: Some("init".to_string()),
+        import_provider: Some(Box::new(AcroLibImportProvider)),
         ..Default::default()
     })?;
 
@@ -192,17 +213,12 @@ pub fn init_scripting_runtime(
         .borrow_mut()
         .put(runtime.world_handle.clone());
 
-    let main_module = Module::load("lib/init.ts")?;
-    let main_module_handle = inner_runtime
-        .load_module(&main_module)
+    let acro_init_module = Module::load("lib/init.ts")?;
+    let acro_init_module_handle = inner_runtime
+        .load_module(&acro_init_module)
         .expect("error loading init module");
 
-    inner_runtime.call_entrypoint::<Undefined>(&main_module_handle, json_args!())?;
-
-    // inner_runtime
-    //     .deno_runtime()
-    //     .execute_script("<init>", include_str!("js/bootstrap.js"))
-    //     .map_err(|e| eyre::eyre!("failed to execute init script: {e:?}"))?;
+    inner_runtime.call_entrypoint::<Undefined>(&acro_init_module_handle, json_args!())?;
 
     info!(
         "registered {} component(s)",
