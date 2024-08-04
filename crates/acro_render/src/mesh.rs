@@ -56,9 +56,33 @@ unsafe impl Zeroable for Vertex {}
 unsafe impl Pod for Vertex {}
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum MeshGeometryData {
+    Embedded {
+        vertices: Vec<Vertex>,
+        indices: Vec<u32>,
+    },
+}
+
+impl MeshGeometryData {
+    pub fn vertices(&self) -> &[Vertex] {
+        match self {
+            Self::Embedded { vertices, .. } => vertices,
+        }
+    }
+
+    pub fn indices(&self) -> &[u32] {
+        match self {
+            Self::Embedded { indices, .. } => indices,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Mesh {
-    pub vertices: Vec<Vertex>,
-    pub indices: Vec<u32>,
+    // pub vertices: Vec<Vertex>,
+    // pub indices: Vec<u32>,
+    pub geometry: MeshGeometryData,
     pub(crate) shader_path: String,
     pub diffuse_texture: Option<String>,
     #[serde(skip)]
@@ -74,14 +98,12 @@ pub(crate) struct MeshData {
 
 impl Mesh {
     pub fn new(
-        vertices: Vec<Vertex>,
-        indices: Vec<u32>,
+        geometry: MeshGeometryData,
         diffuse_texture: Option<impl Into<String>>,
         shader_path: impl ToString,
     ) -> Self {
         Self {
-            vertices,
-            indices,
+            geometry,
             diffuse_texture: diffuse_texture.map(Into::into),
             shader_path: shader_path.to_string(),
             data: None,
@@ -103,13 +125,13 @@ pub fn upload_mesh_system(
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&mesh.vertices),
+            contents: bytemuck::cast_slice(&mesh.geometry.vertices()),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(&mesh.indices),
+            contents: bytemuck::cast_slice(&mesh.geometry.indices()),
             usage: wgpu::BufferUsages::INDEX,
         });
 
@@ -270,7 +292,7 @@ pub fn render_mesh_system(
             mesh_render_pass.set_vertex_buffer(0, data.vertex_buffer.slice(..));
             mesh_render_pass
                 .set_index_buffer(data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            mesh_render_pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
+            mesh_render_pass.draw_indexed(0..mesh.geometry.indices().len() as u32, 0, 0..1);
         }
     }
 }
