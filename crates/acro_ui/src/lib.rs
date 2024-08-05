@@ -1,4 +1,5 @@
 mod context;
+mod rect;
 mod text;
 
 use acro_ecs::{Application, Plugin, Stage};
