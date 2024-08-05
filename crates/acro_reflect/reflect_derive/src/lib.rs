@@ -4,7 +4,7 @@ use syn::{
     parse_macro_input, token::Struct, Attribute, Data, DataStruct, DeriveInput, Ident, Meta,
 };
 
-#[proc_macro_derive(Reflect, attributes(derive))]
+#[proc_macro_derive(Reflect, attributes(reflect))]
 pub fn reflect_derive(input: TokenStream) -> TokenStream {
     reflect_derive_impl(input)
 }
@@ -27,25 +27,25 @@ fn reflect_derive_struct(
         .fields
         .iter()
         .filter(|field| {
-            field.attrs.iter().any(|attr| match &attr.meta {
+            !field.attrs.iter().any(|attr| match &attr.meta {
                 Meta::List(list) => {
                     if list.path.is_ident("reflect") {
-                        let token = match list.tokens.clone().into_iter().next().unwrap() {
-                            proc_macro2::TokenTree::Ident(ident) => ident.to_string(),
-                            _ => panic!("expected ident"),
-                        };
+                        // panic!("list.tokens: {:?}", list.tokens);
 
-                        panic!("token: {}", token);
+                        let ident: syn::Ident = attr.parse_args().expect("expected ident");
 
-                        token != "skip"
+                        // panic!("ident: {:?}", ident);
+
+                        ident.to_string() == "skip"
                     } else {
-                        true
+                        false
                     }
                 }
-                _ => true,
+                _ => false,
             })
         })
         .map(|field| field.ident.as_ref().expect("fields should have names"));
+
     let field_names_string = field_idents.clone().map(|name| name.to_string());
 
     let field_idents_2 = field_idents.clone();

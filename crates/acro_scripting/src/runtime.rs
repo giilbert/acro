@@ -13,7 +13,10 @@ use tracing::info;
 
 use crate::{
     behavior::{Behavior, BehaviorData},
-    ops::{op_get_property_number, op_set_property_number},
+    ops::{
+        op_get_property_number, op_get_property_string, op_set_property_number,
+        op_set_property_string,
+    },
     source_file::SourceFile,
 };
 
@@ -62,7 +65,7 @@ impl ScriptingRuntime {
         let world = self.world_handle.borrow();
         let (_data, vtable_ptr) = unsafe {
             std::mem::transmute::<&dyn Reflect, (*const (), *const ())>(
-                (&std::mem::MaybeUninit::<T>::uninit().assume_init()) as &dyn Reflect,
+                (std::mem::MaybeUninit::<T>::uninit().assume_init_ref()) as &dyn Reflect,
             )
         };
 
@@ -186,6 +189,8 @@ pub fn init_scripting_runtime(
 
     let mut registered_ops = runtime.take_ops();
 
+    registered_ops.push(op_get_property_string());
+    registered_ops.push(op_set_property_string());
     registered_ops.push(op_get_property_number());
     registered_ops.push(op_set_property_number());
 

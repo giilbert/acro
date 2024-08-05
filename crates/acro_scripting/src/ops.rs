@@ -2,6 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_ecs::{ComponentId, EntityId, Tick, World};
 use acro_reflect::{Reflect, ReflectExt, ReflectPath};
+use deno_core::serde_json::value;
 use rustyscript::deno_core::{self, anyhow, error::AnyError, op2};
 use tracing::info;
 
@@ -36,6 +37,60 @@ pub fn get_dyn_reflect<'a>(
             component_ids_to_vtables[&ComponentId(component_id)] as *const (),
         ))
     })
+}
+
+#[op2]
+#[string]
+pub fn op_get_property_string(
+    #[state] world: &Rc<RefCell<World>>,
+    #[state] component_ids_to_vtables: &HashMap<ComponentId, *const ()>,
+    #[state] tick: &Tick,
+    generation: u32,
+    index: u32,
+    component_id: u32,
+    #[string] path: &str,
+) -> Result<String, AnyError> {
+    let path = ReflectPath::parse(path);
+    let object = get_dyn_reflect(
+        world,
+        component_ids_to_vtables,
+        tick,
+        generation,
+        index,
+        component_id,
+        false,
+    )?;
+
+    Ok(object.get::<String>(&path).clone())
+}
+
+#[op2(fast)]
+#[string]
+pub fn op_set_property_string(
+    #[state] world: &Rc<RefCell<World>>,
+    #[state] component_ids_to_vtables: &HashMap<ComponentId, *const ()>,
+    #[state] tick: &Tick,
+    generation: u32,
+    index: u32,
+    component_id: u32,
+    #[string] path: &str,
+    #[string] value: String,
+) -> Result<(), AnyError> {
+    let path = ReflectPath::parse(path);
+
+    let object = get_dyn_reflect(
+        world,
+        component_ids_to_vtables,
+        tick,
+        generation,
+        index,
+        component_id,
+        true,
+    )?;
+
+    object.set::<String>(&path, value);
+
+    Ok(())
 }
 
 #[op2(fast)]

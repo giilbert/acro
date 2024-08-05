@@ -14,8 +14,8 @@ pub struct Text {
     pub size: Vec2,
     pub font_size: f32,
     pub line_height: f32,
-    #[serde(skip)]
     #[reflect(skip)]
+    #[serde(skip)]
     data: Option<TextData>,
 }
 
