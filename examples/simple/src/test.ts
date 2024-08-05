@@ -1,8 +1,9 @@
-import { Behavior, Entity, Input, Vec3 } from "jsr:@acro/lib";
+import { $, Behavior, Entity, Input, Text, Vec3 } from "jsr:@acro/lib";
 
 class TestBehavior extends Behavior {
   constructor(entity: Entity) {
     super(entity);
+    console.log($("/Text")?.getComponent(Text));
   }
 
   update() {

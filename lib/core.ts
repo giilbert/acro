@@ -1,3 +1,4 @@
+import { Text } from "./mod.ts";
 import { Transform } from "./transform.ts";
 import { Vec3 } from "./vec3.ts";
 
@@ -14,6 +15,25 @@ export class Entity {
 
   newAttachment(componentId: number, path: string) {
     return new Attachment(this, componentId, path);
+  }
+
+  getComponent<T>(ComponentClass: ComponentConstructor<T>): T {
+    const attachment = this.newAttachment(ComponentClass.getComponentId(), "");
+
+    if (ComponentClass === Transform) {
+      return new Transform(
+        new Vec3(0, 0, 0, attachment.add("position")),
+        new Vec3(0, 0, 0, attachment.add("rotation")),
+        new Vec3(0, 0, 0, attachment.add("scale")),
+        attachment
+      ) as T;
+    }
+
+    if (ComponentClass === Text) {
+      return new Text("", attachment) as T;
+    }
+
+    throw new Error(`Unknown component class: ${ComponentClass}`);
   }
 }
 
@@ -53,22 +73,20 @@ export class Behavior {
   }
 
   getComponent<T>(ComponentClass: ComponentConstructor<T>): T {
-    const attachment = this.entity.newAttachment(
-      ComponentClass.getComponentId(),
-      ""
-    );
-
-    if (ComponentClass === Transform) {
-      return new Transform(
-        new Vec3(0, 0, 0, attachment.add("position")),
-        new Vec3(0, 0, 0, attachment.add("rotation")),
-        new Vec3(0, 0, 0, attachment.add("scale")),
-        attachment
-      ) as T;
-    }
-
-    throw new Error(`Unknown component class: ${ComponentClass}`);
+    return this.entity.getComponent(ComponentClass);
   }
 
   update() {}
 }
+
+declare namespace Deno.core.ops {
+  const op_get_entity_by_absolute_path: (path: string) => {
+    generation: number;
+    index: number;
+  } | null;
+}
+
+export const $ = (path: string): Entity | null => {
+  const entity = Deno.core.ops.op_get_entity_by_absolute_path(path);
+  return entity ? new Entity(entity.generation, entity.index) : null;
+};

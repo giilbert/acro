@@ -74,7 +74,7 @@ pub trait ReflectExt: Reflect {
 
 impl<T: Reflect + ?Sized> ReflectExt for T {}
 
-macro_rules! impl_reflect_number {
+macro_rules! impl_reflect_prim {
     ($integer_type:ident) => {
         impl Reflect for $integer_type {
             fn get_field_names(&self) -> &'static [&'static str] {
@@ -103,20 +103,21 @@ macro_rules! impl_reflect_number {
     };
 }
 
-impl_reflect_number!(u8);
-impl_reflect_number!(u16);
-impl_reflect_number!(u32);
-impl_reflect_number!(u64);
-impl_reflect_number!(u128);
-impl_reflect_number!(usize);
-impl_reflect_number!(i8);
-impl_reflect_number!(i16);
-impl_reflect_number!(i32);
-impl_reflect_number!(i64);
-impl_reflect_number!(i128);
-impl_reflect_number!(isize);
-impl_reflect_number!(f32);
-impl_reflect_number!(f64);
+impl_reflect_prim!(u8);
+impl_reflect_prim!(u16);
+impl_reflect_prim!(u32);
+impl_reflect_prim!(u64);
+impl_reflect_prim!(u128);
+impl_reflect_prim!(usize);
+impl_reflect_prim!(i8);
+impl_reflect_prim!(i16);
+impl_reflect_prim!(i32);
+impl_reflect_prim!(i64);
+impl_reflect_prim!(i128);
+impl_reflect_prim!(isize);
+impl_reflect_prim!(f32);
+impl_reflect_prim!(f64);
+impl_reflect_prim!(String);
 
 #[cfg(test)]
 mod tests {

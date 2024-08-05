@@ -1,5 +1,6 @@
 use acro_ecs::{Changed, Query, Res, ResMut, SystemRunContext};
 use acro_math::Vec2;
+use acro_reflect::Reflect;
 use acro_render::{FrameState, RendererHandle};
 use glyphon::{Attrs, Color, Family, Resolution, Shaping, TextArea, TextBounds};
 use serde::{Deserialize, Serialize};
@@ -7,13 +8,14 @@ use tracing::info;
 
 use crate::context::{UiContext, UiContextInner};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Reflect)]
 pub struct Text {
     pub content: String,
     pub size: Vec2,
     pub font_size: f32,
     pub line_height: f32,
     #[serde(skip)]
+    #[reflect(skip)]
     data: Option<TextData>,
 }
 

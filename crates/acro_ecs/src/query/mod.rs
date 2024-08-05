@@ -49,12 +49,15 @@ where
         }
     }
 
-    pub fn get_single(&self, ctx: &SystemRunContext) -> Option<<T as ToQueryInfo>::Output> {
+    pub fn get_single<'w>(
+        &self,
+        ctx: impl IntoSystemRunContext<'w>,
+    ) -> Option<<T as ToQueryInfo>::Output> {
         self.over(ctx).next()
     }
 
-    pub fn single(&self, ctx: &SystemRunContext) -> <T as ToQueryInfo>::Output {
-        self.get_single(&ctx).expect("query returned no results")
+    pub fn single<'w>(&self, ctx: impl IntoSystemRunContext<'w>) -> <T as ToQueryInfo>::Output {
+        self.get_single(ctx).expect("query returned no results")
     }
 
     pub fn over<'w, 'q>(&'q self, ctx: impl IntoSystemRunContext<'w>) -> QueryIter<'w, 'q, T, F> {
@@ -63,11 +66,12 @@ where
         QueryIter::new(ctx, self)
     }
 
-    pub fn get(
+    pub fn get<'w>(
         &self,
-        ctx: &SystemRunContext,
+        ctx: impl IntoSystemRunContext<'w>,
         entity_id: EntityId,
     ) -> Option<<T as ToQueryInfo>::Output> {
+        let ctx = ctx.into_system_run_context();
         let entity_meta = ctx.world.entity_meta(entity_id);
         let archetype_id = entity_meta.archetype_id;
         ctx.world

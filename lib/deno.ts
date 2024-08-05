@@ -4,6 +4,20 @@ import type { Attachment } from "./core.ts";
 import { Vec3 } from "./vec3.ts";
 
 declare namespace Deno.core.ops {
+  const op_get_property_string: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string
+  ) => string;
+  const op_set_property_string: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string,
+    value: string
+  ) => void;
+
   const op_get_property_number: (
     generation: number,
     index: number,
@@ -33,6 +47,25 @@ declare namespace Deno.core.ops {
     y: number,
     z: number
   ) => void;
+}
+
+export function getPropertyString(attachment: Attachment): string {
+  return Deno.core.ops.op_get_property_string(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path
+  );
+}
+
+export function setPropertyString(attachment: Attachment, value: string) {
+  Deno.core.ops.op_set_property_string(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path,
+    value
+  );
 }
 
 export function getPropertyNumber(attachment: Attachment): number {

@@ -110,7 +110,7 @@ impl World {
         )
     }
 
-    pub fn query<T, F>(&mut self) -> Query<T, F>
+    pub fn query<T, F>(&self) -> Query<T, F>
     where
         T: ToQueryInfo,
         F: QueryFilter + 'static,

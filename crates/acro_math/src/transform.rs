@@ -79,10 +79,10 @@ fn recurse_propagate(
 ) {
     // Update the global transform of the current entity
     let (_parent_id, parent_global_transform, _parent_children) = global_transform_query
-        .get(&ctx, parent)
+        .get(ctx, parent)
         .expect("Invalid tree structure: parent entity does not have a global transform!");
     let (_, mut this_global_transform, children) = global_transform_query
-        .get(&ctx, current_entity)
+        .get(ctx, current_entity)
         .expect("Invalid tree structure: entity does not have a global transform!");
     this_global_transform.matrix = parent_global_transform.matrix * transform.get_matrix();
 
@@ -93,7 +93,7 @@ fn recurse_propagate(
             *child,
             current_entity,
             transform_query
-                .get(&ctx, *child)
+                .get(ctx, *child)
                 .expect("Invalid tree structure: child entity does not have a transform!")
                 .1,
             transform_query,

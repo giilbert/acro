@@ -13,7 +13,7 @@ use tracing::info;
 
 use crate::{
     behavior::{Behavior, BehaviorData},
-    reflect::{op_get_property_number, op_set_property_number},
+    ops::{op_get_property_number, op_set_property_number},
     source_file::SourceFile,
 };
 
@@ -58,7 +58,7 @@ impl ScriptingRuntime {
             .expect("js runtime has not been initialized")
     }
 
-    pub fn register_component<T: Reflect + 'static>(&mut self, name: &str) -> eyre::Result<()> {
+    pub fn register_component<T: Reflect + 'static>(&mut self, name: &str) {
         let world = self.world_handle.borrow();
         let (_data, vtable_ptr) = unsafe {
             std::mem::transmute::<&dyn Reflect, (*const (), *const ())>(
@@ -69,13 +69,11 @@ impl ScriptingRuntime {
         let component_info = world.get_component_info::<T>();
         self.component_vtables
             .as_mut()
-            .unwrap()
+            .expect("component vtables already taken")
             .insert(component_info.id, vtable_ptr);
 
         self.name_to_component_id
             .insert(name.to_string(), component_info.id);
-
-        Ok(())
     }
 
     pub fn init_source_file(&mut self, source_file: &SourceFile) -> eyre::Result<()> {

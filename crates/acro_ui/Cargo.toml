@@ -7,6 +7,7 @@ edition = "2021"
 acro_assets = { path = "../acro_assets" }
 acro_ecs = { path = "../acro_ecs" }
 acro_math = { path = "../acro_math" }
+acro_reflect = { path = "../acro_reflect" }
 acro_render = { path = "../acro_render" }
 acro_scene = { path = "../acro_scene" }
 acro_scripting = { path = "../acro_scripting" }

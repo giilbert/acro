@@ -1,4 +1,6 @@
+mod ops;
 mod transform;
+mod tree;
 mod types;
 
 pub use crate::{
@@ -8,6 +10,8 @@ pub use crate::{
 
 use acro_ecs::{schedule::Stage, Application, Plugin};
 use acro_scripting::ScriptingRuntime;
+use ops::op_get_entity_by_absolute_path;
+use tree::TreeData;
 
 pub struct MathPlugin {
     pub scripting: bool,
@@ -30,9 +34,7 @@ impl Plugin for MathPlugin {
 
         if self.scripting {
             app.with_resource::<ScriptingRuntime>(|mut runtime| {
-                runtime
-                    .register_component::<Transform>("Transform")
-                    .expect("failed to register Transform component");
+                runtime.register_component::<Transform>("Transform");
 
                 runtime.add_op(op_get_property_vec2());
                 runtime.add_op(op_get_property_vec3());
@@ -41,7 +43,12 @@ impl Plugin for MathPlugin {
                 runtime.add_op(op_set_property_vec2());
                 runtime.add_op(op_set_property_vec3());
                 runtime.add_op(op_set_property_vec4());
+
+                runtime.add_op(op_get_entity_by_absolute_path());
             });
         }
+
+        let tree = TreeData::new(&*app.world());
+        app.insert_resource(tree);
     }
 }
