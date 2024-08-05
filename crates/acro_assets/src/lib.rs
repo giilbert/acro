@@ -309,7 +309,7 @@ impl Assets {
         self.asset_loaders.insert(
             TypeId::of::<T>(),
             Arc::new(|ctx, config, data| {
-                let config = Arc::new(ron::de::from_bytes::<T::Config>(&config)?);
+                let config = Arc::new(serde_yml::from_slice::<T::Config>(&config)?);
 
                 T::load(ctx, Arc::clone(&config), data).map(|data| AnyAssetData {
                     data: Arc::new(data),

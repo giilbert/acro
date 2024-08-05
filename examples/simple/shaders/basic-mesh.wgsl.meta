@@ -1,43 +1,23 @@
-ShaderOptions(
-    diffuse_texture: "examples/simple/textures/ferris.png",
-    bind_groups: [
-        BindGroupOptions(
-            id: ModelMatrix,
-            uniforms: [UniformOptions (
-                id: ModelMatrix,
-                stage: 1,
-                uniform_type: Mat4,
-            )],
-        ),
-        BindGroupOptions(
-            id: ViewProjectionMatrix,
-            uniforms: [
-                UniformOptions(
-                    id: ViewMatrix,
-                    stage: 1,
-                    uniform_type: Mat4,
-                ),
-                UniformOptions (
-                    id: ProjectionMatrix,
-                    stage: 1,
-                    uniform_type: Mat4,
-                ),
-            ],
-        ),
-        BindGroupOptions(
-            id: DiffuseTexture,
-            uniforms: [
-                UniformOptions(
-                    id: Texture2D,
-                    stage: 2,
-                    uniform_type: Texture2D,
-                ),
-                UniformOptions(
-                    id: Sampler,
-                    stage: 2,
-                    uniform_type: Sampler,
-                ),
-            ],
-        ),
-    ],
-)
+diffuse_texture: examples/simple/textures/ferris.png
+bind_groups:
+  - id: ModelMatrix
+    uniforms:
+      - id: ModelMatrix
+        stage: 1
+        uniform_type: Mat4
+  - id: ViewProjectionMatrix
+    uniforms:
+      - id: ViewMatrix
+        stage: 1
+        uniform_type: Mat4
+      - id: ProjectionMatrix
+        stage: 1
+        uniform_type: Mat4
+  - id: DiffuseTexture
+    uniforms:
+      - id: Texture2D
+        stage: 2
+        uniform_type: Texture2D
+      - id: Sampler
+        stage: 2
+        uniform_type: Sampler

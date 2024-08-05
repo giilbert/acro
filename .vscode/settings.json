@@ -3,5 +3,9 @@
         100
     ],
     "rust-analyzer.checkOnSave": true,
-    "deno.enable": true
+    "deno.enable": true,
+    "files.associations": {
+        "*.meta": "yaml",
+        "*.scene": "yaml"
+    }
 }

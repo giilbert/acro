@@ -20,7 +20,7 @@ pub fn load_queued_scene(
     mut scene_manager: ResMut<SceneManager>,
 ) -> eyre::Result<()> {
     if let Some(scene_path) = &scene_manager.queued_scene {
-        let scene = ron::from_str::<Scene>(&std::fs::read_to_string(scene_path)?)?;
+        let scene = serde_yml::from_str::<Scene>(&std::fs::read_to_string(scene_path)?)?;
         ctx.world.queue_swap(move |world| {
             let now = std::time::Instant::now();
             scene.load(world);

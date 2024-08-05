@@ -22,7 +22,7 @@ struct Entity {
 pub struct Component {
     pub name: String,
     #[serde(flatten)]
-    data: ron::Value,
+    data: serde_yml::Value,
 }
 
 impl Scene {
@@ -128,7 +128,7 @@ Scene(
 
     #[test]
     fn scene_loading() {
-        let scene: Scene = ron::de::from_str(TEST_SCENE).unwrap();
+        let scene: Scene = serde_yml::from_str(TEST_SCENE).unwrap();
         let app = Application::new()
             .add_plugin(ScenePlugin)
             .add_plugin(MathPlugin { scripting: false });

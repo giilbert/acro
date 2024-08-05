@@ -42,7 +42,7 @@ impl Plugin for RenderPlugin {
             })
             .with_resource::<ComponentLoaders>(|loaders| {
                 loaders.register("Mesh", |world, entity, serialized| {
-                    let mesh_data = serialized.into_rust::<Mesh>()?;
+                    let mesh_data = serde_yml::from_value::<Mesh>(serialized)?;
 
                     world
                         .resources()
@@ -60,8 +60,8 @@ impl Plugin for RenderPlugin {
                 });
 
                 loaders.register("Camera", |world, entity, serialized| {
-                    let options = serialized.into_rust::<CameraOptions>()?;
-                    world.insert(entity, Camera::new(options.get_camera_type()?, 800, 600));
+                    let options = serde_yml::from_value::<CameraOptions>(serialized)?;
+                    world.insert(entity, Camera::new(options.camera_type, 800, 600));
                     if options.is_main_camera {
                         world.insert(entity, MainCamera);
                     }

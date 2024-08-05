@@ -16,41 +16,8 @@ pub struct Camera {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CameraOptions {
     pub is_main_camera: bool,
-    pub camera_type: String,
-
-    pub fov: Option<f32>,
-    pub near: f32,
-    pub far: f32,
-
-    pub left: Option<f32>,
-    pub right: Option<f32>,
-    pub top: Option<f32>,
-    pub bottom: Option<f32>,
-}
-
-fn camera_type_deserialization_error() -> eyre::Report {
-    eyre::eyre!("Invalid camera type")
-}
-
-impl CameraOptions {
-    pub fn get_camera_type(&self) -> eyre::Result<CameraType> {
-        match self.camera_type.as_str() {
-            "Perspective" => Ok(CameraType::Perspective {
-                near: self.near,
-                far: self.far,
-                fov: self.fov.ok_or_else(camera_type_deserialization_error)?,
-            }),
-            "Orthographic" => Ok(CameraType::Orthographic {
-                near: self.near,
-                far: self.far,
-                left: self.left.ok_or_else(camera_type_deserialization_error)?,
-                right: self.right.ok_or_else(camera_type_deserialization_error)?,
-                top: self.top.ok_or_else(camera_type_deserialization_error)?,
-                bottom: self.bottom.ok_or_else(camera_type_deserialization_error)?,
-            }),
-            _ => return Err(camera_type_deserialization_error()),
-        }
-    }
+    #[serde(flatten)]
+    pub camera_type: CameraType,
 }
 
 impl Camera {
@@ -67,6 +34,7 @@ impl Camera {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum CameraType {
     Perspective {
         fov: f32,
