@@ -9,5 +9,5 @@ members = [
     "crates/acro_reflect",
     "crates/acro_reflect/reflect_derive",
     "crates/acro_render", "crates/acro_scene",
-    "crates/acro_scripting",
+    "crates/acro_scripting", "crates/acro_ui",
 ]

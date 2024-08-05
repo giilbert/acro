@@ -5,6 +5,7 @@ use std::{
 };
 
 use tracing::info;
+use wgpu::MemoryHints;
 use winit::dpi::PhysicalSize;
 
 #[derive(Debug, Clone)]
@@ -14,21 +15,21 @@ pub struct RendererHandle {
 
 #[derive(Debug)]
 pub struct RendererState {
-    pub(crate) adapter: wgpu::Adapter,
-    pub(crate) surface: wgpu::Surface<'static>,
-    pub(crate) device: wgpu::Device,
-    pub(crate) queue: wgpu::Queue,
-    pub(crate) config: RefCell<wgpu::SurfaceConfiguration>,
-    pub(crate) size: RefCell<winit::dpi::PhysicalSize<u32>>,
-    pub(crate) window: Arc<winit::window::Window>,
-    pub(crate) frame_state: RefCell<Option<FrameState>>,
+    pub adapter: wgpu::Adapter,
+    pub surface: wgpu::Surface<'static>,
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
+    pub config: RefCell<wgpu::SurfaceConfiguration>,
+    pub size: RefCell<winit::dpi::PhysicalSize<u32>>,
+    pub window: Arc<winit::window::Window>,
+    pub frame_state: RefCell<Option<FrameState>>,
 }
 
 #[derive(Debug)]
 pub struct FrameState {
-    pub(crate) encoder: RefCell<wgpu::CommandEncoder>,
-    pub(crate) view: wgpu::TextureView,
-    pub(crate) output: wgpu::SurfaceTexture,
+    pub encoder: RefCell<wgpu::CommandEncoder>,
+    pub view: wgpu::TextureView,
+    pub output: wgpu::SurfaceTexture,
 }
 
 impl RendererState {
@@ -58,6 +59,7 @@ impl RendererState {
                 &wgpu::DeviceDescriptor {
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::default(),
+                    memory_hints: MemoryHints::Performance,
                     label: None,
                 },
                 None,

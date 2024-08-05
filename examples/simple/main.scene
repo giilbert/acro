@@ -23,6 +23,14 @@ entities:
       - name: Behavior
         source: examples/simple/src/test.ts
     children: []
+  - name: Text
+    components:
+      - name: Text
+        content: text content asdaslkjdlasd
+        size: [400.0, 300.0]
+        font_size: 30.0
+        line_height: 42.0
+    children: []
   - name: Camera
     components:
       - name: Transform

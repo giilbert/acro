@@ -9,6 +9,7 @@ use acro_render::{
 };
 use acro_scene::{SceneManager, ScenePlugin};
 use acro_scripting::{Behavior, ScriptingPlugin, SourceFile};
+use acro_ui::UiPlugin;
 use tracing::info;
 
 fn update(
@@ -41,6 +42,7 @@ fn main() {
         .add_plugin(MathPlugin::default())
         .add_plugin(ScenePlugin)
         .add_plugin(RenderPlugin)
+        .add_plugin(UiPlugin)
         .add_plugin(TestPlugin)
         .run();
 }

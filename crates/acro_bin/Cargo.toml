@@ -11,4 +11,5 @@ acro_math = { path = "../acro_math" }
 acro_render = { path = "../acro_render" }
 acro_scene = { path = "../acro_scene" }
 acro_scripting = { path = "../acro_scripting" }
+acro_ui = { path = "../acro_ui" }
 tracing = "0.1.40"
