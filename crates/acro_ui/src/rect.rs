@@ -1,5 +1,5 @@
 use std::{
-    cell::{Ref, RefCell},
+    cell::{Ref, RefCell, RefMut},
     fmt::Debug,
     rc::{Rc, Weak},
 };
@@ -15,12 +15,12 @@ pub enum Dim {
     Percent(f32),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Rect {
     inner: Rc<RefCell<RectInner>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RectInner {
     pub(crate) child_index: usize,
 
@@ -141,6 +141,10 @@ impl Rect {
 
     pub fn inner(&self) -> Ref<RectInner> {
         self.inner.borrow()
+    }
+
+    pub fn inner_mut(&self) -> RefMut<RectInner> {
+        self.inner.borrow_mut()
     }
 
     pub fn recalculate(&self) {

@@ -73,6 +73,7 @@ pub fn draw_text(
         ref mut viewport,
         atlas,
         ref mut text_renderer,
+        ..
     } = &mut *ui_context.inner.as_mut().unwrap();
 
     for text in query.over(&ctx) {

@@ -6,6 +6,8 @@ use glyphon::{
 };
 use wgpu::MultisampleState;
 
+use crate::box_renderer::BoxRenderer;
+
 #[derive(Default)]
 pub struct UiContext {
     pub(crate) inner: Option<UiContextInner>,
@@ -17,6 +19,7 @@ pub struct UiContextInner {
     pub(crate) viewport: glyphon::Viewport,
     pub(crate) atlas: glyphon::TextAtlas,
     pub(crate) text_renderer: glyphon::TextRenderer,
+    pub(crate) box_renderer: BoxRenderer,
 }
 
 impl UiContext {
@@ -45,6 +48,7 @@ impl UiContext {
                 viewport,
                 atlas,
                 text_renderer,
+                box_renderer: BoxRenderer::new(&renderer),
             });
         }
     }

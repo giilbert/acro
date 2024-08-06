@@ -1,0 +1,131 @@
+use acro_math::Vec2;
+use acro_render::RendererHandle;
+use wgpu::{
+    util::DeviceExt, BindGroupLayoutDescriptor, BindGroupLayoutEntry, ShaderModule, VertexAttribute,
+};
+
+const BOX_VERTICES: &[f32] = &[0.0, 0.0, 1.0, 0.0, 1.1, 1.1, 0.0, 1.0];
+const BOX_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
+
+pub struct BoxRenderer {
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    render_pipeline: wgpu::RenderPipeline,
+
+    shader_module: wgpu::ShaderModule,
+
+    context_bind_group: wgpu::BindGroup,
+    context_bind_group_layout: wgpu::BindGroupLayout,
+}
+
+impl BoxRenderer {
+    pub fn new(renderer: &RendererHandle) -> Self {
+        let device = &renderer.device;
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BoxRenderer Vertex Buffer"),
+            contents: bytemuck::cast_slice(BOX_VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BoxRenderer Index Buffer"),
+            contents: bytemuck::cast_slice(BOX_INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("BoxRenderer Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/box.wgsl").into()),
+        });
+
+        let context_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BoxRenderer Context Buffer"),
+            size: std::mem::size_of::<Vec2>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let context_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("BoxRenderer Context Bind Group Layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    visibility: wgpu::ShaderStages::VERTEX,
+                }],
+            });
+
+        let context_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("BoxRenderer Context Bind Group"),
+            layout: &context_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &context_buffer,
+                    offset: 0,
+                    size: None,
+                }),
+            }],
+        });
+
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[&context_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[wgpu::VertexBufferLayout {
+                    attributes: &[VertexAttribute {
+                        format: wgpu::VertexFormat::Float32x2,
+                        offset: 0,
+                        shader_location: 0,
+                    }],
+                    array_stride: std::mem::size_of::<Vec2>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                }],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: renderer.config.borrow().format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
+        todo!()
+    }
+}
