@@ -95,35 +95,21 @@ mod tests {
     use super::Scene;
 
     const TEST_SCENE: &str = r#"
-Scene(
-    entities: [
-        Entity(
-            name: "parent",
-            components: [
-                {
-                    name: "Transform",
-                    position: Vec3(0.0, 0.0, 0.0),
-                    rotation: Vec3(0.0, 0.0, 0.0),
-                    scale: Vec3(1.0, 1.0, 1.0) 
-                },
-            ],
-            children: [
-                Entity(
-                    name: "child",
-                    components: [
-                        {
-                            name: "Transform",
-                            position: Vec3(1.0, 0.0, 0.0),
-                            rotation: Vec3(0.0, 0.0, 0.0),
-                            scale: Vec3(1.0, 1.0, 1.0) 
-                        },
-                    ],
-                    children: []
-                )
-            ],
-        )
-    ]
-)
+    entities:
+      - name: parent
+        components:
+          - name: Transform
+            position: [0.0, 0.0, 0.0]
+            rotation: [0.0, 0.0, 0.0]
+            scale: [1.0, 1.0, 1.0]
+        children:
+          - name: child
+            components:
+              - name: Transform
+                position: [1.0, 0.0, 0.0]
+                rotation: [0.0, 0.0, 0.0]
+                scale: [1.0, 1.0, 1.0]
+            children: []
 "#;
 
     #[test]
