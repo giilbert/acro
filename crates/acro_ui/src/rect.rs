@@ -216,10 +216,12 @@ impl RectInner {
         size_with_margin - margin_dir
     }
 
-    // TODO: handle flex directions
+    // TODO: handle reversed flex directions
     // TODO: cache
     /// Calculates the offset of the child from the top-left corner of self
     pub fn recalculate_children_top_left_offset(&self) -> Vec<Vec2> {
+        let direction = self.options.flex.direction;
+
         let mut offsets = Vec::new();
         let mut running_offset = 0.0;
 
@@ -227,9 +229,16 @@ impl RectInner {
             let child = child.upgrade().expect("child dropped without being freed");
             let child = child.borrow();
 
-            offsets.push(Vec2::new(0.0, running_offset));
-            running_offset +=
-                child.size.y + self.calculate_offset_dim(self.options.flex.gap, self.size.y);
+            offsets.push(if matches!(direction, FlexDirection::Column) {
+                Vec2::new(0.0, running_offset)
+            } else {
+                Vec2::new(running_offset, 0.0)
+            });
+            running_offset += if matches!(direction, FlexDirection::Column) {
+                child.size.y + self.calculate_offset_dim(self.options.flex.gap, self.size.y)
+            } else {
+                child.size.x + self.calculate_offset_dim(self.options.flex.gap, self.size.x)
+            };
         }
 
         offsets
@@ -360,7 +369,7 @@ impl RectInner {
 mod tests {
     use acro_math::Vec2;
 
-    use crate::rect::{FlexOptions, PositioningOptions, RootOptions};
+    use crate::rect::{FlexDirection, FlexOptions, PositioningOptions, RootOptions};
 
     use super::{Dim, Dir, Rect};
 
@@ -482,5 +491,47 @@ mod tests {
 
         assert_eq!(child_2.children_top_left_offsets, &[Vec2::new(0.0, 0.0)]);
         assert_eq!(child_of_child_2.offset, Vec2::new(10.0, 220.0));
+    }
+
+    #[test]
+    fn flex_row_1() {
+        let mut root = Rect::new_root(RootOptions {
+            size: Vec2::new(800.0, 400.0),
+            flex: FlexOptions {
+                gap: Dim::Px(10.0),
+                direction: FlexDirection::Row,
+            },
+            ..Default::default()
+        });
+
+        let child_1 = root.new_child(PositioningOptions {
+            width: Dim::Px(100.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
+
+        let child_2 = root.new_child(PositioningOptions {
+            width: Dim::Px(100.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
+
+        let child_3 = root.new_child(PositioningOptions {
+            width: Dim::Px(100.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
+
+        println!("{}", root.get_tree_string());
+
+        let root = root.inner();
+        let child_1 = child_1.inner();
+        let child_2 = child_2.inner();
+        let child_3 = child_3.inner();
+
+        assert_eq!(root.offset, Vec2::new(0.0, 0.0));
+        assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
+        assert_eq!(child_2.offset, Vec2::new(110.0, 0.0));
+        assert_eq!(child_3.offset, Vec2::new(220.0, 0.0));
     }
 }
