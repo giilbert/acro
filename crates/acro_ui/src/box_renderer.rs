@@ -69,7 +69,7 @@ impl BoxRenderer {
     pub fn new(renderer: &RendererHandle) -> Self {
         let mut instance_data = Vec::<InstanceData>::with_capacity(128);
         instance_data.push(InstanceData {
-            offset: Vec2::new(0.0, 0.0),
+            offset: Vec2::new(50.0, 100.0),
             size: Vec2::new(100.0, 100.0),
         });
 
