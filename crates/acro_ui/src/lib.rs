@@ -1,5 +1,9 @@
 mod context;
+mod document;
+mod element;
+mod panel;
 mod rect;
+mod rendering;
 mod text;
 
 use acro_ecs::{Application, Plugin, Stage};
