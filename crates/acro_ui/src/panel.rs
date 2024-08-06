@@ -11,16 +11,21 @@ pub struct Panel {
     children: Vec<Box<dyn UiElement>>,
 }
 
-impl UiElement for Panel {
-    fn create(mut parent_rect: Rect, positioning_options: PositioningOptions) -> Self
-    where
-        Self: Sized,
-    {
-        Panel {
-            rect: parent_rect.new_child(positioning_options),
+impl Panel {
+    pub fn new(parent_rect: Rect, options: PositioningOptions) -> Self {
+        let rect = parent_rect.new_child(options);
+
+        Self {
+            rect,
             parent_rect,
             children: Vec::new(),
         }
+    }
+}
+
+impl UiElement for Panel {
+    fn get_rect(&self) -> &Rect {
+        &self.rect
     }
 
     fn add_child_boxed(&mut self, child: Box<dyn UiElement>) {
@@ -36,6 +41,6 @@ impl UiElement for Panel {
     }
 
     fn render(&self, ctx: &UiRenderContext) {
-        todo!();
+        // TODO: batch render panels
     }
 }

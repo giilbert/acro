@@ -1,10 +1,12 @@
-use acro_ecs::{Query, Res, SystemRunContext};
+use acro_ecs::{Query, Res, ResMut, SystemRunContext};
 use acro_math::Vec2;
 use acro_render::RendererHandle;
 
 use crate::{
+    context::UiContext,
     element::UiElement,
-    rect::{Rect, RootOptions},
+    panel::Panel,
+    rect::{Dim, Dir, PositioningOptions, Rect, RootOptions},
     rendering::UiRenderContext,
 };
 
@@ -15,14 +17,8 @@ pub struct UiDocument {
 }
 
 impl UiElement for UiDocument {
-    fn create(
-        _parent_rect: crate::rect::Rect,
-        _positioning_options: crate::rect::PositioningOptions,
-    ) -> Self
-    where
-        Self: Sized,
-    {
-        unimplemented!("construct UiDocument manually")
+    fn get_rect(&self) -> &Rect {
+        &self.rect
     }
 
     fn add_child_boxed(&mut self, child: Box<dyn UiElement>) {
@@ -48,9 +44,17 @@ pub struct ScreenUi {
 
 impl ScreenUi {
     pub fn new() -> Self {
-        Self {
-            document: UiDocument::default(),
-        }
+        let document = UiDocument::default().add(|p| {
+            Panel::new(
+                p,
+                PositioningOptions {
+                    margin: Dir::all(Dim::Px(20.0)),
+                    ..Default::default()
+                },
+            )
+        });
+
+        Self { document }
     }
 }
 
@@ -70,10 +74,16 @@ pub fn update_screen_ui_rect(
 pub fn render_ui(
     ctx: SystemRunContext,
     screen_ui_query: Query<&ScreenUi>,
+    ui_context: ResMut<UiContext>,
     renderer: Res<RendererHandle>,
-) {
+) -> eyre::Result<()> {
     for screen_ui in screen_ui_query.over(&ctx) {
-        let render_ctx = UiRenderContext {};
+        let render_ctx = UiRenderContext {
+            box_renderer: &ui_context.box_renderer,
+            renderer: renderer.clone(),
+        };
         screen_ui.document.render(&render_ctx);
     }
+
+    ui_context.box_renderer.draw(&renderer)
 }

@@ -116,7 +116,7 @@ impl Rect {
         }
     }
 
-    pub fn new_child(&mut self, options: PositioningOptions) -> Self {
+    pub fn new_child(&self, options: PositioningOptions) -> Self {
         let child = Rect {
             inner: Rc::new(RefCell::new(RectInner {
                 child_index: self.inner.borrow().children.len(),
