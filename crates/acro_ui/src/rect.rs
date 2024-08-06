@@ -22,6 +22,8 @@ pub struct Rect {
 
 #[derive(Debug)]
 pub struct RectInner {
+    pub(crate) child_index: usize,
+
     pub(crate) size: Vec2,
 
     // Position of this Rect from the top-left corner of the screen
@@ -97,6 +99,7 @@ impl Rect {
     pub fn new_root(options: RootOptions) -> Self {
         Self {
             inner: Rc::new(RefCell::new(RectInner {
+                child_index: 0,
                 size: options.size,
                 offset: Vec2::zeros(),
                 options: PositioningOptions {
@@ -116,6 +119,7 @@ impl Rect {
     pub fn new_child(&mut self, options: PositioningOptions) -> Self {
         let child = Rect {
             inner: Rc::new(RefCell::new(RectInner {
+                child_index: self.inner.borrow().children.len(),
                 size: Vec2::zeros(),
                 offset: Vec2::zeros(),
                 options,
@@ -140,10 +144,6 @@ impl Rect {
     }
 
     pub fn recalculate(&self) {
-        self.recalculate_recurse(0)
-    }
-
-    fn recalculate_recurse(&self, child_index: usize) {
         let children_offsets = {
             let inner = self.inner.borrow();
             inner.recalculate_children_top_left_offset()
@@ -151,17 +151,17 @@ impl Rect {
         {
             let mut inner = self.inner.borrow_mut();
             inner.children_top_left_offsets = children_offsets;
-            inner.recalculate(child_index);
+            inner.recalculate();
         }
 
         let inner = self.inner();
 
-        for (child_index, child) in inner.children.iter().enumerate() {
+        for child in &inner.children {
             let child = child.upgrade().expect("child dropped without being freed");
             Rect {
                 inner: Rc::clone(&child),
             }
-            .recalculate_recurse(child_index)
+            .recalculate()
         }
     }
 
@@ -221,7 +221,7 @@ impl RectInner {
     /// Calculates the offset of the child from the top-left corner of self
     pub fn recalculate_children_top_left_offset(&self) -> Vec<Vec2> {
         let mut offsets = Vec::new();
-        let mut running_offset = self.calculate_offset_dim(self.options.padding.top, self.size.y);
+        let mut running_offset = 0.0;
 
         for child in self.children.iter() {
             let child = child.upgrade().expect("child dropped without being freed");
@@ -242,9 +242,13 @@ impl RectInner {
             return Vec2::zeros();
         }
 
+        // TODO: this can be cached
+        let offset_from_children = self.parent().children_top_left_offsets[self.child_index];
+
         self.calculate_margin_top_left()
             + self.parent().calculate_total_top_left_offset()
             + self.parent().calculate_padding_top_left()
+            + offset_from_children
     }
 
     pub fn calculate_margin_top_left(&self) -> Vec2 {
@@ -315,15 +319,13 @@ impl RectInner {
         Vec2::new(self.calculate_width(), self.calculate_height())
     }
 
-    pub fn recalculate(&mut self, child_index: usize) {
+    pub fn recalculate(&mut self) {
         if self.parent.is_none() {
             // TODO: recalculate root?
             return;
         }
 
-        // TODO: this can be cached
-        let child_offset = self.parent().children_top_left_offsets[child_index];
-        self.offset = self.calculate_total_top_left_offset() + child_offset;
+        self.offset = self.calculate_total_top_left_offset();
         self.size = self.calculate_size();
     }
 
@@ -478,6 +480,7 @@ mod tests {
         assert_eq!(child_2.offset, Vec2::new(0.0, 210.0));
         assert_eq!(child_3.offset, Vec2::new(0.0, 620.0));
 
+        assert_eq!(child_2.children_top_left_offsets, &[Vec2::new(0.0, 0.0)]);
         assert_eq!(child_of_child_2.offset, Vec2::new(10.0, 220.0));
     }
 }
