@@ -24,10 +24,11 @@ pub struct Rect {
 pub struct RectInner {
     pub(crate) size: Vec2,
 
-    // Position of this rect from the top-left corner of the screen
+    // Position of this Rect from the top-left corner of the screen
     pub(crate) offset: Vec2,
 
     options: PositioningOptions,
+    children_top_left_offsets: Vec<Vec2>,
 
     parent: Option<Rc<RefCell<RectInner>>>,
     children: Vec<Weak<RefCell<RectInner>>>,
@@ -67,12 +68,29 @@ pub struct PositioningOptions {
     pub height: Dim,
     pub padding: Dir<Dim>,
     pub margin: Dir<Dim>,
+    pub flex: FlexOptions,
+}
+
+#[derive(Debug, Default)]
+pub struct FlexOptions {
+    pub direction: FlexDirection,
+    pub gap: Dim,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum FlexDirection {
+    Row,
+    // RowReverse,
+    #[default]
+    Column,
+    // ColumnReverse,
 }
 
 #[derive(Debug, Default)]
 pub struct RootOptions {
     pub size: Vec2,
     pub padding: Dir<Dim>,
+    pub flex: FlexOptions,
 }
 
 impl Rect {
@@ -86,7 +104,9 @@ impl Rect {
                     height: Dim::Px(options.size.y),
                     padding: options.padding,
                     margin: Dir::default(),
+                    flex: options.flex,
                 },
+                children_top_left_offsets: Vec::new(),
                 parent: None,
                 children: Vec::new(),
             })),
@@ -99,6 +119,7 @@ impl Rect {
                 size: Vec2::zeros(),
                 offset: Vec2::zeros(),
                 options,
+                children_top_left_offsets: Vec::new(),
                 parent: Some(Rc::clone(&self.inner)),
                 children: vec![],
             })),
@@ -110,7 +131,6 @@ impl Rect {
             .push(Rc::downgrade(&child.inner));
 
         self.recalculate();
-        child.recalculate();
 
         child
     }
@@ -120,7 +140,29 @@ impl Rect {
     }
 
     pub fn recalculate(&self) {
-        self.inner.borrow_mut().recalculate();
+        self.recalculate_recurse(0)
+    }
+
+    fn recalculate_recurse(&self, child_index: usize) {
+        let children_offsets = {
+            let inner = self.inner.borrow();
+            inner.recalculate_children_top_left_offset()
+        };
+        {
+            let mut inner = self.inner.borrow_mut();
+            inner.children_top_left_offsets = children_offsets;
+            inner.recalculate(child_index);
+        }
+
+        let inner = self.inner();
+
+        for (child_index, child) in inner.children.iter().enumerate() {
+            let child = child.upgrade().expect("child dropped without being freed");
+            Rect {
+                inner: Rc::clone(&child),
+            }
+            .recalculate_recurse(child_index)
+        }
     }
 
     pub fn get_tree_string(&self) -> String {
@@ -129,6 +171,13 @@ impl Rect {
 }
 
 impl RectInner {
+    pub fn parent(&self) -> Ref<RectInner> {
+        self.parent
+            .as_ref()
+            .expect("RectInner has no parent")
+            .borrow()
+    }
+
     fn calculate_offset_dim(&self, dim: Dim, parent_dim: f32) -> f32 {
         match dim {
             Dim::Px(px) => px,
@@ -167,20 +216,34 @@ impl RectInner {
         size_with_margin - margin_dir
     }
 
-    pub fn parent(&self) -> Ref<RectInner> {
-        self.parent
-            .as_ref()
-            .expect("RectInner has no parent")
-            .borrow()
+    // TODO: handle flex directions
+    // TODO: cache
+    /// Calculates the offset of the child from the top-left corner of self
+    pub fn recalculate_children_top_left_offset(&self) -> Vec<Vec2> {
+        let mut offsets = Vec::new();
+        let mut running_offset = self.calculate_offset_dim(self.options.padding.top, self.size.y);
+
+        for child in self.children.iter() {
+            let child = child.upgrade().expect("child dropped without being freed");
+            let child = child.borrow();
+
+            offsets.push(Vec2::new(0.0, running_offset));
+            running_offset +=
+                child.size.y + self.calculate_offset_dim(self.options.flex.gap, self.size.y);
+        }
+
+        offsets
     }
 
-    pub fn calculate_top_left_offset(&self) -> Vec2 {
+    /// Calculates the offset of the top-left corner of
+    /// this element from the top-left corner of the screen
+    pub fn calculate_total_top_left_offset(&self) -> Vec2 {
         if self.parent.is_none() {
             return Vec2::zeros();
         }
 
         self.calculate_margin_top_left()
-            + self.parent().calculate_top_left_offset()
+            + self.parent().calculate_total_top_left_offset()
             + self.parent().calculate_padding_top_left()
     }
 
@@ -252,19 +315,21 @@ impl RectInner {
         Vec2::new(self.calculate_width(), self.calculate_height())
     }
 
-    pub fn recalculate(&mut self) {
+    pub fn recalculate(&mut self, child_index: usize) {
         if self.parent.is_none() {
             // TODO: recalculate root?
             return;
         }
 
-        self.offset = self.calculate_top_left_offset();
+        // TODO: this can be cached
+        let child_offset = self.parent().children_top_left_offsets[child_index];
+        self.offset = self.calculate_total_top_left_offset() + child_offset;
         self.size = self.calculate_size();
     }
 
     fn get_tree_string_recurse(&self, level: u32) -> String {
         let mut output = format!(
-            "size: {:?} | offset: {:?} | margin: {:?} x {:?} | padding: {:?} x {:?}.\n",
+            "size: {:?} | offset: {:?} | margin offset: {:?} x {:?} | padding offset: {:?} x {:?}.\n",
             self.size,
             self.offset,
             self.options.margin.left,
@@ -279,8 +344,6 @@ impl RectInner {
 
             output += &"  ".repeat(level as usize);
             output += &child.get_tree_string_recurse(level + 1);
-
-            output += "\n";
         }
 
         output
@@ -295,7 +358,7 @@ impl RectInner {
 mod tests {
     use acro_math::Vec2;
 
-    use crate::rect::{PositioningOptions, RootOptions};
+    use crate::rect::{FlexOptions, PositioningOptions, RootOptions};
 
     use super::{Dim, Dir, Rect};
 
@@ -305,17 +368,19 @@ mod tests {
             size: Vec2::new(1200.0, 800.0),
             ..Default::default()
         });
-        let mut child = root.new_child(super::PositioningOptions {
+        let mut child = root.new_child(PositioningOptions {
             width: Dim::Px(160.0),
             height: Dim::Px(40.0),
             padding: Dir::xy(Dim::Px(10.0), Dim::Px(0.0)),
             margin: Dir::xy(Dim::Px(0.0), Dim::Px(10.0)),
+            ..Default::default()
         });
-        let child_of_child = child.new_child(super::PositioningOptions {
+        let child_of_child = child.new_child(PositioningOptions {
             width: Dim::Percent(1.0),
             height: Dim::Percent(1.0),
             padding: Dir::default(),
             margin: Dir::xy(Dim::Px(20.0), Dim::Px(20.0)),
+            ..Default::default()
         });
 
         println!("{}", root.get_tree_string());
@@ -329,6 +394,7 @@ mod tests {
         let mut root = Rect::new_root(RootOptions {
             size: Vec2::new(1200.0, 800.0),
             padding: Dir::all(Dim::Px(10.0)),
+            ..Default::default()
         });
         let mut child = root.new_child(PositioningOptions {
             width: Dim::Percent(1.0),
@@ -357,5 +423,61 @@ mod tests {
         assert_eq!(child.inner().size, Vec2::new(1160.0, 760.0));
 
         assert_eq!(child_of_child.inner().size, Vec2::new(570.0, 760.0));
+    }
+
+    #[test]
+    fn multiple_elements_1() {
+        let mut root = Rect::new_root(RootOptions {
+            size: Vec2::new(400.0, 800.0),
+            flex: FlexOptions {
+                gap: Dim::Px(10.0),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let child_1 = root.new_child(PositioningOptions {
+            width: Dim::Percent(1.0),
+            height: Dim::Px(200.0),
+            ..Default::default()
+        });
+
+        let mut child_2 = root.new_child(PositioningOptions {
+            width: Dim::Percent(1.0),
+            height: Dim::Px(400.0),
+            padding: Dir::all(Dim::Px(10.0)),
+            ..Default::default()
+        });
+
+        let child_3 = root.new_child(PositioningOptions {
+            width: Dim::Percent(1.0),
+            height: Dim::Px(200.0),
+            ..Default::default()
+        });
+
+        let child_of_child_2 = child_2.new_child(PositioningOptions {
+            width: Dim::Percent(1.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
+
+        println!("{}", root.get_tree_string());
+
+        let root = root.inner();
+        let child_1 = child_1.inner();
+        let child_2 = child_2.inner();
+        let child_3 = child_3.inner();
+        let child_of_child_2 = child_of_child_2.inner();
+
+        assert_eq!(root.size, Vec2::new(400.0, 800.0));
+        assert_eq!(child_1.size, Vec2::new(400.0, 200.0));
+        assert_eq!(child_2.size, Vec2::new(400.0, 400.0));
+        assert_eq!(child_3.size, Vec2::new(400.0, 200.0));
+
+        assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
+        assert_eq!(child_2.offset, Vec2::new(0.0, 210.0));
+        assert_eq!(child_3.offset, Vec2::new(0.0, 620.0));
+
+        assert_eq!(child_of_child_2.offset, Vec2::new(10.0, 220.0));
     }
 }
