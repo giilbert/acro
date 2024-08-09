@@ -1,4 +1,5 @@
 mod camera;
+mod color;
 mod mesh;
 mod ops;
 mod shader;
@@ -10,6 +11,7 @@ use std::cell::RefCell;
 
 pub use crate::{
     camera::{Camera, CameraType, MainCamera},
+    color::{Color, Srgba},
     mesh::{Mesh, Vertex},
     state::{FrameState, RendererHandle},
     texture::Texture,

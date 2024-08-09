@@ -1,10 +1,15 @@
+use acro_render::Color;
+
 use crate::{
+    box_renderer::BoxInstance,
     element::UiElement,
     rect::{PositioningOptions, Rect},
     rendering::UiRenderContext,
 };
 
 pub struct Panel {
+    color: Color,
+
     rect: Rect,
     parent_rect: Rect,
 
@@ -12,10 +17,11 @@ pub struct Panel {
 }
 
 impl Panel {
-    pub fn new(parent_rect: Rect, options: PositioningOptions) -> Self {
+    pub fn new(parent_rect: Rect, options: PositioningOptions, color: Color) -> Self {
         let rect = parent_rect.new_child(options);
 
         Self {
+            color,
             rect,
             parent_rect,
             children: Vec::new(),
@@ -43,6 +49,10 @@ impl UiElement for Panel {
 
     fn render(&self, ctx: &mut UiRenderContext) {
         let rect = self.rect.inner();
-        ctx.box_renderer.queue(rect.offset, rect.size);
+        ctx.box_renderer.draw(BoxInstance {
+            offset: rect.offset,
+            size: rect.size,
+            color: self.color.to_srgba(),
+        });
     }
 }

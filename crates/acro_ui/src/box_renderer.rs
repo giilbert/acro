@@ -1,5 +1,5 @@
 use acro_math::Vec2;
-use acro_render::RendererHandle;
+use acro_render::{Color, RendererHandle, Srgba};
 use deno_core::futures::SinkExt;
 use tracing::info;
 use wgpu::{
@@ -22,15 +22,16 @@ const BOX_VERTICES: &[f32] = &[
 const BOX_INDICES: &[u16] = &[0, 1, 2, 2, 3, 0];
 
 #[derive(Debug, Clone, Copy)]
-struct InstanceData {
-    offset: Vec2,
-    size: Vec2,
+pub struct BoxInstance {
+    pub offset: Vec2,
+    pub size: Vec2,
+    pub color: Srgba,
 }
 
-impl InstanceData {
+impl BoxInstance {
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<InstanceData>() as u64,
+            array_stride: std::mem::size_of::<BoxInstance>() as u64,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &[
                 wgpu::VertexAttribute {
@@ -43,16 +44,21 @@ impl InstanceData {
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float32x2,
                 },
+                wgpu::VertexAttribute {
+                    offset: 2 * std::mem::size_of::<Vec2>() as u64,
+                    shader_location: 3,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
             ],
         }
     }
 }
 
-unsafe impl bytemuck::Zeroable for InstanceData {}
-unsafe impl bytemuck::Pod for InstanceData {}
+unsafe impl bytemuck::Zeroable for BoxInstance {}
+unsafe impl bytemuck::Pod for BoxInstance {}
 
 pub struct BoxRenderer {
-    instance_data: Vec<InstanceData>,
+    instance_data: Vec<BoxInstance>,
 
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -151,7 +157,7 @@ impl BoxRenderer {
                         array_stride: std::mem::size_of::<Vec2>() as u64,
                         step_mode: wgpu::VertexStepMode::Vertex,
                     },
-                    InstanceData::desc(),
+                    BoxInstance::desc(),
                 ],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
@@ -196,9 +202,9 @@ impl BoxRenderer {
         }
     }
 
-    pub fn queue(&mut self, offset: Vec2, size: Vec2) {
+    pub fn draw(&mut self, data: BoxInstance) {
         // info!("drawing box at {:?} with size {:?}", offset, size);
-        self.instance_data.push(InstanceData { offset, size });
+        self.instance_data.push(data);
     }
 
     pub fn finish(&mut self, renderer: &RendererHandle) -> eyre::Result<()> {

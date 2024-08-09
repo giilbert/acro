@@ -1,6 +1,6 @@
 use acro_ecs::{Query, Res, ResMut, SystemRunContext};
 use acro_math::Vec2;
-use acro_render::RendererHandle;
+use acro_render::{Color, RendererHandle, Srgba};
 
 use crate::{
     context::UiContext,
@@ -70,6 +70,7 @@ impl ScreenUi {
                         height: Dim::Px(200.0),
                         ..Default::default()
                     },
+                    Color::Srgba(Srgba::GREEN),
                 )
             })
             .add(|p| {
@@ -81,6 +82,7 @@ impl ScreenUi {
                         height: Dim::Px(200.0),
                         ..Default::default()
                     },
+                    Color::Srgba(Srgba::RED),
                 )
             });
 
