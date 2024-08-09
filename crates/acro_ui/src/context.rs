@@ -1,4 +1,8 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    cell::{RefCell, RefMut},
+    ops::{Deref, DerefMut},
+    rc::Rc,
+};
 
 use acro_render::RendererHandle;
 use glyphon::{
@@ -8,12 +12,13 @@ use wgpu::MultisampleState;
 
 use crate::box_renderer::BoxRenderer;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct UiContext {
-    pub(crate) inner: Option<UiContextInner>,
+    pub(crate) inner: Rc<RefCell<Option<UiContextInner>>>,
 }
 
 pub struct UiContextInner {
+    pub(crate) renderer: RendererHandle,
     pub(crate) font_system: FontSystem,
     pub(crate) swash_cache: SwashCache,
     pub(crate) viewport: glyphon::Viewport,
@@ -24,7 +29,7 @@ pub struct UiContextInner {
 
 impl UiContext {
     pub fn ready(&mut self, renderer: &RendererHandle) {
-        if self.inner.is_none() {
+        if self.inner.borrow().is_none() {
             let font_system = FontSystem::new();
             let swash_cache = SwashCache::new();
             let cache = Cache::new(&renderer.device);
@@ -42,7 +47,8 @@ impl UiContext {
                 None,
             );
 
-            self.inner = Some(UiContextInner {
+            *self.inner.borrow_mut() = Some(UiContextInner {
+                renderer: renderer.clone(),
                 font_system,
                 swash_cache,
                 viewport,
@@ -52,18 +58,10 @@ impl UiContext {
             });
         }
     }
-}
 
-impl Deref for UiContext {
-    type Target = UiContextInner;
-
-    fn deref(&self) -> &Self::Target {
-        self.inner.as_ref().expect("UiContext not ready")
-    }
-}
-
-impl DerefMut for UiContext {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.inner.as_mut().expect("UiContext not ready")
+    pub fn inner_mut(&self) -> RefMut<UiContextInner> {
+        RefMut::map(self.inner.borrow_mut(), |inner| {
+            inner.as_mut().expect("UiContextInner not initialized")
+        })
     }
 }

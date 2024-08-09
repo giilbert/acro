@@ -1,4 +1,3 @@
-import { Text } from "./mod.ts";
 import { Transform } from "./transform.ts";
 import { Vec3 } from "./vec3.ts";
 
@@ -27,10 +26,6 @@ export class Entity {
         new Vec3(0, 0, 0, attachment.add("scale")),
         attachment
       ) as T;
-    }
-
-    if (ComponentClass === Text) {
-      return new Text("", attachment) as T;
     }
 
     throw new Error(`Unknown component class: ${ComponentClass}`);

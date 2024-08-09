@@ -1,6 +1,7 @@
 use acro_render::RendererHandle;
 
 use crate::{
+    context::UiContext,
     rect::{PositioningOptions, Rect},
     rendering::UiRenderContext,
 };
@@ -8,6 +9,7 @@ use crate::{
 pub trait UiElement {
     fn add_child_boxed(&mut self, child: Box<dyn UiElement>);
 
+    fn get_ctx(&self) -> &UiContext;
     fn get_rect(&self) -> &Rect;
 
     fn get_child(&self, index: usize) -> Option<&Box<dyn UiElement>>;
@@ -23,7 +25,7 @@ pub trait UiElement {
     where
         Self: Sized,
     {
-        self.add_child_boxed(factory.create(self.get_rect().clone()));
+        self.add_child_boxed(factory.create(self.get_ctx().clone(), self.get_rect().clone()));
         self
     }
 
@@ -31,15 +33,15 @@ pub trait UiElement {
 }
 
 pub trait UiElementFactory {
-    fn create(self, parent_rect: Rect) -> Box<dyn UiElement>;
+    fn create(self, ctx: UiContext, parent_rect: Rect) -> Box<dyn UiElement>;
 }
 
 impl<T, F> UiElementFactory for F
 where
-    F: FnOnce(Rect) -> T,
+    F: FnOnce(UiContext, Rect) -> T,
     T: UiElement + 'static,
 {
-    fn create(self, parent_rect: Rect) -> Box<dyn UiElement> {
-        Box::new(self(parent_rect))
+    fn create(self, ctx: UiContext, parent_rect: Rect) -> Box<dyn UiElement> {
+        Box::new(self(ctx, parent_rect))
     }
 }

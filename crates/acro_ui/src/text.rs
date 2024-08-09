@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use acro_ecs::{Changed, Query, Res, ResMut, SystemRunContext};
 use acro_math::Vec2;
 use acro_reflect::Reflect;
@@ -6,77 +8,134 @@ use glyphon::{Attrs, Color, Family, Resolution, Shaping, TextArea, TextBounds};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::context::{UiContext, UiContextInner};
+use crate::{
+    context::{UiContext, UiContextInner},
+    element::UiElement,
+    rect::{Dim, PositioningOptions, Rect},
+    rendering::UiRenderContext,
+};
 
-#[derive(Debug, Serialize, Deserialize, Reflect)]
+#[derive(Reflect)]
 pub struct Text {
+    #[reflect(skip)]
+    pub(crate) ctx: UiContext,
+    #[reflect(skip)]
+    pub(crate) rect: Rect,
+    #[reflect(skip)]
+    pub(crate) parent_rect: Rect,
+    #[reflect(skip)]
+    pub(crate) children: Vec<Box<dyn UiElement>>,
+    #[reflect(skip)]
+    pub(crate) data: TextData,
+
+    options: TextOptions,
+}
+
+#[derive(Reflect)]
+pub struct TextOptions {
     pub content: String,
-    pub size: Vec2,
     pub font_size: f32,
     pub line_height: f32,
-    #[reflect(skip)]
-    #[serde(skip)]
-    data: Option<TextData>,
 }
 
 #[derive(Debug)]
-struct TextData {
-    pub(crate) text_buffer: glyphon::Buffer,
+pub(crate) struct TextData {
+    pub(crate) last_size: RefCell<Vec2>,
+    pub(crate) text_buffer: RefCell<glyphon::Buffer>,
 }
 
-pub fn init_text(
-    ctx: SystemRunContext,
-    query: Query<&mut Text, Changed<Text>>,
-    renderer: Res<RendererHandle>,
-    mut ui_context: ResMut<UiContext>,
-) -> eyre::Result<()> {
-    ui_context.ready(&renderer);
+impl Text {
+    pub fn new(ctx: UiContext, parent_rect: Rect) -> Self {
+        // TODO: not hard code this
+        let options = TextOptions {
+            content: "text content blah blah".to_string(),
+            font_size: 20.0,
+            line_height: 30.0,
+        };
 
-    for mut text in query.over(&ctx) {
-        let mut text_buffer = glyphon::Buffer::new(
-            &mut ui_context.font_system,
-            glyphon::Metrics::new(text.font_size, text.line_height),
-        );
+        let text_buffer = glyphon::Buffer::new_empty(glyphon::Metrics::new(
+            options.font_size,
+            options.line_height,
+        ));
 
-        text_buffer.set_size(
-            &mut ui_context.font_system,
-            Some(text.size.x),
-            Some(text.size.y),
-        );
-        text_buffer.set_text(
-            &mut ui_context.font_system,
-            &text.content,
-            Attrs::new().family(Family::SansSerif),
-            Shaping::Advanced,
-        );
-        text_buffer.shape_until_scroll(&mut ui_context.font_system, false);
+        let rect = parent_rect.new_child(PositioningOptions {
+            width: Dim::Percent(1.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
 
-        text.data = Some(TextData { text_buffer });
+        Text {
+            data: TextData {
+                last_size: RefCell::new(Vec2::zeros()),
+                text_buffer: RefCell::new(text_buffer),
+            },
+            ctx,
+            children: Vec::new(),
+            rect,
+            parent_rect,
+
+            options,
+        }
+    }
+}
+
+impl UiElement for Text {
+    fn get_ctx(&self) -> &UiContext {
+        &self.ctx
     }
 
-    Ok(())
-}
+    fn get_rect(&self) -> &Rect {
+        &self.rect
+    }
 
-pub fn draw_text(
-    ctx: SystemRunContext,
-    query: Query<&Text>,
-    renderer: Res<RendererHandle>,
-    mut ui_context: ResMut<UiContext>,
-) -> eyre::Result<()> {
-    let frame_state = renderer.frame_state();
-    let mut encoder = frame_state.encoder.borrow_mut();
+    fn add_child_boxed(&mut self, child: Box<dyn UiElement>) {
+        self.children.push(child);
+        self.rect.recalculate();
+    }
 
-    // let font_system = &mut ui_context.font_system;
-    let UiContextInner {
-        font_system,
-        swash_cache,
-        ref mut viewport,
-        atlas,
-        ref mut text_renderer,
-        ..
-    } = &mut *ui_context.inner.as_mut().unwrap();
+    fn get_child(&self, index: usize) -> Option<&Box<dyn UiElement>> {
+        self.children.get(index)
+    }
 
-    for text in query.over(&ctx) {
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut Box<dyn UiElement>> {
+        self.children.get_mut(index)
+    }
+
+    fn render(&self, ctx: &mut UiRenderContext) {
+        let UiContextInner {
+            ref mut font_system,
+            swash_cache,
+            ref mut viewport,
+            atlas,
+            ref mut text_renderer,
+            ..
+        } = &mut *self.ctx.inner_mut();
+        let rect = self.rect.inner();
+
+        if *self.data.last_size.borrow() != rect.size {
+            *self.data.last_size.borrow_mut() = rect.size;
+
+            let mut text_buffer = glyphon::Buffer::new(
+                font_system,
+                glyphon::Metrics::new(self.options.font_size, self.options.line_height),
+            );
+
+            text_buffer.set_size(font_system, Some(rect.size.x), Some(rect.size.y));
+            text_buffer.set_text(
+                font_system,
+                &self.options.content,
+                Attrs::new().family(Family::SansSerif),
+                Shaping::Advanced,
+            );
+            text_buffer.shape_until_scroll(font_system, false);
+
+            self.data.text_buffer.replace(text_buffer);
+        }
+
+        let renderer = &ctx.renderer;
+        let frame_state = renderer.frame_state();
+        let mut encoder = frame_state.encoder.borrow_mut();
+
         viewport.update(
             &renderer.queue,
             Resolution {
@@ -93,15 +152,15 @@ pub fn draw_text(
                 atlas,
                 viewport,
                 [TextArea {
-                    buffer: &text.data.as_ref().unwrap().text_buffer,
-                    left: 10.0,
-                    top: 10.0,
+                    buffer: &self.data.text_buffer.borrow(),
+                    left: rect.offset.x,
+                    top: rect.offset.y,
                     scale: 1.0,
                     bounds: TextBounds {
                         left: 0,
                         top: 0,
-                        right: 600,
-                        bottom: 160,
+                        right: (rect.offset.x + rect.size.x) as i32,
+                        bottom: (rect.offset.y + rect.size.y) as i32,
                     },
                     default_color: Color::rgb(255, 255, 255),
                 }],
@@ -125,8 +184,7 @@ pub fn draw_text(
                 occlusion_query_set: None,
             });
             text_renderer.render(&atlas, &viewport, &mut pass).unwrap();
+            // info!("render text");
         }
     }
-
-    Ok(())
 }

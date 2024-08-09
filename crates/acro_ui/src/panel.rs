@@ -2,12 +2,14 @@ use acro_render::Color;
 
 use crate::{
     box_renderer::BoxInstance,
+    context::UiContext,
     element::UiElement,
     rect::{PositioningOptions, Rect},
     rendering::UiRenderContext,
 };
 
 pub struct Panel {
+    ctx: UiContext,
     color: Color,
 
     rect: Rect,
@@ -17,10 +19,16 @@ pub struct Panel {
 }
 
 impl Panel {
-    pub fn new(parent_rect: Rect, options: PositioningOptions, color: Color) -> Self {
+    pub fn new(
+        ctx: UiContext,
+        parent_rect: Rect,
+        options: PositioningOptions,
+        color: Color,
+    ) -> Self {
         let rect = parent_rect.new_child(options);
 
         Self {
+            ctx,
             color,
             rect,
             parent_rect,
@@ -30,6 +38,10 @@ impl Panel {
 }
 
 impl UiElement for Panel {
+    fn get_ctx(&self) -> &crate::context::UiContext {
+        &self.ctx
+    }
+
     fn get_rect(&self) -> &Rect {
         &self.rect
     }
@@ -49,10 +61,18 @@ impl UiElement for Panel {
 
     fn render(&self, ctx: &mut UiRenderContext) {
         let rect = self.rect.inner();
-        ctx.box_renderer.draw(BoxInstance {
+        self.ctx.inner_mut().box_renderer.draw(BoxInstance {
             offset: rect.offset,
             size: rect.size,
             color: self.color.to_srgba(),
         });
+        // TODO: add z indexing so no hacky sorting is needed
+        self.ctx
+            .inner_mut()
+            .box_renderer
+            .finish(&ctx.renderer)
+            .expect("Failed to render box");
+
+        self.children.iter().for_each(|child| child.render(ctx));
     }
 }
