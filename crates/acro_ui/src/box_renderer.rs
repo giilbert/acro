@@ -21,6 +21,7 @@ const BOX_VERTICES: &[f32] = &[
 ];
 const BOX_INDICES: &[u16] = &[0, 1, 2, 2, 3, 0];
 
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct BoxInstance {
     pub offset: Vec2,

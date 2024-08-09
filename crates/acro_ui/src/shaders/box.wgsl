@@ -14,7 +14,7 @@ var<uniform> screen_size: vec2<f32>;
 struct InstanceInput {
     @location(1) offset: vec2<f32>,
     @location(2) size: vec2<f32>,
-    // @location(3) color: vec4<f32>,
+    @location(3) color: vec4<f32>,
 };
 
 @vertex
@@ -31,7 +31,7 @@ fn vs_main(
         0.0,
         1.0
     );
-    out.color = vec4<f32>(1.0, 0.0, 0.0, 1.0);
+    out.color = instance.color;
 
     return out;
 }
