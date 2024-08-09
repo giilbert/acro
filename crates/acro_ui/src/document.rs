@@ -6,14 +6,25 @@ use crate::{
     context::UiContext,
     element::UiElement,
     panel::Panel,
-    rect::{Dim, Dir, PositioningOptions, Rect, RootOptions},
+    rect::{Dim, Dir, FlexOptions, PositioningOptions, Rect, RootOptions},
     rendering::UiRenderContext,
 };
 
-#[derive(Default)]
 pub struct UiDocument {
     rect: Rect,
     children: Vec<Box<dyn UiElement>>,
+}
+
+impl UiDocument {
+    pub fn new() -> Self {
+        UiDocument {
+            rect: Rect::new_root(RootOptions {
+                size: Vec2::new(1.0, 1.0),
+                ..Default::default()
+            }),
+            children: Vec::new(),
+        }
+    }
 }
 
 impl UiElement for UiDocument {
@@ -23,6 +34,7 @@ impl UiElement for UiDocument {
 
     fn add_child_boxed(&mut self, child: Box<dyn UiElement>) {
         self.children.push(child);
+        self.rect.recalculate();
     }
 
     fn get_child(&self, index: usize) -> Option<&Box<dyn UiElement>> {
@@ -33,7 +45,7 @@ impl UiElement for UiDocument {
         self.children.get_mut(index)
     }
 
-    fn render(&self, ctx: &UiRenderContext) {
+    fn render(&self, ctx: &mut UiRenderContext) {
         self.children.iter().for_each(|child| child.render(ctx));
     }
 }
@@ -44,11 +56,13 @@ pub struct ScreenUi {
 
 impl ScreenUi {
     pub fn new() -> Self {
-        let document = UiDocument::default().add(|p| {
+        let document = UiDocument::new().add(|p| {
             Panel::new(
                 p,
                 PositioningOptions {
                     margin: Dir::all(Dim::Px(20.0)),
+                    width: Dim::Percent(1.0),
+                    height: Dim::Px(200.0),
                     ..Default::default()
                 },
             )
@@ -65,25 +79,32 @@ pub fn update_screen_ui_rect(
 ) {
     let renderer_size = renderer.size.borrow();
     for screen_ui in screen_ui_query.over(&ctx) {
-        let mut document_rect = screen_ui.document.rect.inner_mut();
-        document_rect.size = Vec2::new(renderer_size.width as f32, renderer_size.height as f32);
-        document_rect.recalculate();
+        {
+            let mut document_rect = screen_ui.document.rect.inner_mut();
+            document_rect.options = PositioningOptions {
+                width: Dim::Px(renderer_size.width as f32),
+                height: Dim::Px(renderer_size.height as f32),
+                ..Default::default()
+            };
+            document_rect.size = Vec2::new(renderer_size.width as f32, renderer_size.height as f32);
+        }
+        screen_ui.document.rect.recalculate();
     }
 }
 
 pub fn render_ui(
     ctx: SystemRunContext,
     screen_ui_query: Query<&ScreenUi>,
-    ui_context: ResMut<UiContext>,
+    mut ui_context: ResMut<UiContext>,
     renderer: Res<RendererHandle>,
 ) -> eyre::Result<()> {
     for screen_ui in screen_ui_query.over(&ctx) {
-        let render_ctx = UiRenderContext {
-            box_renderer: &ui_context.box_renderer,
+        let mut render_ctx = UiRenderContext {
+            box_renderer: &mut ui_context.box_renderer,
             renderer: renderer.clone(),
         };
-        screen_ui.document.render(&render_ctx);
+        screen_ui.document.render(&mut render_ctx);
     }
 
-    ui_context.box_renderer.draw(&renderer)
+    ui_context.box_renderer.finish(&renderer)
 }

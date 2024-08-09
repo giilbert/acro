@@ -6,6 +6,7 @@ use std::{
 
 use acro_math::Vec2;
 use serde::Deserialize;
+use tracing::info;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Dim {
@@ -29,7 +30,7 @@ pub struct RectInner {
     // Position of this Rect from the top-left corner of the screen
     pub(crate) offset: Vec2,
 
-    options: PositioningOptions,
+    pub(crate) options: PositioningOptions,
     children_top_left_offsets: Vec<Vec2>,
 
     parent: Option<Rc<RefCell<RectInner>>>,
@@ -152,10 +153,11 @@ impl Rect {
             let inner = self.inner.borrow();
             inner.recalculate_children_top_left_offset()
         };
+
         {
             let mut inner = self.inner.borrow_mut();
             inner.children_top_left_offsets = children_offsets;
-            inner.recalculate();
+            inner.recalculate_self();
         }
 
         let inner = self.inner();
@@ -332,12 +334,7 @@ impl RectInner {
         Vec2::new(self.calculate_width(), self.calculate_height())
     }
 
-    pub fn recalculate(&mut self) {
-        if self.parent.is_none() {
-            // TODO: recalculate root?
-            return;
-        }
-
+    pub fn recalculate_self(&mut self) {
         self.offset = self.calculate_total_top_left_offset();
         self.size = self.calculate_size();
     }

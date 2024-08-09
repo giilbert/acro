@@ -1,6 +1,7 @@
 use acro_math::Vec2;
 use acro_render::RendererHandle;
 use deno_core::futures::SinkExt;
+use tracing::info;
 use wgpu::{
     core::instance, util::DeviceExt, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
     VertexAttribute,
@@ -52,7 +53,6 @@ unsafe impl bytemuck::Pod for InstanceData {}
 
 pub struct BoxRenderer {
     instance_data: Vec<InstanceData>,
-    instance_buffer: wgpu::Buffer,
 
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -67,11 +67,11 @@ pub struct BoxRenderer {
 
 impl BoxRenderer {
     pub fn new(renderer: &RendererHandle) -> Self {
-        let mut instance_data = Vec::<InstanceData>::with_capacity(128);
-        instance_data.push(InstanceData {
-            offset: Vec2::new(50.0, 100.0),
-            size: Vec2::new(100.0, 100.0),
-        });
+        // let instance_data = Vec::<InstanceData>::with_capacity(128);
+        // instance_data.push(InstanceData {
+        //     offset: Vec2::new(50.0, 100.0),
+        //     size: Vec2::new(100.0, 100.0),
+        // });
 
         let device = &renderer.device;
 
@@ -87,11 +87,6 @@ impl BoxRenderer {
         });
 
         // TODO: handle resizing the number of instances
-        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("BoxRenderer Instance Buffer"),
-            contents: bytemuck::cast_slice(&instance_data),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("BoxRenderer Shader"),
@@ -165,7 +160,7 @@ impl BoxRenderer {
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
                     format: renderer.config.borrow().format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
@@ -190,8 +185,7 @@ impl BoxRenderer {
         });
 
         Self {
-            instance_data,
-            instance_buffer,
+            instance_data: Vec::new(),
             vertex_buffer,
             index_buffer,
             screen_size_buffer,
@@ -202,7 +196,26 @@ impl BoxRenderer {
         }
     }
 
-    pub fn draw(&self, renderer: &RendererHandle) -> eyre::Result<()> {
+    pub fn queue(&mut self, offset: Vec2, size: Vec2) {
+        // info!("drawing box at {:?} with size {:?}", offset, size);
+        self.instance_data.push(InstanceData { offset, size });
+    }
+
+    pub fn finish(&mut self, renderer: &RendererHandle) -> eyre::Result<()> {
+        // info!(
+        //     "finishing box renderer with {} boxes",
+        //     self.instance_data.len()
+        // );
+
+        let instance_buffer =
+            renderer
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("BoxRenderer Instance Buffer"),
+                    contents: bytemuck::cast_slice(&self.instance_data),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
         let frame_state = renderer.frame_state();
         let view = &frame_state.view;
         let mut encoder = frame_state.encoder.borrow_mut();
@@ -231,13 +244,15 @@ impl BoxRenderer {
             bytemuck::cast_slice(&[size.width as f32, size.height as f32]),
         );
         ui_render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        ui_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        ui_render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
         ui_render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         ui_render_pass.draw_indexed(
             0..BOX_INDICES.len() as _,
             0,
             0..self.instance_data.len() as _,
         );
+
+        self.instance_data.clear();
 
         Ok(())
     }

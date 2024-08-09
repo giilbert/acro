@@ -30,6 +30,7 @@ impl UiElement for Panel {
 
     fn add_child_boxed(&mut self, child: Box<dyn UiElement>) {
         self.children.push(child);
+        self.rect.recalculate();
     }
 
     fn get_child(&self, index: usize) -> Option<&Box<dyn UiElement>> {
@@ -40,7 +41,8 @@ impl UiElement for Panel {
         self.children.get_mut(index)
     }
 
-    fn render(&self, ctx: &UiRenderContext) {
-        // TODO: batch render panels
+    fn render(&self, ctx: &mut UiRenderContext) {
+        let rect = self.rect.inner();
+        ctx.box_renderer.queue(rect.offset, rect.size);
     }
 }

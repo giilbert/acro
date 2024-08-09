@@ -27,7 +27,7 @@ pub trait UiElement {
         self
     }
 
-    fn render(&self, ctx: &UiRenderContext);
+    fn render(&self, ctx: &mut UiRenderContext);
 }
 
 pub trait UiElementFactory {
