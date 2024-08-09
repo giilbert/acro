@@ -74,7 +74,7 @@ pub struct PositioningOptions {
     pub flex: FlexOptions,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct FlexOptions {
     pub direction: FlexDirection,
     pub gap: Dim,
@@ -440,7 +440,7 @@ mod tests {
     #[test]
     fn multiple_elements_1() {
         let mut root = Rect::new_root(RootOptions {
-            size: Vec2::new(400.0, 800.0),
+            size: Vec2::new(400.0, 1000.0),
             flex: FlexOptions {
                 gap: Dim::Px(10.0),
                 ..Default::default()
@@ -481,7 +481,7 @@ mod tests {
         let child_3 = child_3.inner();
         let child_of_child_2 = child_of_child_2.inner();
 
-        assert_eq!(root.size, Vec2::new(400.0, 800.0));
+        assert_eq!(root.size, Vec2::new(400.0, 1000.0));
         assert_eq!(child_1.size, Vec2::new(400.0, 200.0));
         assert_eq!(child_2.size, Vec2::new(400.0, 400.0));
         assert_eq!(child_3.size, Vec2::new(400.0, 200.0));

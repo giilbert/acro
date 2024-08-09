@@ -20,6 +20,10 @@ impl UiDocument {
         UiDocument {
             rect: Rect::new_root(RootOptions {
                 size: Vec2::new(1.0, 1.0),
+                flex: FlexOptions {
+                    gap: Dim::Px(20.0),
+                    ..Default::default()
+                },
                 ..Default::default()
             }),
             children: Vec::new(),
@@ -56,17 +60,29 @@ pub struct ScreenUi {
 
 impl ScreenUi {
     pub fn new() -> Self {
-        let document = UiDocument::new().add(|p| {
-            Panel::new(
-                p,
-                PositioningOptions {
-                    margin: Dir::all(Dim::Px(20.0)),
-                    width: Dim::Percent(1.0),
-                    height: Dim::Px(200.0),
-                    ..Default::default()
-                },
-            )
-        });
+        let document = UiDocument::new()
+            .add(|p| {
+                Panel::new(
+                    p,
+                    PositioningOptions {
+                        margin: Dir::all(Dim::Px(20.0)),
+                        width: Dim::Percent(1.0),
+                        height: Dim::Px(200.0),
+                        ..Default::default()
+                    },
+                )
+            })
+            .add(|p| {
+                Panel::new(
+                    p,
+                    PositioningOptions {
+                        margin: Dir::all(Dim::Px(20.0)),
+                        width: Dim::Px(200.0),
+                        height: Dim::Px(200.0),
+                        ..Default::default()
+                    },
+                )
+            });
 
         Self { document }
     }
@@ -84,11 +100,14 @@ pub fn update_screen_ui_rect(
             document_rect.options = PositioningOptions {
                 width: Dim::Px(renderer_size.width as f32),
                 height: Dim::Px(renderer_size.height as f32),
-                ..Default::default()
+                flex: document_rect.options.flex,
+                margin: document_rect.options.margin,
+                padding: document_rect.options.padding,
             };
             document_rect.size = Vec2::new(renderer_size.width as f32, renderer_size.height as f32);
         }
         screen_ui.document.rect.recalculate();
+        // println!("{}", screen_ui.document.rect.get_tree_string());
     }
 }
 
