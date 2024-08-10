@@ -24,6 +24,7 @@ pub struct Window {
 pub struct WindowState {
     pub mouse_position: Vec2,
     pub keys_pressed: HashSet<KeyCode>,
+    pub mouse_buttons_pressed: HashSet<winit::event::MouseButton>,
 }
 
 impl Window {
@@ -113,6 +114,20 @@ impl ApplicationHandler for Window {
                 let world = &application.world();
                 let mut window_state = world.resources().get_mut::<WindowState>();
                 window_state.mouse_position = Vec2::new(position.x as Float, position.y as Float);
+            }
+            WindowEvent::MouseInput {
+                device_id: _device_id,
+                state,
+                button,
+            } => {
+                let world = &application.world();
+                let mut window_state = world.resources().get_mut::<WindowState>();
+
+                if state == ElementState::Pressed {
+                    window_state.mouse_buttons_pressed.insert(button);
+                } else {
+                    window_state.mouse_buttons_pressed.remove(&button);
+                }
             }
             WindowEvent::KeyboardInput {
                 event,

@@ -75,7 +75,7 @@ impl ScreenUi {
                     margin: Dir::all(Dim::Px(20.0)),
                     padding: Dir::all(Dim::Px(10.0)),
                     width: Dim::Percent(1.0),
-                    height: Dim::Px(200.0),
+                    height: Dim::Px(100.0),
                     ..Default::default()
                 },
                 Color::Srgba(Srgba::new(0.03, 0.03, 0.03, 0.5)),

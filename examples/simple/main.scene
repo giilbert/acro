@@ -35,6 +35,8 @@ entities:
         fov: 70.0
         near: 0.01
         far: 1000.0
+      - name: Behavior
+        source: examples/simple/src/fly-camera.ts
     children: []
   - name: UI
     components:

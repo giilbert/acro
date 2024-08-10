@@ -24,7 +24,7 @@ use acro_scene::ComponentLoaders;
 use acro_scripting::ScriptingRuntime;
 use camera::{update_projection_matrix, CameraOptions};
 use mesh::{render_mesh_system, upload_mesh_system};
-use ops::op_get_key_press;
+use ops::{op_get_key_press, op_get_mouse_position, op_get_mouse_press};
 use shader::Shader;
 use window::Window;
 
@@ -37,6 +37,8 @@ impl Plugin for RenderPlugin {
             .init_component::<MainCamera>()
             .with_resource::<ScriptingRuntime>(|mut runtime| {
                 runtime.add_op(op_get_key_press());
+                runtime.add_op(op_get_mouse_position());
+                runtime.add_op(op_get_mouse_press());
             })
             .with_resource::<Assets>(|mut assets| {
                 assets.register_loader::<Shader>();

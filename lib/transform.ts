@@ -1,5 +1,5 @@
 import { getPropertyVec3, setPropertyVec3 } from "./deno.ts";
-import type { Attachment, Vec3 } from "./core.ts";
+import { type Attachment, Vec3 } from "./mod.ts";
 
 export class Transform {
   private _position: Vec3;
@@ -68,5 +68,22 @@ export class Transform {
       value.attachment = attachment;
     }
     this._scale = value;
+  }
+
+  get forward() {
+    return new Vec3(
+      Math.cos(-this.rotation.x) * Math.sin(-this.rotation.y),
+      -Math.sin(-this.rotation.x),
+      Math.cos(-this.rotation.x) * Math.cos(-this.rotation.y)
+    ).normalized;
+  }
+
+  get right() {
+    return new Vec3(Math.cos(-this.rotation.y), 0, -Math.sin(-this.rotation.y))
+      .normalized;
+  }
+
+  get up() {
+    return this.forward.cross(this.right);
   }
 }

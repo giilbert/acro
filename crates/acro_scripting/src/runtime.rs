@@ -1,5 +1,5 @@
 use core::panic;
-use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc, time::SystemTime};
 
 use acro_assets::Assets;
 use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
@@ -21,6 +21,7 @@ use crate::{
 };
 
 pub struct ScriptingRuntime {
+    last_update: SystemTime,
     world_handle: Rc<RefCell<World>>,
     behavior_id: u32,
     name_to_component_id: HashMap<String, ComponentId>,
@@ -40,6 +41,7 @@ impl std::fmt::Debug for ScriptingRuntime {
 impl ScriptingRuntime {
     pub fn new(world_handle: Rc<RefCell<World>>) -> Self {
         Self {
+            last_update: SystemTime::now(),
             behavior_id: 0,
             world_handle,
             name_to_component_id: HashMap::new(),
@@ -136,10 +138,12 @@ impl ScriptingRuntime {
             .borrow_mut()
             .put(tick);
 
+        let since_last_update = self.last_update.elapsed()?.as_secs_f64();
         self.inner_mut()
             .deno_runtime()
-            .execute_script("<update>", "acro.update()")
+            .execute_script("<update>", format!("acro.update({since_last_update})"))
             .map_err(|e| eyre::eyre!("failed to execute update script: {e:?}"))?;
+        self.last_update = SystemTime::now();
 
         Ok(())
     }

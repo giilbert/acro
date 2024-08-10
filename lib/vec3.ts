@@ -30,6 +30,16 @@ export class Vec3 {
     this.z += rhs.z;
   }
 
+  public sub(rhs: Vec3Like): Vec3 {
+    return new Vec3(this.x - rhs.x, this.y - rhs.y, this.z - rhs.z);
+  }
+
+  public subAssign(rhs: Vec3Like) {
+    this.x -= rhs.x;
+    this.y -= rhs.y;
+    this.z -= rhs.z;
+  }
+
   public scale(scalar: number): Vec3 {
     return new Vec3(this.x * scalar, this.y * scalar, this.z * scalar);
   }
@@ -44,6 +54,14 @@ export class Vec3 {
       this.z * rhs.x - this.x * rhs.z,
       this.x * rhs.y - this.y * rhs.x
     );
+  }
+
+  get magnitude(): number {
+    return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+  }
+
+  get normalized(): Vec3 {
+    return this.scale(1 / this.magnitude);
   }
 
   set x(value: number) {
@@ -74,9 +92,5 @@ export class Vec3 {
   get z() {
     if (this.attachment) this._z = getPropertyNumber(this.attachment.add("z"));
     return this._z;
-  }
-
-  get hello() {
-    return "Hello";
   }
 }

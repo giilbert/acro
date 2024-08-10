@@ -5,11 +5,10 @@ class TestBehavior extends Behavior {
     super(entity);
   }
 
-  update() {
-    this.transform.position.addAssign({ x: 0.00001, y: 0.00001, z: 0 });
-    if (Input.isKeyPressed("Space")) {
-      this.transform.rotation.z -= 0.0001;
-    }
+  update(deltaTime: number) {
+    // if (Input.isMousePressed("Left")) {
+    //   this.transform.rotation.z -= 5 * deltaTime;
+    // }
     this.transform.scale = new Vec3(2, 2, 2);
   }
 }

@@ -1,8 +1,6 @@
 import { Transform } from "./transform.ts";
 import { Vec3 } from "./vec3.ts";
 
-export { Vec3 };
-
 export class Entity {
   generation: number;
   index: number;
@@ -71,7 +69,7 @@ export class Behavior {
     return this.entity.getComponent(ComponentClass);
   }
 
-  update() {}
+  update(_deltaTime: number) {}
 }
 
 declare namespace Deno.core.ops {

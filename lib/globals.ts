@@ -17,9 +17,9 @@ export class AcroGlobalHook {
     this.behaviors = new Map();
   }
 
-  update() {
+  update(deltaTime: number) {
     for (const behavior of this.behaviors.values()) {
-      behavior.update();
+      behavior.update(deltaTime);
     }
   }
 
