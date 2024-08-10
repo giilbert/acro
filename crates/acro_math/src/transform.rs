@@ -131,13 +131,14 @@ fn recurse_propagate(
 mod tests {
     use acro_ecs::{pointer::change_detection::Tick, world::World};
 
-    use crate::{transform::Root, types::Mat4};
+    use crate::{transform::Root, types::Mat4, TransformBoundary};
 
     use super::{propagate_global_transform, Children, GlobalTransform, Parent, Transform};
 
     #[test]
     fn transform_propagation() {
         let mut world = World::new();
+        world.init_component::<TransformBoundary>();
         world.init_component::<Transform>();
         world.init_component::<GlobalTransform>();
         world.init_component::<Parent>();

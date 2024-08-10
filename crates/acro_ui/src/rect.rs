@@ -22,8 +22,19 @@ pub struct RectInner {
     // Position of this Rect from the top-left corner of the screen
     pub(crate) offset: Vec2,
 
+    pub(crate) min_width: Option<f32>,
+    pub(crate) min_height: Option<f32>,
+
     pub(crate) options: PositioningOptions,
-    children_top_left_offsets: HashMap<EntityId, Vec2>,
+
+    free_space: f32,
+    children_outer_boxes: HashMap<EntityId, UiBox>,
+}
+
+#[derive(Debug, Default)]
+pub struct UiBox {
+    pub offset: Vec2,
+    pub size: Vec2,
 }
 
 #[derive(Debug, Default)]
@@ -93,18 +104,26 @@ impl RectQueries<'_> {
 
 impl Rect {
     pub fn new_root(options: RootOptions) -> Self {
+        let width = Dim::Px(options.size.x);
+        let height = Dim::Px(options.size.y);
+
         Self {
             inner: Rc::new(RefCell::new(RectInner {
                 size: options.size,
                 offset: Vec2::zeros(),
+                min_width: Some(options.size.x),
+                min_height: Some(options.size.y),
                 options: PositioningOptions {
-                    width: Dim::Px(options.size.x),
-                    height: Dim::Px(options.size.y),
+                    width,
+                    height,
+                    min_width: Some(width),
+                    min_height: Some(height),
                     padding: options.padding,
                     margin: DirDim::default(),
                     flex: options.flex,
                 },
-                children_top_left_offsets: HashMap::new(),
+                free_space: 0.0,
+                children_outer_boxes: HashMap::new(),
             })),
         }
     }
@@ -114,8 +133,11 @@ impl Rect {
             inner: Rc::new(RefCell::new(RectInner {
                 size: Vec2::zeros(),
                 offset: Vec2::zeros(),
+                min_width: None,
+                min_height: None,
                 options,
-                children_top_left_offsets: HashMap::new(),
+                free_space: 0.0,
+                children_outer_boxes: HashMap::new(),
             })),
         }
     }
@@ -129,16 +151,15 @@ impl Rect {
     }
 
     pub fn recalculate(&self, entity_id: EntityId, queries: &RectQueries) {
-        let children_offsets = {
-            let inner = self.inner.borrow();
-            inner.recalculate_children_top_left_offset(entity_id, queries)
-        };
+        let children_free_space = self.inner().calculate_free_space(entity_id, queries);
+        self.inner_mut().free_space = children_free_space;
 
-        {
-            let mut inner = self.inner.borrow_mut();
-            inner.children_top_left_offsets = children_offsets;
-            inner.recalculate_self(entity_id, queries);
-        }
+        let children_outer_boxes = self
+            .inner()
+            .recalculate_children_outer_boxes(entity_id, queries);
+        self.inner_mut().children_outer_boxes = children_outer_boxes;
+
+        self.inner_mut().recalculate_self(entity_id, queries);
 
         let children = queries.get_children(entity_id);
 
@@ -167,7 +188,20 @@ impl RectInner {
         get_parent_available_size: impl Fn(Vec2) -> f32,
         get_child_size: impl Fn(EntityId, &RectInner) -> f32,
         queries: &RectQueries,
+        direction: FlexDirection,
     ) -> f32 {
+        let is_in_flex_direction = queries
+            .parent_query
+            .get(queries.ctx, entity_id)
+            .map(|parent| {
+                queries
+                    .rect_query
+                    .get(queries.ctx, parent.0)
+                    .map(|parent_rect| parent_rect.inner().options.flex.direction == direction)
+                    .unwrap_or(false)
+            })
+            .unwrap_or(false);
+
         let size_with_margin = match dim {
             // TODO: auto size calculations will be different when using flex layouts
             Dim::Auto => {
@@ -185,9 +219,19 @@ impl RectInner {
             Dim::Percent(percent) => {
                 let parent_id = queries.get_parent(entity_id);
                 let parent_rect = queries.get_rect(parent_id);
-                get_parent_available_size(
-                    parent_rect.calculate_available_space(parent_id, queries) * percent,
-                )
+
+                if is_in_flex_direction {
+                    println!(
+                        "{:?} parent free space: {}",
+                        entity_id, parent_rect.free_space
+                    );
+                    (parent_rect.free_space * percent)
+                        - get_parent_available_size(self.calculate_margin_all())
+                } else {
+                    get_parent_available_size(
+                        parent_rect.calculate_available_space(parent_id, queries) * percent,
+                    )
+                }
             }
             Dim::Px(f) => f,
         };
@@ -195,17 +239,49 @@ impl RectInner {
         size_with_margin - margin_dir
     }
 
+    pub fn calculate_free_space(&self, entity_id: EntityId, queries: &RectQueries) -> f32 {
+        let size = self.calculate_size(entity_id, queries);
+
+        println!("self.size: {:?}", size);
+
+        let mut free_space = match self.options.flex.direction {
+            FlexDirection::Row => self.size.x,
+            FlexDirection::Column => self.size.y,
+        };
+
+        let children = queries.get_children(entity_id);
+
+        for child_id in children.iter().cloned() {
+            let child_rect = queries.get_rect(child_id);
+            let child_size = child_rect.calculate_size(child_id, queries);
+            if (child_rect.options.flex.direction == FlexDirection::Row
+                && matches!(child_rect.options.width, Dim::Auto | Dim::Px(_)))
+                || (child_rect.options.flex.direction == FlexDirection::Column
+                    && matches!(child_rect.options.height, Dim::Auto | Dim::Px(_)))
+            {
+                free_space -= if matches!(self.options.flex.direction, FlexDirection::Row) {
+                    child_size.x
+                } else {
+                    child_size.y
+                };
+                free_space -= self.calculate_offset_dim(self.options.flex.gap, self.size.x);
+            }
+        }
+
+        free_space
+    }
+
     // TODO: handle reversed flex directions
     // TODO: cache
     /// Calculates the offset of the child from the top-left corner of self
-    pub fn recalculate_children_top_left_offset(
+    pub fn recalculate_children_outer_boxes(
         &self,
         entity_id: EntityId,
         queries: &RectQueries,
-    ) -> HashMap<EntityId, Vec2> {
+    ) -> HashMap<EntityId, UiBox> {
         let direction = self.options.flex.direction;
 
-        let mut offsets = HashMap::new();
+        let mut boxes = HashMap::new();
         let mut running_offset = 0.0;
 
         let children = queries.get_children(entity_id);
@@ -214,14 +290,18 @@ impl RectInner {
             let child_rect = queries.get_rect(child_id);
             let child_size = child_rect.calculate_size(child_id, queries);
 
-            offsets.insert(
+            boxes.insert(
                 child_id,
-                if matches!(direction, FlexDirection::Column) {
-                    Vec2::new(0.0, running_offset)
-                } else {
-                    Vec2::new(running_offset, 0.0)
+                UiBox {
+                    size: child_size,
+                    offset: if matches!(direction, FlexDirection::Column) {
+                        Vec2::new(0.0, running_offset)
+                    } else {
+                        Vec2::new(running_offset, 0.0)
+                    },
                 },
             );
+
             running_offset += if matches!(direction, FlexDirection::Column) {
                 child_size.y + self.calculate_offset_dim(self.options.flex.gap, self.size.y)
             } else {
@@ -229,7 +309,7 @@ impl RectInner {
             };
         }
 
-        offsets
+        boxes
     }
 
     /// Calculates the offset of the top-left corner of
@@ -246,12 +326,12 @@ impl RectInner {
         };
 
         // TODO: this can be cached
-        let offset_from_children = parent.children_top_left_offsets[&entity_id];
+        let outer_box = &parent.children_outer_boxes[&entity_id];
 
         self.calculate_margin_top_left()
             + parent.calculate_total_top_left_offset(parent_id, queries)
             + parent.calculate_padding_top_left()
-            + offset_from_children
+            + outer_box.offset
     }
 
     pub fn calculate_margin_top_left(&self) -> Vec2 {
@@ -268,7 +348,7 @@ impl RectInner {
         )
     }
 
-    pub fn calculate_margin_absolute(&self) -> Vec2 {
+    pub fn calculate_margin_all(&self) -> Vec2 {
         self.calculate_margin_top_left() + self.calculate_margin_bottom_right()
     }
 
@@ -304,10 +384,11 @@ impl RectInner {
         self.calculate_size_dim(
             entity_id,
             self.options.width,
-            self.calculate_margin_absolute().x,
+            self.calculate_margin_all().x,
             |size| size.x,
             |child_id, child| child.calculate_width(child_id, queries),
             queries,
+            FlexDirection::Row,
         )
     }
 
@@ -315,10 +396,11 @@ impl RectInner {
         self.calculate_size_dim(
             entity_id,
             self.options.height,
-            self.calculate_margin_absolute().y,
+            self.calculate_margin_all().y,
             |size| size.y,
             |child_id, child| child.calculate_height(child_id, queries),
             queries,
+            FlexDirection::Column,
         )
     }
 
@@ -366,12 +448,16 @@ mod tests {
     use acro_ecs::{EntityId, Query, SystemRunContext, Tick, World};
     use acro_math::{Children, Parent, Root, Vec2};
 
-    use crate::rect::{FlexDirection, FlexOptions, PositioningOptions, RectQueries, RootOptions};
+    use crate::{
+        document::ScreenUi,
+        rect::{FlexDirection, FlexOptions, PositioningOptions, RectQueries, RootOptions},
+    };
 
     use super::{Dim, DirDim, Rect};
 
     fn create_world() -> World {
         let mut world = World::new();
+        world.init_component::<ScreenUi>();
         world.init_component::<Rect>();
         world.init_component::<Parent>();
         world.init_component::<Children>();
@@ -405,6 +491,8 @@ mod tests {
     fn test_left_top_calculation_1() {
         let mut world = create_world();
 
+        let screen_ui = world.spawn((ScreenUi,));
+
         let root_rect = Rect::new_root(RootOptions {
             size: Vec2::new(1200.0, 800.0),
             ..Default::default()
@@ -424,7 +512,7 @@ mod tests {
             ..Default::default()
         });
 
-        let root = world.spawn((root_rect.clone(),));
+        let root = world.spawn((root_rect.clone(), Parent(screen_ui)));
         let child = world.spawn((child_rect.clone(), Parent(root)));
         let child_of_child = world.spawn((child_of_child_rect.clone(), Parent(child)));
 
@@ -441,6 +529,8 @@ mod tests {
     #[test]
     fn test_size_calculation_1() {
         let mut world = create_world();
+
+        let screen_ui = world.spawn((ScreenUi,));
 
         let root_rect = Rect::new_root(RootOptions {
             size: Vec2::new(1200.0, 800.0),
@@ -463,7 +553,7 @@ mod tests {
             ..Default::default()
         });
 
-        let root = world.spawn((root_rect.clone(),));
+        let root = world.spawn((root_rect.clone(), Parent(screen_ui)));
         let child = world.spawn((child_rect.clone(), Parent(root)));
         let child_of_child = world.spawn((child_of_child_rect.clone(), Parent(child)));
 
@@ -480,6 +570,7 @@ mod tests {
 
             assert_eq!(child_rect.inner().size, Vec2::new(1160.0, 760.0));
 
+            println!("entity_id: {:?}", child_of_child);
             assert_eq!(child_of_child_rect.inner().size, Vec2::new(570.0, 760.0));
         });
     }
@@ -487,6 +578,8 @@ mod tests {
     #[test]
     fn multiple_elements_1() {
         let mut world = create_world();
+
+        let screen_ui = world.spawn((ScreenUi,));
 
         let root_rect = Rect::new_root(RootOptions {
             size: Vec2::new(400.0, 1000.0),
@@ -522,7 +615,7 @@ mod tests {
             ..Default::default()
         });
 
-        let root = world.spawn((root_rect.clone(),));
+        let root = world.spawn((root_rect.clone(), Parent(screen_ui)));
         let child_1 = world.spawn((child_1_rect.clone(), Parent(root)));
         let child_2 = world.spawn((child_2_rect.clone(), Parent(root)));
         let child_3 = world.spawn((child_3_rect.clone(), Parent(root)));
@@ -558,6 +651,8 @@ mod tests {
     fn flex_row_1() {
         let mut world = create_world();
 
+        let screen_ui = world.spawn((ScreenUi,));
+
         let root_rect = Rect::new_root(RootOptions {
             size: Vec2::new(800.0, 400.0),
             flex: FlexOptions {
@@ -585,7 +680,7 @@ mod tests {
             ..Default::default()
         });
 
-        let root = world.spawn((root_rect.clone(),));
+        let root = world.spawn((root_rect.clone(), Parent(screen_ui)));
         let child_1 = world.spawn((child_1_rect.clone(), Parent(root)));
         let child_2 = world.spawn((child_2_rect.clone(), Parent(root)));
         let child_3 = world.spawn((child_3_rect.clone(), Parent(root)));
@@ -605,6 +700,49 @@ mod tests {
             assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
             assert_eq!(child_2.offset, Vec2::new(110.0, 0.0));
             assert_eq!(child_3.offset, Vec2::new(220.0, 0.0));
+        });
+    }
+
+    #[test]
+    fn flex_fill_height_1() {
+        let mut world = create_world();
+
+        let screen_ui = world.spawn((ScreenUi,));
+
+        let root_rect = Rect::new_root(RootOptions {
+            size: Vec2::new(400.0, 800.0),
+            ..Default::default()
+        });
+
+        let child_1_rect = Rect::new(PositioningOptions {
+            width: Dim::Percent(1.0),
+            height: Dim::Px(100.0),
+            ..Default::default()
+        });
+
+        let child_2_rect = Rect::new(PositioningOptions {
+            width: Dim::Percent(1.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
+
+        let root = world.spawn((root_rect.clone(), Parent(screen_ui)));
+        let child_1 = world.spawn((child_1_rect.clone(), Parent(root)));
+        let child_2 = world.spawn((child_2_rect.clone(), Parent(root)));
+
+        world.insert(root, Children(vec![child_1, child_2]));
+        world.insert(child_1, Children(vec![]));
+        world.insert(child_2, Children(vec![]));
+
+        update_and_test(&mut world, root, move |_rect_queries| {
+            let root = root_rect.inner();
+            let child_1 = child_1_rect.inner();
+            let child_2 = child_2_rect.inner();
+
+            assert_eq!(root.size, Vec2::new(400.0, 800.0));
+            assert_eq!(root.free_space, 700.0);
+            assert_eq!(child_1.size, Vec2::new(400.0, 100.0));
+            assert_eq!(child_2.size, Vec2::new(400.0, 700.0));
         });
     }
 }

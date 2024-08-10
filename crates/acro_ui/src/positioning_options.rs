@@ -19,6 +19,12 @@ pub struct PositioningOptions {
     pub width: Dim,
     #[serde(default)]
     pub height: Dim,
+
+    #[serde(default)]
+    pub min_width: Option<Dim>,
+    #[serde(default)]
+    pub min_height: Option<Dim>,
+
     #[serde(default, with = "serde_dirdim")]
     pub padding: DirDim,
     #[serde(default, with = "serde_dirdim")]
