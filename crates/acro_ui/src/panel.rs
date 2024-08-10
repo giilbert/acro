@@ -25,15 +25,16 @@ impl Panel {
         options: PositioningOptions,
         color: Color,
     ) -> Self {
-        let rect = parent_rect.new_child(options);
+        // let rect = parent_rect.new_child(options);
+        todo!();
 
-        Self {
-            ctx,
-            color,
-            rect,
-            parent_rect,
-            children: Vec::new(),
-        }
+        // Self {
+        //     ctx,
+        //     color,
+        //     rect,
+        //     parent_rect,
+        //     children: Vec::new(),
+        // }
     }
 }
 

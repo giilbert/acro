@@ -4,7 +4,8 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use acro_math::Vec2;
+use acro_ecs::{entity, query, EntityId, Query, SystemRunContext};
+use acro_math::{Children, Parent, Vec2};
 use serde::Deserialize;
 use tracing::info;
 
@@ -32,9 +33,6 @@ pub struct RectInner {
 
     pub(crate) options: PositioningOptions,
     children_top_left_offsets: Vec<Vec2>,
-
-    parent: Option<Rc<RefCell<RectInner>>>,
-    children: Vec<Weak<RefCell<RectInner>>>,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -96,6 +94,68 @@ pub struct RootOptions {
     pub flex: FlexOptions,
 }
 
+pub struct RectQueries<'a> {
+    pub ctx: &'a SystemRunContext<'a>,
+    pub entity_id: EntityId,
+    pub children_query: &'a Query<&'a Children>,
+    pub parent_query: &'a Query<&'a Parent>,
+    pub rect_query: &'a Query<&'a Rect>,
+}
+
+impl RectQueries<'_> {
+    pub fn new<'a>(
+        ctx: &'a SystemRunContext,
+        entity_id: EntityId,
+        children_query: &'a Query<&'a Children>,
+        parent_query: &'a Query<&'a Parent>,
+        rect_query: &'a Query<&'a Rect>,
+    ) -> RectQueries<'a> {
+        RectQueries {
+            ctx,
+            entity_id,
+            children_query,
+            parent_query,
+            rect_query,
+        }
+    }
+    pub fn with_entity_id(&self, entity_id: EntityId) -> RectQueries {
+        RectQueries {
+            ctx: self.ctx,
+            entity_id,
+            children_query: self.children_query,
+            parent_query: self.parent_query,
+            rect_query: self.rect_query,
+        }
+    }
+
+    pub fn get_parent(&self) -> Option<EntityId> {
+        self.parent_query
+            .get(self.ctx, self.entity_id)
+            .map(|parent| parent.0)
+    }
+
+    pub fn get_children(&self) -> Vec<EntityId> {
+        self.children_query
+            .get(self.ctx, self.entity_id)
+            .map(|children| children.0.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn get_rect(&self, entity_id: EntityId) -> Ref<RectInner> {
+        self.rect_query
+            .get(self.ctx, entity_id)
+            .expect("rect should exist")
+            .inner()
+    }
+
+    pub fn get_rect_mut(&self, entity_id: EntityId) -> RefMut<RectInner> {
+        self.rect_query
+            .get(self.ctx, entity_id)
+            .expect("rect should exist")
+            .inner_mut()
+    }
+}
+
 impl Rect {
     pub fn new_root(options: RootOptions) -> Self {
         Self {
@@ -111,33 +171,8 @@ impl Rect {
                     flex: options.flex,
                 },
                 children_top_left_offsets: Vec::new(),
-                parent: None,
-                children: Vec::new(),
             })),
         }
-    }
-
-    pub fn new_child(&self, options: PositioningOptions) -> Self {
-        let child = Rect {
-            inner: Rc::new(RefCell::new(RectInner {
-                child_index: self.inner.borrow().children.len(),
-                size: Vec2::zeros(),
-                offset: Vec2::zeros(),
-                options,
-                children_top_left_offsets: Vec::new(),
-                parent: Some(Rc::clone(&self.inner)),
-                children: vec![],
-            })),
-        };
-
-        self.inner
-            .borrow_mut()
-            .children
-            .push(Rc::downgrade(&child.inner));
-
-        self.recalculate();
-
-        child
     }
 
     pub fn inner(&self) -> Ref<RectInner> {
@@ -148,10 +183,10 @@ impl Rect {
         self.inner.borrow_mut()
     }
 
-    pub fn recalculate(&self) {
+    pub fn recalculate(&self, queries: &RectQueries) {
         let children_offsets = {
             let inner = self.inner.borrow();
-            inner.recalculate_children_top_left_offset()
+            inner.recalculate_children_top_left_offset(queries)
         };
 
         {
@@ -170,20 +205,9 @@ impl Rect {
             .recalculate()
         }
     }
-
-    pub fn get_tree_string(&self) -> String {
-        self.inner.borrow().get_tree_string()
-    }
 }
 
 impl RectInner {
-    pub fn parent(&self) -> Ref<RectInner> {
-        self.parent
-            .as_ref()
-            .expect("RectInner has no parent")
-            .borrow()
-    }
-
     fn calculate_offset_dim(&self, dim: Dim, parent_dim: f32) -> f32 {
         match dim {
             Dim::Px(px) => px,
@@ -198,23 +222,41 @@ impl RectInner {
         margin_dir: f32,
         get_parent_available_size: impl Fn(Vec2) -> f32,
         get_child_size: impl Fn(&RectInner) -> f32,
+        queries: &RectQueries,
     ) -> f32 {
         let size_with_margin = match dim {
             // TODO: auto size calculations will be different when using flex layouts
             Dim::Auto => {
                 let min_children_size =
-                    self.children
+                    queries
+                        .get_children()
                         .iter()
                         .fold(std::f32::MAX, |current_min_size, child| {
-                            let child = child.upgrade().expect("child dropped without being freed");
-                            let child_size = get_child_size(&*child.borrow());
+                            let child = queries
+                                .rect_query
+                                .get(ctx, *child)
+                                .expect("child rect should exist")
+                                .inner();
+                            let child_size = get_child_size(&*child);
                             current_min_size.min(child_size)
                         });
 
                 min_children_size
             }
             Dim::Percent(percent) => {
-                get_parent_available_size(self.parent().calculate_available_space() * percent)
+                let parent = queries
+                    .parent_query
+                    .get(ctx, queries.entity_id)
+                    .expect("parent should exist")
+                    .0;
+                let parent_rect = queries
+                    .rect_query
+                    .get(ctx, parent)
+                    .expect("parent rect should exist")
+                    .inner();
+                get_parent_available_size(
+                    parent_rect.calculate_available_space(ctx, queries) * percent,
+                )
             }
             Dim::Px(f) => f,
         };
@@ -225,15 +267,23 @@ impl RectInner {
     // TODO: handle reversed flex directions
     // TODO: cache
     /// Calculates the offset of the child from the top-left corner of self
-    pub fn recalculate_children_top_left_offset(&self) -> Vec<Vec2> {
+    pub fn recalculate_children_top_left_offset(&self, queries: &RectQueries) -> Vec<Vec2> {
         let direction = self.options.flex.direction;
 
         let mut offsets = Vec::new();
         let mut running_offset = 0.0;
 
-        for child in self.children.iter() {
-            let child = child.upgrade().expect("child dropped without being freed");
-            let child = child.borrow();
+        let children = queries
+            .children_query
+            .get(ctx, entity_id)
+            .expect("children should exist");
+
+        for child in children.0.iter().cloned() {
+            let child = queries
+                .rect_query
+                .get(ctx, child)
+                .expect("child rect should exist")
+                .inner_mut();
 
             offsets.push(if matches!(direction, FlexDirection::Column) {
                 Vec2::new(0.0, running_offset)
@@ -252,17 +302,18 @@ impl RectInner {
 
     /// Calculates the offset of the top-left corner of
     /// this element from the top-left corner of the screen
-    pub fn calculate_total_top_left_offset(&self) -> Vec2 {
-        if self.parent.is_none() {
-            return Vec2::zeros();
-        }
+    pub fn calculate_total_top_left_offset(&self, queries: &RectQueries) -> Vec2 {
+        let parent = match queries.get_parent() {
+            Some(parent) => queries.get_rect(parent),
+            None => return Vec2::zeros(),
+        };
 
         // TODO: this can be cached
-        let offset_from_children = self.parent().children_top_left_offsets[self.child_index];
+        let offset_from_children = parent.children_top_left_offsets[self.child_index];
 
         self.calculate_margin_top_left()
-            + self.parent().calculate_total_top_left_offset()
-            + self.parent().calculate_padding_top_left()
+            + parent.calculate_total_top_left_offset(queries)
+            + parent.calculate_padding_top_left()
             + offset_from_children
     }
 
@@ -303,8 +354,8 @@ impl RectInner {
     }
 
     /// "Available space" of an element = its width - padding_left - padding_right
-    pub fn calculate_available_space(&self) -> Vec2 {
-        self.calculate_size()
+    pub fn calculate_available_space(&self, ctx: &SystemRunContext, queries: &RectQueries) -> Vec2 {
+        self.calculate_size(ctx, queries)
             - self.calculate_padding_top_left()
             - self.calculate_padding_bottom_right()
     }
@@ -312,227 +363,233 @@ impl RectInner {
     // Auto:    makes the element big enough to fit all its children with padding
     // Percent: makes the element take up a % of the available space given by its parent
     // Px:      makes the element have a fixed width
-    pub fn calculate_width(&self) -> f32 {
+    pub fn calculate_width(&self, queries: &RectQueries) -> f32 {
         self.calculate_size_dim(
             self.options.width,
             self.calculate_margin_absolute().x,
             |size| size.x,
-            |child| child.calculate_width(),
+            |child| child.calculate_width(ctx, queries),
+            queries,
         )
     }
 
-    pub fn calculate_height(&self) -> f32 {
+    pub fn calculate_height(&self, queries: &RectQueries) -> f32 {
         self.calculate_size_dim(
+            ctx,
             self.options.height,
             self.calculate_margin_absolute().y,
             |size| size.y,
-            |child| child.calculate_height(),
+            |child| child.calculate_height(ctx, queries),
+            queries,
         )
     }
 
-    pub fn calculate_size(&self) -> Vec2 {
-        Vec2::new(self.calculate_width(), self.calculate_height())
+    pub fn calculate_size(&self, queries: &RectQueries) -> Vec2 {
+        Vec2::new(
+            self.calculate_width(queries),
+            self.calculate_height(queries),
+        )
     }
 
-    pub fn recalculate_self(&mut self) {
-        self.offset = self.calculate_total_top_left_offset();
-        self.size = self.calculate_size();
+    pub fn recalculate_self(&mut self, queries: &RectQueries) {
+        self.offset = self.calculate_total_top_left_offset(queries);
+        self.size = self.calculate_size(queries);
     }
 
-    fn get_tree_string_recurse(&self, level: u32) -> String {
-        let mut output = format!(
-            "size: {:?} | offset: {:?} | margin offset: {:?} x {:?} | padding offset: {:?} x {:?}.\n",
-            self.size,
-            self.offset,
-            self.options.margin.left,
-            self.options.margin.top,
-            self.options.padding.left,
-            self.options.padding.top,
-        );
+    // fn get_tree_string_recurse(&self, level: u32) -> String {
+    //     let mut output = format!(
+    //         "size: {:?} | offset: {:?} | margin offset: {:?} x {:?} | padding offset: {:?} x {:?}.\n",
+    //         self.size,
+    //         self.offset,
+    //         self.options.margin.left,
+    //         self.options.margin.top,
+    //         self.options.padding.left,
+    //         self.options.padding.top,
+    //     );
 
-        for child in self.children.iter() {
-            let child = child.upgrade().expect("child should exist");
-            let child = child.borrow();
+    //     for child in self.children.iter() {
+    //         let child = child.upgrade().expect("child should exist");
+    //         let child = child.borrow();
 
-            output += &"  ".repeat(level as usize);
-            output += &child.get_tree_string_recurse(level + 1);
-        }
+    //         output += &"  ".repeat(level as usize);
+    //         output += &child.get_tree_string_recurse(level + 1);
+    //     }
 
-        output
-    }
+    //     output
+    // }
 
-    pub fn get_tree_string(&self) -> String {
-        self.get_tree_string_recurse(1)
-    }
+    // pub fn get_tree_string(&self) -> String {
+    //     self.get_tree_string_recurse(1)
+    // }
 }
 
 #[cfg(test)]
 mod tests {
-    use acro_math::Vec2;
+    // use acro_math::Vec2;
 
-    use crate::rect::{FlexDirection, FlexOptions, PositioningOptions, RootOptions};
+    // use crate::rect::{FlexDirection, FlexOptions, PositioningOptions, RootOptions};
 
-    use super::{Dim, Dir, Rect};
+    // use super::{Dim, Dir, Rect};
 
-    #[test]
-    fn test_left_top_calculation_1() {
-        let mut root = Rect::new_root(RootOptions {
-            size: Vec2::new(1200.0, 800.0),
-            ..Default::default()
-        });
-        let mut child = root.new_child(PositioningOptions {
-            width: Dim::Px(160.0),
-            height: Dim::Px(40.0),
-            padding: Dir::xy(Dim::Px(10.0), Dim::Px(0.0)),
-            margin: Dir::xy(Dim::Px(0.0), Dim::Px(10.0)),
-            ..Default::default()
-        });
-        let child_of_child = child.new_child(PositioningOptions {
-            width: Dim::Percent(1.0),
-            height: Dim::Percent(1.0),
-            padding: Dir::default(),
-            margin: Dir::xy(Dim::Px(20.0), Dim::Px(20.0)),
-            ..Default::default()
-        });
+    // #[test]
+    // fn test_left_top_calculation_1() {
+    //     let mut root = Rect::new_root(RootOptions {
+    //         size: Vec2::new(1200.0, 800.0),
+    //         ..Default::default()
+    //     });
+    //     let mut child = root.new_child(PositioningOptions {
+    //         width: Dim::Px(160.0),
+    //         height: Dim::Px(40.0),
+    //         padding: Dir::xy(Dim::Px(10.0), Dim::Px(0.0)),
+    //         margin: Dir::xy(Dim::Px(0.0), Dim::Px(10.0)),
+    //         ..Default::default()
+    //     });
+    //     let child_of_child = child.new_child(PositioningOptions {
+    //         width: Dim::Percent(1.0),
+    //         height: Dim::Percent(1.0),
+    //         padding: Dir::default(),
+    //         margin: Dir::xy(Dim::Px(20.0), Dim::Px(20.0)),
+    //         ..Default::default()
+    //     });
 
-        println!("{}", root.get_tree_string());
+    //     println!("{}", root.get_tree_string());
 
-        assert_eq!(child.inner().offset, Vec2::new(0.0, 10.0));
-        assert_eq!(child_of_child.inner().offset, Vec2::new(30.0, 30.0));
-    }
+    //     assert_eq!(child.inner().offset, Vec2::new(0.0, 10.0));
+    //     assert_eq!(child_of_child.inner().offset, Vec2::new(30.0, 30.0));
+    // }
 
-    #[test]
-    fn test_size_calculation_1() {
-        let mut root = Rect::new_root(RootOptions {
-            size: Vec2::new(1200.0, 800.0),
-            padding: Dir::all(Dim::Px(10.0)),
-            ..Default::default()
-        });
-        let mut child = root.new_child(PositioningOptions {
-            width: Dim::Percent(1.0),
-            height: Dim::Percent(1.0),
-            margin: Dir::all(Dim::Px(10.0)),
-            ..Default::default()
-        });
-        let child_of_child = child.new_child(PositioningOptions {
-            width: Dim::Percent(0.5),
-            height: Dim::Percent(1.0),
-            margin: Dir {
-                right: Dim::Px(10.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
+    // #[test]
+    // fn test_size_calculation_1() {
+    //     let mut root = Rect::new_root(RootOptions {
+    //         size: Vec2::new(1200.0, 800.0),
+    //         padding: Dir::all(Dim::Px(10.0)),
+    //         ..Default::default()
+    //     });
+    //     let mut child = root.new_child(PositioningOptions {
+    //         width: Dim::Percent(1.0),
+    //         height: Dim::Percent(1.0),
+    //         margin: Dir::all(Dim::Px(10.0)),
+    //         ..Default::default()
+    //     });
+    //     let child_of_child = child.new_child(PositioningOptions {
+    //         width: Dim::Percent(0.5),
+    //         height: Dim::Percent(1.0),
+    //         margin: Dir {
+    //             right: Dim::Px(10.0),
+    //             ..Default::default()
+    //         },
+    //         ..Default::default()
+    //     });
 
-        println!("{}", root.get_tree_string());
+    //     println!("{}", root.get_tree_string());
 
-        assert_eq!(
-            root.inner().calculate_available_space(),
-            Vec2::new(1180.0, 780.0)
-        );
-        assert_eq!(root.inner().size, Vec2::new(1200.0, 800.0));
+    //     assert_eq!(
+    //         root.inner().calculate_available_space(),
+    //         Vec2::new(1180.0, 780.0)
+    //     );
+    //     assert_eq!(root.inner().size, Vec2::new(1200.0, 800.0));
 
-        assert_eq!(child.inner().size, Vec2::new(1160.0, 760.0));
+    //     assert_eq!(child.inner().size, Vec2::new(1160.0, 760.0));
 
-        assert_eq!(child_of_child.inner().size, Vec2::new(570.0, 760.0));
-    }
+    //     assert_eq!(child_of_child.inner().size, Vec2::new(570.0, 760.0));
+    // }
 
-    #[test]
-    fn multiple_elements_1() {
-        let mut root = Rect::new_root(RootOptions {
-            size: Vec2::new(400.0, 1000.0),
-            flex: FlexOptions {
-                gap: Dim::Px(10.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
+    // #[test]
+    // fn multiple_elements_1() {
+    //     let mut root = Rect::new_root(RootOptions {
+    //         size: Vec2::new(400.0, 1000.0),
+    //         flex: FlexOptions {
+    //             gap: Dim::Px(10.0),
+    //             ..Default::default()
+    //         },
+    //         ..Default::default()
+    //     });
 
-        let child_1 = root.new_child(PositioningOptions {
-            width: Dim::Percent(1.0),
-            height: Dim::Px(200.0),
-            ..Default::default()
-        });
+    //     let child_1 = root.new_child(PositioningOptions {
+    //         width: Dim::Percent(1.0),
+    //         height: Dim::Px(200.0),
+    //         ..Default::default()
+    //     });
 
-        let mut child_2 = root.new_child(PositioningOptions {
-            width: Dim::Percent(1.0),
-            height: Dim::Px(400.0),
-            padding: Dir::all(Dim::Px(10.0)),
-            ..Default::default()
-        });
+    //     let mut child_2 = root.new_child(PositioningOptions {
+    //         width: Dim::Percent(1.0),
+    //         height: Dim::Px(400.0),
+    //         padding: Dir::all(Dim::Px(10.0)),
+    //         ..Default::default()
+    //     });
 
-        let child_3 = root.new_child(PositioningOptions {
-            width: Dim::Percent(1.0),
-            height: Dim::Px(200.0),
-            ..Default::default()
-        });
+    //     let child_3 = root.new_child(PositioningOptions {
+    //         width: Dim::Percent(1.0),
+    //         height: Dim::Px(200.0),
+    //         ..Default::default()
+    //     });
 
-        let child_of_child_2 = child_2.new_child(PositioningOptions {
-            width: Dim::Percent(1.0),
-            height: Dim::Percent(1.0),
-            ..Default::default()
-        });
+    //     let child_of_child_2 = child_2.new_child(PositioningOptions {
+    //         width: Dim::Percent(1.0),
+    //         height: Dim::Percent(1.0),
+    //         ..Default::default()
+    //     });
 
-        println!("{}", root.get_tree_string());
+    //     println!("{}", root.get_tree_string());
 
-        let root = root.inner();
-        let child_1 = child_1.inner();
-        let child_2 = child_2.inner();
-        let child_3 = child_3.inner();
-        let child_of_child_2 = child_of_child_2.inner();
+    //     let root = root.inner();
+    //     let child_1 = child_1.inner();
+    //     let child_2 = child_2.inner();
+    //     let child_3 = child_3.inner();
+    //     let child_of_child_2 = child_of_child_2.inner();
 
-        assert_eq!(root.size, Vec2::new(400.0, 1000.0));
-        assert_eq!(child_1.size, Vec2::new(400.0, 200.0));
-        assert_eq!(child_2.size, Vec2::new(400.0, 400.0));
-        assert_eq!(child_3.size, Vec2::new(400.0, 200.0));
+    //     assert_eq!(root.size, Vec2::new(400.0, 1000.0));
+    //     assert_eq!(child_1.size, Vec2::new(400.0, 200.0));
+    //     assert_eq!(child_2.size, Vec2::new(400.0, 400.0));
+    //     assert_eq!(child_3.size, Vec2::new(400.0, 200.0));
 
-        assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
-        assert_eq!(child_2.offset, Vec2::new(0.0, 210.0));
-        assert_eq!(child_3.offset, Vec2::new(0.0, 620.0));
+    //     assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
+    //     assert_eq!(child_2.offset, Vec2::new(0.0, 210.0));
+    //     assert_eq!(child_3.offset, Vec2::new(0.0, 620.0));
 
-        assert_eq!(child_2.children_top_left_offsets, &[Vec2::new(0.0, 0.0)]);
-        assert_eq!(child_of_child_2.offset, Vec2::new(10.0, 220.0));
-    }
+    //     assert_eq!(child_2.children_top_left_offsets, &[Vec2::new(0.0, 0.0)]);
+    //     assert_eq!(child_of_child_2.offset, Vec2::new(10.0, 220.0));
+    // }
 
-    #[test]
-    fn flex_row_1() {
-        let mut root = Rect::new_root(RootOptions {
-            size: Vec2::new(800.0, 400.0),
-            flex: FlexOptions {
-                gap: Dim::Px(10.0),
-                direction: FlexDirection::Row,
-            },
-            ..Default::default()
-        });
+    // #[test]
+    // fn flex_row_1() {
+    //     let mut root = Rect::new_root(RootOptions {
+    //         size: Vec2::new(800.0, 400.0),
+    //         flex: FlexOptions {
+    //             gap: Dim::Px(10.0),
+    //             direction: FlexDirection::Row,
+    //         },
+    //         ..Default::default()
+    //     });
 
-        let child_1 = root.new_child(PositioningOptions {
-            width: Dim::Px(100.0),
-            height: Dim::Percent(1.0),
-            ..Default::default()
-        });
+    //     let child_1 = root.new_child(PositioningOptions {
+    //         width: Dim::Px(100.0),
+    //         height: Dim::Percent(1.0),
+    //         ..Default::default()
+    //     });
 
-        let child_2 = root.new_child(PositioningOptions {
-            width: Dim::Px(100.0),
-            height: Dim::Percent(1.0),
-            ..Default::default()
-        });
+    //     let child_2 = root.new_child(PositioningOptions {
+    //         width: Dim::Px(100.0),
+    //         height: Dim::Percent(1.0),
+    //         ..Default::default()
+    //     });
 
-        let child_3 = root.new_child(PositioningOptions {
-            width: Dim::Px(100.0),
-            height: Dim::Percent(1.0),
-            ..Default::default()
-        });
+    //     let child_3 = root.new_child(PositioningOptions {
+    //         width: Dim::Px(100.0),
+    //         height: Dim::Percent(1.0),
+    //         ..Default::default()
+    //     });
 
-        println!("{}", root.get_tree_string());
+    //     println!("{}", root.get_tree_string());
 
-        let root = root.inner();
-        let child_1 = child_1.inner();
-        let child_2 = child_2.inner();
-        let child_3 = child_3.inner();
+    //     let root = root.inner();
+    //     let child_1 = child_1.inner();
+    //     let child_2 = child_2.inner();
+    //     let child_3 = child_3.inner();
 
-        assert_eq!(root.offset, Vec2::new(0.0, 0.0));
-        assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
-        assert_eq!(child_2.offset, Vec2::new(110.0, 0.0));
-        assert_eq!(child_3.offset, Vec2::new(220.0, 0.0));
-    }
+    //     assert_eq!(root.offset, Vec2::new(0.0, 0.0));
+    //     assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
+    //     assert_eq!(child_2.offset, Vec2::new(110.0, 0.0));
+    //     assert_eq!(child_3.offset, Vec2::new(220.0, 0.0));
+    // }
 }

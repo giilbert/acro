@@ -46,36 +46,37 @@ pub(crate) struct TextData {
 
 impl Text {
     pub fn new(ctx: UiContext, parent_rect: Rect) -> Self {
+        todo!();
         // TODO: not hard code this
-        let options = TextOptions {
-            content: "text content blah blah".to_string(),
-            font_size: 20.0,
-            line_height: 30.0,
-        };
+        // let options = TextOptions {
+        //     content: "text content blah blah".to_string(),
+        //     font_size: 20.0,
+        //     line_height: 30.0,
+        // };
 
-        let text_buffer = glyphon::Buffer::new_empty(glyphon::Metrics::new(
-            options.font_size,
-            options.line_height,
-        ));
+        // let text_buffer = glyphon::Buffer::new_empty(glyphon::Metrics::new(
+        //     options.font_size,
+        //     options.line_height,
+        // ));
 
-        let rect = parent_rect.new_child(PositioningOptions {
-            width: Dim::Percent(1.0),
-            height: Dim::Percent(1.0),
-            ..Default::default()
-        });
+        // let rect = parent_rect.new_child(PositioningOptions {
+        //     width: Dim::Percent(1.0),
+        //     height: Dim::Percent(1.0),
+        //     ..Default::default()
+        // });
 
-        Text {
-            data: TextData {
-                last_size: RefCell::new(Vec2::zeros()),
-                text_buffer: RefCell::new(text_buffer),
-            },
-            ctx,
-            children: Vec::new(),
-            rect,
-            parent_rect,
+        // Text {
+        //     data: TextData {
+        //         last_size: RefCell::new(Vec2::zeros()),
+        //         text_buffer: RefCell::new(text_buffer),
+        //     },
+        //     ctx,
+        //     children: Vec::new(),
+        //     rect,
+        //     parent_rect,
 
-            options,
-        }
+        //     options,
+        // }
     }
 }
 
