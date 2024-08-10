@@ -221,10 +221,6 @@ impl RectInner {
                 let parent_rect = queries.get_rect(parent_id);
 
                 if is_in_flex_direction {
-                    println!(
-                        "{:?} parent free space: {}",
-                        entity_id, parent_rect.free_space
-                    );
                     (parent_rect.free_space * percent)
                         - get_parent_available_size(self.calculate_margin_all())
                 } else {
@@ -242,11 +238,9 @@ impl RectInner {
     pub fn calculate_free_space(&self, entity_id: EntityId, queries: &RectQueries) -> f32 {
         let size = self.calculate_size(entity_id, queries);
 
-        println!("self.size: {:?}", size);
-
         let mut free_space = match self.options.flex.direction {
-            FlexDirection::Row => self.size.x,
-            FlexDirection::Column => self.size.y,
+            FlexDirection::Row => size.x,
+            FlexDirection::Column => size.y,
         };
 
         let children = queries.get_children(entity_id);
@@ -254,6 +248,7 @@ impl RectInner {
         for child_id in children.iter().cloned() {
             let child_rect = queries.get_rect(child_id);
             let child_size = child_rect.calculate_size(child_id, queries);
+
             if (child_rect.options.flex.direction == FlexDirection::Row
                 && matches!(child_rect.options.width, Dim::Auto | Dim::Px(_)))
                 || (child_rect.options.flex.direction == FlexDirection::Column
