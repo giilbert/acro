@@ -52,12 +52,28 @@ pub struct Children(pub Vec<EntityId>);
 #[derive(Debug, Clone)]
 pub struct Root;
 
+#[derive(Debug, Clone)]
+pub struct TransformBoundary;
+
 pub fn propagate_global_transform(
     ctx: SystemRunContext,
-    transform_query: Query<(EntityId, &Transform, &Children, &Parent), Changed<Transform>>,
+    transform_query: Query<
+        (
+            EntityId,
+            &Transform,
+            &Children,
+            &Parent,
+            Option<&TransformBoundary>,
+        ),
+        Changed<Transform>,
+    >,
     global_transform_query: Query<(EntityId, &mut GlobalTransform, &Children)>,
 ) {
-    for (entity, transform, _children, parent) in transform_query.over(&ctx) {
+    for (entity, transform, _children, parent, boundary) in transform_query.over(&ctx) {
+        if boundary.is_some() {
+            continue;
+        }
+
         recurse_propagate(
             &ctx,
             entity,
@@ -74,7 +90,16 @@ fn recurse_propagate(
     current_entity: EntityId,
     parent: EntityId,
     transform: &Transform,
-    transform_query: &Query<(EntityId, &Transform, &Children, &Parent), Changed<Transform>>,
+    transform_query: &Query<
+        (
+            EntityId,
+            &Transform,
+            &Children,
+            &Parent,
+            Option<&TransformBoundary>,
+        ),
+        Changed<Transform>,
+    >,
     global_transform_query: &Query<(EntityId, &mut GlobalTransform, &Children)>,
 ) {
     // Update the global transform of the current entity

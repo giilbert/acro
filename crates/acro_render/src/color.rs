@@ -1,4 +1,7 @@
-#[derive(Debug, Clone, Copy)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(tag = "type", content = "value")]
 pub enum Color {
     Srgba(Srgba),
 }
@@ -12,7 +15,7 @@ impl Color {
 }
 
 // All of the fields are [0.0, 1.0]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[repr(C)]
 pub struct Srgba {
     pub r: f32,

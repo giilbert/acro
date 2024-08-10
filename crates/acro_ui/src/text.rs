@@ -10,32 +10,17 @@ use tracing::info;
 
 use crate::{
     context::{UiContext, UiContextInner},
-    element::UiElement,
-    rect::{Dim, PositioningOptions, Rect},
-    rendering::UiRenderContext,
+    rect::Rect,
 };
 
 #[derive(Reflect)]
 pub struct Text {
-    #[reflect(skip)]
-    pub(crate) ctx: UiContext,
-    #[reflect(skip)]
-    pub(crate) rect: Rect,
-    #[reflect(skip)]
-    pub(crate) parent_rect: Rect,
-    #[reflect(skip)]
-    pub(crate) children: Vec<Box<dyn UiElement>>,
-    #[reflect(skip)]
-    pub(crate) data: TextData,
-
-    options: TextOptions,
-}
-
-#[derive(Reflect)]
-pub struct TextOptions {
     pub content: String,
     pub font_size: f32,
     pub line_height: f32,
+
+    #[reflect(skip)]
+    pub(crate) data: TextData,
 }
 
 #[derive(Debug)]

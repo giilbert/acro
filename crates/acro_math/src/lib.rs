@@ -4,7 +4,10 @@ mod tree;
 mod types;
 
 pub use crate::{
-    transform::{propagate_global_transform, Children, GlobalTransform, Parent, Root, Transform},
+    transform::{
+        propagate_global_transform, Children, GlobalTransform, Parent, Root, Transform,
+        TransformBoundary,
+    },
     types::*,
 };
 
@@ -30,6 +33,7 @@ impl Plugin for MathPlugin {
             .init_component::<Parent>()
             .init_component::<Children>()
             .init_component::<Root>()
+            .init_component::<TransformBoundary>()
             .add_system(Stage::PostUpdate, [], propagate_global_transform);
 
         if self.scripting {

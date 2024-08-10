@@ -1,18 +1,20 @@
 mod box_renderer;
 mod context;
 mod document;
-mod element;
 mod panel;
 mod rect;
 mod rendering;
 mod text;
 
 use acro_ecs::{Application, Plugin, Res, ResMut, Stage, SystemRunContext};
+use acro_math::TransformBoundary;
 use acro_render::RendererHandle;
 use acro_scene::ComponentLoaders;
 use acro_scripting::ScriptingRuntime;
 use context::UiContext;
-use document::{render_ui, update_screen_ui_rect, ScreenUi};
+use document::{render_panel, update_screen_ui_rect, ScreenUi};
+use panel::Panel;
+use rect::{PositioningOptions, Rect, RootOptions};
 use text::Text;
 
 pub struct UiPlugin;
@@ -21,14 +23,28 @@ impl Plugin for UiPlugin {
     fn build(&mut self, app: &mut Application) {
         let ui_context = UiContext::default();
 
-        app.init_component::<Text>()
+        app.init_component::<Rect>()
+            .init_component::<Text>()
             .init_component::<ScreenUi>()
+            .init_component::<Panel>()
             .insert_resource(ui_context)
             .with_resource::<ComponentLoaders>(|loaders| {
                 loaders.register("ScreenUi", |world, entity, _value| {
                     let ui_context = world.resource::<UiContext>().clone();
-                    // TODO: actually load the component's value
-                    Ok(world.insert(entity, ScreenUi::new(ui_context)))
+                    world.insert(entity, TransformBoundary);
+                    world.insert(entity, Rect::new_root(RootOptions::default()));
+                    world.insert(entity, ScreenUi::new(ui_context));
+                    Ok(())
+                });
+
+                loaders.register("Rect", |world, entity, value| {
+                    let position = serde_yml::from_value::<PositioningOptions>(value)?;
+                    Ok(world.insert(entity, Rect::new(position)))
+                });
+
+                loaders.register("Panel", |world, entity, value| {
+                    let panel = serde_yml::from_value::<Panel>(value)?;
+                    Ok(world.insert(entity, panel))
                 });
             })
             .with_resource::<ScriptingRuntime>(|mut runtime| {
@@ -45,6 +61,6 @@ impl Plugin for UiPlugin {
                 },
             )
             // .add_system(Stage::Render, [], draw_text)
-            .add_system(Stage::Render, [], render_ui);
+            .add_system(Stage::Render, [], render_panel);
     }
 }

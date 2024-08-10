@@ -2,15 +2,15 @@ use std::{
     cell::{Ref, RefCell, RefMut},
     collections::HashMap,
     fmt::Debug,
-    rc::{Rc, Weak},
+    rc::Rc,
 };
 
 use acro_ecs::{entity, query, EntityId, Query, SystemRunContext};
 use acro_math::{Children, Parent, Vec2};
-use serde::Deserialize;
-use tracing::info;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(tag = "type", content = "value")]
 pub enum Dim {
     #[default]
     Auto,
@@ -26,7 +26,6 @@ pub struct Rect {
 #[derive(Debug, Default)]
 pub struct RectInner {
     pub(crate) size: Vec2,
-
     // Position of this Rect from the top-left corner of the screen
     pub(crate) offset: Vec2,
 
@@ -34,7 +33,7 @@ pub struct RectInner {
     children_top_left_offsets: HashMap<EntityId, Vec2>,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct Dir<T: Debug + Default + Copy> {
     pub left: T,
     pub right: T,
@@ -62,22 +61,27 @@ impl<T: Debug + Default + Copy> Dir<T> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PositioningOptions {
+    #[serde(default)]
     pub width: Dim,
+    #[serde(default)]
     pub height: Dim,
+    #[serde(default)]
     pub padding: Dir<Dim>,
+    #[serde(default)]
     pub margin: Dir<Dim>,
+    #[serde(default)]
     pub flex: FlexOptions,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct FlexOptions {
     pub direction: FlexDirection,
     pub gap: Dim,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FlexDirection {
     Row,
     // RowReverse,
@@ -115,10 +119,11 @@ impl RectQueries<'_> {
         }
     }
 
-    pub fn get_parent(&self, entity_id: EntityId) -> Option<EntityId> {
+    pub fn get_parent(&self, entity_id: EntityId) -> EntityId {
         self.parent_query
             .get(self.ctx, entity_id)
-            .map(|parent| parent.0)
+            .expect("parent should exist")
+            .0
     }
 
     pub fn get_children(&self, entity_id: EntityId) -> Vec<EntityId> {
@@ -242,7 +247,7 @@ impl RectInner {
                 min_children_size
             }
             Dim::Percent(percent) => {
-                let parent_id = queries.get_parent(entity_id).expect("parent should exist");
+                let parent_id = queries.get_parent(entity_id);
                 let parent_rect = queries.get_rect(parent_id);
                 get_parent_available_size(
                     parent_rect.calculate_available_space(parent_id, queries) * percent,
@@ -298,8 +303,9 @@ impl RectInner {
         entity_id: EntityId,
         queries: &RectQueries,
     ) -> Vec2 {
-        let (parent_id, parent) = match queries.get_parent(entity_id) {
-            Some(parent_id) => (parent_id, queries.get_rect(parent_id)),
+        let parent_id = queries.get_parent(entity_id);
+        let parent = match queries.rect_query.get(queries.ctx, parent_id) {
+            Some(parent) => parent.inner(),
             None => return Vec2::zeros(),
         };
 
@@ -546,7 +552,7 @@ mod tests {
     fn multiple_elements_1() {
         let mut world = create_world();
 
-        let mut root_rect = Rect::new_root(RootOptions {
+        let root_rect = Rect::new_root(RootOptions {
             size: Vec2::new(400.0, 1000.0),
             flex: FlexOptions {
                 gap: Dim::Px(10.0),
@@ -561,7 +567,7 @@ mod tests {
             ..Default::default()
         });
 
-        let mut child_2_rect = Rect::new(PositioningOptions {
+        let child_2_rect = Rect::new(PositioningOptions {
             width: Dim::Percent(1.0),
             height: Dim::Px(400.0),
             padding: Dir::all(Dim::Px(10.0)),
@@ -608,51 +614,61 @@ mod tests {
             assert_eq!(child_2.offset, Vec2::new(0.0, 210.0));
             assert_eq!(child_3.offset, Vec2::new(0.0, 620.0));
 
-            // TODO: this is a hashmap now, change this
-            // assert_eq!(child_2.children_top_left_offsets, &[Vec2::new(0.0, 0.0)]);
             assert_eq!(child_of_child_2.offset, Vec2::new(10.0, 220.0));
         });
     }
 
-    // #[test]
-    // fn flex_row_1() {
-    //     let mut root = Rect::new_root(RootOptions {
-    //         size: Vec2::new(800.0, 400.0),
-    //         flex: FlexOptions {
-    //             gap: Dim::Px(10.0),
-    //             direction: FlexDirection::Row,
-    //         },
-    //         ..Default::default()
-    //     });
+    #[test]
+    fn flex_row_1() {
+        let mut world = create_world();
 
-    //     let child_1 = root.new_child(PositioningOptions {
-    //         width: Dim::Px(100.0),
-    //         height: Dim::Percent(1.0),
-    //         ..Default::default()
-    //     });
+        let root_rect = Rect::new_root(RootOptions {
+            size: Vec2::new(800.0, 400.0),
+            flex: FlexOptions {
+                gap: Dim::Px(10.0),
+                direction: FlexDirection::Row,
+            },
+            ..Default::default()
+        });
 
-    //     let child_2 = root.new_child(PositioningOptions {
-    //         width: Dim::Px(100.0),
-    //         height: Dim::Percent(1.0),
-    //         ..Default::default()
-    //     });
+        let child_1_rect = Rect::new(PositioningOptions {
+            width: Dim::Px(100.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
 
-    //     let child_3 = root.new_child(PositioningOptions {
-    //         width: Dim::Px(100.0),
-    //         height: Dim::Percent(1.0),
-    //         ..Default::default()
-    //     });
+        let child_2_rect = Rect::new(PositioningOptions {
+            width: Dim::Px(100.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
 
-    //     println!("{}", root.get_tree_string());
+        let child_3_rect = Rect::new(PositioningOptions {
+            width: Dim::Px(100.0),
+            height: Dim::Percent(1.0),
+            ..Default::default()
+        });
 
-    //     let root = root.inner();
-    //     let child_1 = child_1.inner();
-    //     let child_2 = child_2.inner();
-    //     let child_3 = child_3.inner();
+        let root = world.spawn((root_rect.clone(),));
+        let child_1 = world.spawn((child_1_rect.clone(), Parent(root)));
+        let child_2 = world.spawn((child_2_rect.clone(), Parent(root)));
+        let child_3 = world.spawn((child_3_rect.clone(), Parent(root)));
 
-    //     assert_eq!(root.offset, Vec2::new(0.0, 0.0));
-    //     assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
-    //     assert_eq!(child_2.offset, Vec2::new(110.0, 0.0));
-    //     assert_eq!(child_3.offset, Vec2::new(220.0, 0.0));
-    // }
+        world.insert(root, Children(vec![child_1, child_2, child_3]));
+        world.insert(child_1, Children(vec![]));
+        world.insert(child_2, Children(vec![]));
+        world.insert(child_3, Children(vec![]));
+
+        update_and_test(&mut world, root, move |_rect_queries| {
+            let root = root_rect.inner();
+            let child_1 = child_1_rect.inner();
+            let child_2 = child_2_rect.inner();
+            let child_3 = child_3_rect.inner();
+
+            assert_eq!(root.offset, Vec2::new(0.0, 0.0));
+            assert_eq!(child_1.offset, Vec2::new(0.0, 0.0));
+            assert_eq!(child_2.offset, Vec2::new(110.0, 0.0));
+            assert_eq!(child_3.offset, Vec2::new(220.0, 0.0));
+        });
+    }
 }

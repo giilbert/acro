@@ -1,12 +1,13 @@
 use acro_ecs::{EntityId, Query, Res, ResMut, SystemRunContext};
 use acro_math::{Children, Parent, Vec2};
 use acro_render::RendererHandle;
+use tracing::info;
 
 use crate::{
+    box_renderer::BoxInstance,
     context::UiContext,
-    element::UiElement,
-    rect::{Dim, PositioningOptions, Rect, RectQueries, RootOptions},
-    rendering::UiRenderContext,
+    panel::Panel,
+    rect::{Dim, PositioningOptions, Rect, RectQueries},
 };
 
 pub struct ScreenUi {
@@ -28,7 +29,7 @@ pub fn update_screen_ui_rect(
     renderer: Res<RendererHandle>,
 ) {
     let renderer_size = renderer.size.borrow();
-    for (entity_id, screen_ui, rect) in screen_ui_query.over(&ctx) {
+    for (entity_id, _screen_ui, rect) in screen_ui_query.over(&ctx) {
         {
             let mut document_rect = rect.inner_mut();
             document_rect.options = PositioningOptions {
@@ -40,6 +41,7 @@ pub fn update_screen_ui_rect(
             };
             document_rect.size = Vec2::new(renderer_size.width as f32, renderer_size.height as f32);
         }
+
         rect.recalculate(
             entity_id,
             &RectQueries {
@@ -49,29 +51,26 @@ pub fn update_screen_ui_rect(
                 rect_query: &rect_query,
             },
         );
-        // println!("{}", screen_ui.document.rect.get_tree_string());
     }
 }
 
-pub fn render_ui(
+pub fn render_panel(
     ctx: SystemRunContext,
-    screen_ui_query: Query<&ScreenUi>,
+    panel_query: Query<(&Rect, &Panel)>,
     ui_context: ResMut<UiContext>,
     renderer: Res<RendererHandle>,
 ) -> eyre::Result<()> {
-    for screen_ui in screen_ui_query.over(&ctx) {
-        let mut render_ctx = UiRenderContext {
-            renderer: renderer.clone(),
-        };
-        // screen_ui.render(&mut render_ctx);
+    let box_renderer = &mut ui_context.inner_mut().box_renderer;
+
+    for (panel_rect, panel) in panel_query.over(&ctx) {
+        let panel_rect = panel_rect.inner();
+
+        box_renderer.draw(BoxInstance {
+            size: panel_rect.size,
+            offset: panel_rect.offset,
+            color: panel.color.to_srgba(),
+        });
     }
 
-    ui_context.inner_mut().box_renderer.finish(&renderer)
-}
-
-pub fn update_rect(
-    ctx: SystemRunContext,
-    screen_ui_query: Query<&ScreenUi>,
-    children_query: Query<(&Rect, &Children)>,
-) {
+    box_renderer.finish(&renderer)
 }
