@@ -14,7 +14,9 @@ pub struct Scene {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Entity {
     name: String,
+    #[serde(default)]
     components: Vec<Component>,
+    #[serde(default)]
     children: Vec<Entity>,
 }
 

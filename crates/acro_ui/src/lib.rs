@@ -12,10 +12,10 @@ use acro_render::RendererHandle;
 use acro_scene::ComponentLoaders;
 use acro_scripting::ScriptingRuntime;
 use context::UiContext;
-use document::{render_panel, update_screen_ui_rect, ScreenUi};
-use panel::Panel;
+use document::{update_screen_ui_rect, ScreenUi};
+use panel::{render_panel, Panel};
 use rect::{PositioningOptions, Rect, RootOptions};
-use text::Text;
+use text::{init_text, render_text, Text};
 
 pub struct UiPlugin;
 
@@ -30,16 +30,19 @@ impl Plugin for UiPlugin {
             .insert_resource(ui_context)
             .with_resource::<ComponentLoaders>(|loaders| {
                 loaders.register("ScreenUi", |world, entity, _value| {
-                    let ui_context = world.resource::<UiContext>().clone();
                     world.insert(entity, TransformBoundary);
                     world.insert(entity, Rect::new_root(RootOptions::default()));
-                    world.insert(entity, ScreenUi::new(ui_context));
+                    world.insert(entity, ScreenUi);
                     Ok(())
                 });
 
                 loaders.register("Rect", |world, entity, value| {
                     let position = serde_yml::from_value::<PositioningOptions>(value)?;
                     Ok(world.insert(entity, Rect::new(position)))
+                });
+
+                loaders.register("Text", |world, entity, value| {
+                    Ok(world.insert(entity, serde_yml::from_value::<Text>(value)?))
                 });
 
                 loaders.register("Panel", |world, entity, value| {
@@ -51,6 +54,7 @@ impl Plugin for UiPlugin {
                 runtime.register_component::<Text>("Text");
             })
             .add_system(Stage::PreRender, [], update_screen_ui_rect)
+            .add_system(Stage::PreRender, [], init_text)
             .add_system(
                 Stage::PreRender,
                 [],
@@ -61,6 +65,7 @@ impl Plugin for UiPlugin {
                 },
             )
             // .add_system(Stage::Render, [], draw_text)
-            .add_system(Stage::Render, [], render_panel);
+            .add_system(Stage::Render, [], render_panel)
+            .add_system(Stage::Render, [], render_text);
     }
 }

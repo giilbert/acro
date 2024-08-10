@@ -1,24 +1,11 @@
-use acro_ecs::{EntityId, Query, Res, ResMut, SystemRunContext};
+use acro_ecs::{EntityId, Query, Res, SystemRunContext};
 use acro_math::{Children, Parent, Vec2};
 use acro_render::RendererHandle;
 use tracing::info;
 
-use crate::{
-    box_renderer::BoxInstance,
-    context::UiContext,
-    panel::Panel,
-    rect::{Dim, PositioningOptions, Rect, RectQueries},
-};
+use crate::rect::{Dim, PositioningOptions, Rect, RectQueries};
 
-pub struct ScreenUi {
-    ctx: UiContext,
-}
-
-impl ScreenUi {
-    pub fn new(ctx: UiContext) -> Self {
-        Self { ctx }
-    }
-}
+pub struct ScreenUi;
 
 pub fn update_screen_ui_rect(
     ctx: SystemRunContext,
@@ -52,25 +39,4 @@ pub fn update_screen_ui_rect(
             },
         );
     }
-}
-
-pub fn render_panel(
-    ctx: SystemRunContext,
-    panel_query: Query<(&Rect, &Panel)>,
-    ui_context: ResMut<UiContext>,
-    renderer: Res<RendererHandle>,
-) -> eyre::Result<()> {
-    let box_renderer = &mut ui_context.inner_mut().box_renderer;
-
-    for (panel_rect, panel) in panel_query.over(&ctx) {
-        let panel_rect = panel_rect.inner();
-
-        box_renderer.draw(BoxInstance {
-            size: panel_rect.size,
-            offset: panel_rect.offset,
-            color: panel.color.to_srgba(),
-        });
-    }
-
-    box_renderer.finish(&renderer)
 }
