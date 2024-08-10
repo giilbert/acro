@@ -2,6 +2,7 @@ mod box_renderer;
 mod context;
 mod document;
 mod panel;
+mod positioning_options;
 mod rect;
 mod rendering;
 mod text;
@@ -14,7 +15,8 @@ use acro_scripting::ScriptingRuntime;
 use context::UiContext;
 use document::{update_screen_ui_rect, ScreenUi};
 use panel::{render_panel, Panel};
-use rect::{PositioningOptions, Rect, RootOptions};
+use positioning_options::PositioningOptions;
+use rect::{Rect, RootOptions};
 use text::{init_text, render_text, Text};
 
 pub struct UiPlugin;

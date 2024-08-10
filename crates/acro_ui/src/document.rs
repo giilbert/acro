@@ -3,7 +3,10 @@ use acro_math::{Children, Parent, Vec2};
 use acro_render::RendererHandle;
 use tracing::info;
 
-use crate::rect::{Dim, PositioningOptions, Rect, RectQueries};
+use crate::{
+    positioning_options::{Dim, PositioningOptions},
+    rect::{Rect, RectQueries},
+};
 
 pub struct ScreenUi;
 

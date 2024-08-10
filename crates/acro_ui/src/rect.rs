@@ -9,14 +9,7 @@ use acro_ecs::{entity, query, EntityId, Query, SystemRunContext};
 use acro_math::{Children, Parent, Vec2};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
-#[serde(tag = "type", content = "value")]
-pub enum Dim {
-    #[default]
-    Auto,
-    Px(f32),
-    Percent(f32),
-}
+use crate::positioning_options::{Dim, DirDim, FlexDirection, FlexOptions, PositioningOptions};
 
 #[derive(Debug, Clone, Default)]
 pub struct Rect {
@@ -33,67 +26,10 @@ pub struct RectInner {
     children_top_left_offsets: HashMap<EntityId, Vec2>,
 }
 
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
-pub struct Dir<T: Debug + Default + Copy> {
-    pub left: T,
-    pub right: T,
-    pub top: T,
-    pub bottom: T,
-}
-
-impl<T: Debug + Default + Copy> Dir<T> {
-    pub fn all(val: T) -> Dir<T> {
-        Dir {
-            left: val.clone(),
-            right: val.clone(),
-            top: val.clone(),
-            bottom: val.clone(),
-        }
-    }
-
-    pub fn xy(x: T, y: T) -> Dir<T> {
-        Self {
-            left: x.clone(),
-            right: x,
-            top: y.clone(),
-            bottom: y,
-        }
-    }
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct PositioningOptions {
-    #[serde(default)]
-    pub width: Dim,
-    #[serde(default)]
-    pub height: Dim,
-    #[serde(default)]
-    pub padding: Dir<Dim>,
-    #[serde(default)]
-    pub margin: Dir<Dim>,
-    #[serde(default)]
-    pub flex: FlexOptions,
-}
-
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
-pub struct FlexOptions {
-    pub direction: FlexDirection,
-    pub gap: Dim,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FlexDirection {
-    Row,
-    // RowReverse,
-    #[default]
-    Column,
-    // ColumnReverse,
-}
-
 #[derive(Debug, Default)]
 pub struct RootOptions {
     pub size: Vec2,
-    pub padding: Dir<Dim>,
+    pub padding: DirDim,
     pub flex: FlexOptions,
 }
 
@@ -165,7 +101,7 @@ impl Rect {
                     width: Dim::Px(options.size.x),
                     height: Dim::Px(options.size.y),
                     padding: options.padding,
-                    margin: Dir::default(),
+                    margin: DirDim::default(),
                     flex: options.flex,
                 },
                 children_top_left_offsets: HashMap::new(),
@@ -432,7 +368,7 @@ mod tests {
 
     use crate::rect::{FlexDirection, FlexOptions, PositioningOptions, RectQueries, RootOptions};
 
-    use super::{Dim, Dir, Rect};
+    use super::{Dim, DirDim, Rect};
 
     fn create_world() -> World {
         let mut world = World::new();
@@ -476,15 +412,15 @@ mod tests {
         let child_rect = Rect::new(PositioningOptions {
             width: Dim::Px(160.0),
             height: Dim::Px(40.0),
-            padding: Dir::xy(Dim::Px(10.0), Dim::Px(0.0)),
-            margin: Dir::xy(Dim::Px(0.0), Dim::Px(10.0)),
+            padding: DirDim::xy(Dim::Px(10.0), Dim::Px(0.0)),
+            margin: DirDim::xy(Dim::Px(0.0), Dim::Px(10.0)),
             ..Default::default()
         });
         let child_of_child_rect = Rect::new(PositioningOptions {
             width: Dim::Percent(1.0),
             height: Dim::Percent(1.0),
-            padding: Dir::default(),
-            margin: Dir::xy(Dim::Px(20.0), Dim::Px(20.0)),
+            padding: DirDim::default(),
+            margin: DirDim::xy(Dim::Px(20.0), Dim::Px(20.0)),
             ..Default::default()
         });
 
@@ -508,19 +444,19 @@ mod tests {
 
         let root_rect = Rect::new_root(RootOptions {
             size: Vec2::new(1200.0, 800.0),
-            padding: Dir::all(Dim::Px(10.0)),
+            padding: DirDim::all(Dim::Px(10.0)),
             ..Default::default()
         });
         let child_rect = Rect::new(PositioningOptions {
             width: Dim::Percent(1.0),
             height: Dim::Percent(1.0),
-            margin: Dir::all(Dim::Px(10.0)),
+            margin: DirDim::all(Dim::Px(10.0)),
             ..Default::default()
         });
         let child_of_child_rect = Rect::new(PositioningOptions {
             width: Dim::Percent(0.5),
             height: Dim::Percent(1.0),
-            margin: Dir {
+            margin: DirDim {
                 right: Dim::Px(10.0),
                 ..Default::default()
             },
@@ -570,7 +506,7 @@ mod tests {
         let child_2_rect = Rect::new(PositioningOptions {
             width: Dim::Percent(1.0),
             height: Dim::Px(400.0),
-            padding: Dir::all(Dim::Px(10.0)),
+            padding: DirDim::all(Dim::Px(10.0)),
             ..Default::default()
         });
 

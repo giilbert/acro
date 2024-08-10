@@ -45,33 +45,13 @@ entities:
       - name: Panel
         components:
           - name: Rect
-            width:
-              type: Percent
-              value: 1.0
-            height:
-              type: Px
-              value: 200.0
-            margin:
-              top:
-                type: Px
-                value: 10.0
-              right:
-                type: Px
-                value: 10.0
-              bottom:
-                type: Px
-                value: 10.0
-              left:
-                type: Px
-                value: 10.0
+            width: 100.0%
+            height: 200px
+            margin: [10px, 10px, 10px, 10px]
           - name: Panel
             color:
               type: Srgba
-              value:
-                r: 0.03
-                g: 0.03
-                b: 0.03
-                a: 1.0
+              value: [0.03, 0.03, 0.03, 1.0]
         children:
           - name: Text
             components:
@@ -80,22 +60,6 @@ entities:
                 font_size: 20.0
                 line_height: 24.0
               - name: Rect
-                width:
-                  type: Percent
-                  value: 1.0
-                height:
-                  type: Percent
-                  value: 1.0
-                margin:
-                  top:
-                    type: Px
-                    value: 10.0
-                  right:
-                    type: Px
-                    value: 10.0
-                  bottom:
-                    type: Px
-                    value: 10.0
-                  left:
-                    type: Px
-                    value: 10.0
+                width: 100.0%
+                height: 100.0%
+                margin: [10px, 10px, 10px, 10px]
