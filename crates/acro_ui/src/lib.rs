@@ -15,7 +15,7 @@ use acro_scripting::ScriptingRuntime;
 use context::UiContext;
 use document::{update_screen_ui_rect, ScreenUi};
 use panel::{render_panel, Panel};
-use positioning_options::PositioningOptions;
+use positioning_options::{Dim, FlexOptions, PositioningOptions};
 use rect::{Rect, RootOptions};
 use text::{init_text, render_text, Text};
 
@@ -33,7 +33,16 @@ impl Plugin for UiPlugin {
             .with_resource::<ComponentLoaders>(|loaders| {
                 loaders.register("ScreenUi", |world, entity, _value| {
                     world.insert(entity, TransformBoundary);
-                    world.insert(entity, Rect::new_root(RootOptions::default()));
+                    world.insert(
+                        entity,
+                        Rect::new_root(RootOptions {
+                            flex: FlexOptions {
+                                gap: Dim::Px(10.0),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }),
+                    );
                     world.insert(entity, ScreenUi);
                     Ok(())
                 });
@@ -56,7 +65,6 @@ impl Plugin for UiPlugin {
                 runtime.register_component::<Text>("Text");
             })
             .add_system(Stage::PreRender, [], update_screen_ui_rect)
-            .add_system(Stage::PreRender, [], init_text)
             .add_system(
                 Stage::PreRender,
                 [],
@@ -68,6 +76,7 @@ impl Plugin for UiPlugin {
             )
             // .add_system(Stage::Render, [], draw_text)
             .add_system(Stage::Render, [], render_panel)
+            .add_system(Stage::PreRender, [], init_text)
             .add_system(Stage::Render, [], render_text);
     }
 }

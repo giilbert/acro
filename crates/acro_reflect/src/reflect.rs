@@ -118,6 +118,7 @@ impl_reflect_prim!(isize);
 impl_reflect_prim!(f32);
 impl_reflect_prim!(f64);
 impl_reflect_prim!(String);
+impl_reflect_prim!(bool);
 
 #[cfg(test)]
 mod tests {

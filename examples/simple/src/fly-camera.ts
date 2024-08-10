@@ -1,6 +1,6 @@
 import { Behavior, Entity, Input, Vec2, Vec3 } from "jsr:@acro/lib";
 
-const MOVE_SPEED = 10;
+const MOVE_SPEED = 20;
 
 class FlyCamera extends Behavior {
   private lastMousePosition = new Vec2(0, 0);

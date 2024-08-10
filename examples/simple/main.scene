@@ -46,7 +46,7 @@ entities:
         components:
           - name: Rect
             width: 100.0%
-            height: 200px
+            height: 100px
             margin: [10px, 10px, 10px, 10px]
           - name: Panel
             color:
@@ -56,9 +56,30 @@ entities:
           - name: Text
             components:
               - name: Text
-                content: "Hello, World!"
+                content: this is a text component
                 font_size: 20.0
                 line_height: 24.0
+              - name: Rect
+                width: 100.0%
+                height: 100.0%
+                margin: [10px, 10px, 10px, 10px]
+      - name: Panel 2
+        components:
+          - name: Rect
+            width: 100.0%
+            height: 100px
+            margin: [10px, 10px, 10px, 10px]
+          - name: Panel
+            color:
+              type: Srgba
+              value: [0.03, 0.03, 0.03, 1.0]
+        children:
+          - name: Text
+            components:
+              - name: Text
+                content: this is another text component
+                font_size: 24.0
+                line_height: 28.0
               - name: Rect
                 width: 100.0%
                 height: 100.0%
