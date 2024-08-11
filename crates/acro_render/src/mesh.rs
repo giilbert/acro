@@ -9,74 +9,11 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     camera::MainCamera,
+    mesh_geometry::{MeshGeometryData, Vertex},
     shader::{BindGroupId, Shader, UniformId},
     texture::Texture,
     Camera, RendererHandle,
 };
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub struct Vertex {
-    pub position: Vec3,
-    pub tex_coords: Vec2,
-}
-
-cfg_if! {
-    if #[cfg(feature = "double-precision")] {
-        const VEC3_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float64x3;
-        const VEC2_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float64x2;
-    } else {
-        const VEC3_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float32x3;
-        const VEC2_FORMAT: wgpu::VertexFormat = wgpu::VertexFormat::Float32x2;
-    }
-}
-
-impl Vertex {
-    fn layout() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: VEC3_FORMAT,
-                },
-                wgpu::VertexAttribute {
-                    offset: std::mem::size_of::<Vec3>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: VEC2_FORMAT,
-                },
-            ],
-        }
-    }
-}
-
-unsafe impl Zeroable for Vertex {}
-unsafe impl Pod for Vertex {}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum MeshGeometryData {
-    Embedded {
-        vertices: Vec<Vertex>,
-        indices: Vec<u32>,
-    },
-}
-
-impl MeshGeometryData {
-    pub fn vertices(&self) -> &[Vertex] {
-        match self {
-            Self::Embedded { vertices, .. } => vertices,
-        }
-    }
-
-    pub fn indices(&self) -> &[u32] {
-        match self {
-            Self::Embedded { indices, .. } => indices,
-        }
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Mesh {
@@ -125,13 +62,13 @@ pub fn upload_mesh_system(
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&mesh.geometry.vertices()),
+            contents: bytemuck::cast_slice(&mesh.geometry.vertices(&assets)),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(&mesh.geometry.indices()),
+            contents: bytemuck::cast_slice(&mesh.geometry.indices(&assets)),
             usage: wgpu::BufferUsages::INDEX,
         });
 
@@ -293,7 +230,7 @@ pub fn render_mesh_system(
             mesh_render_pass.set_vertex_buffer(0, data.vertex_buffer.slice(..));
             mesh_render_pass
                 .set_index_buffer(data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            mesh_render_pass.draw_indexed(0..mesh.geometry.indices().len() as u32, 0, 0..1);
+            mesh_render_pass.draw_indexed(0..mesh.geometry.indices(&assets).len() as u32, 0, 0..1);
         }
     }
 }

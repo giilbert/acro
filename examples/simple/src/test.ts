@@ -1,5 +1,4 @@
 import { $, Behavior, Entity } from "jsr:@acro/core";
-import { Vec3 } from "jsr:@acro/math";
 import { Input } from "jsr:@acro/input";
 import { Text } from "jsr:@acro/ui";
 
@@ -12,12 +11,14 @@ class TestBehavior extends Behavior {
   }
 
   update(deltaTime: number) {
-    if (Input.isMousePressed("Left")) {
-      this.transform.rotation.z -= 5 * deltaTime;
-      this.text.content = this.transform.rotation.z.toFixed(2);
-      this.text.fontSize += 0.01;
-    }
-    this.transform.scale = new Vec3(2, 2, 2);
+    if (Input.isMousePressed("Left"))
+      this.transform.rotation.y += 5 * deltaTime;
+    if (Input.isMousePressed("Right"))
+      this.transform.rotation.y -= 5 * deltaTime;
+
+    this.text.content = `y rotation (radians): ${this.transform.rotation.y.toFixed(
+      2
+    )}`;
   }
 }
 

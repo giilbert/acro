@@ -4,9 +4,7 @@ use acro_assets::{Assets, AssetsPlugin};
 use acro_ecs::{Application, Plugin, Query, Res, Stage, SystemRunContext, With};
 use acro_log::LogPlugin;
 use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
-use acro_render::{
-    Camera, CameraType, MainCamera, Mesh, RenderPlugin, Texture, Vertex, WindowState,
-};
+use acro_render::{Mesh, RenderPlugin, WindowState};
 use acro_scene::{SceneManager, ScenePlugin};
 use acro_scripting::{Behavior, ScriptingPlugin, SourceFile};
 use acro_ui::UiPlugin;

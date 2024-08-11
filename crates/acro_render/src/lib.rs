@@ -1,6 +1,7 @@
 mod camera;
 mod color;
 mod mesh;
+mod mesh_geometry;
 mod ops;
 mod shader;
 mod state;
@@ -12,7 +13,7 @@ use std::cell::RefCell;
 pub use crate::{
     camera::{Camera, CameraType, MainCamera},
     color::{Color, Srgba},
-    mesh::{Mesh, Vertex},
+    mesh::Mesh,
     state::{FrameState, RendererHandle},
     texture::Texture,
     window::WindowState,
@@ -24,6 +25,7 @@ use acro_scene::ComponentLoaders;
 use acro_scripting::ScriptingRuntime;
 use camera::{update_projection_matrix, CameraOptions};
 use mesh::{render_mesh_system, upload_mesh_system};
+use mesh_geometry::{MeshGeometryData, ObjFile};
 use ops::{op_get_key_press, op_get_mouse_position, op_get_mouse_press};
 use shader::Shader;
 use window::Window;
@@ -43,23 +45,27 @@ impl Plugin for RenderPlugin {
             .with_resource::<Assets>(|mut assets| {
                 assets.register_loader::<Shader>();
                 assets.register_loader::<Texture>();
+                assets.register_loader::<ObjFile>();
             })
             .with_resource::<ComponentLoaders>(|loaders| {
                 loaders.register("Mesh", |world, entity, serialized| {
                     let mesh_data = serde_yml::from_value::<Mesh>(serialized)?;
 
-                    world
-                        .resources()
-                        .get_mut::<Assets>()
-                        .queue::<Shader>(&mesh_data.shader_path);
-                    if let Some(diffuse_texture) = &mesh_data.diffuse_texture {
-                        world
-                            .resources()
-                            .get_mut::<Assets>()
-                            .queue::<Texture>(diffuse_texture);
+                    {
+                        let assets = world.resources().get::<Assets>();
+                        assets.queue::<Shader>(&mesh_data.shader_path);
+
+                        if let Some(diffuse_texture) = &mesh_data.diffuse_texture {
+                            assets.queue::<Texture>(diffuse_texture);
+                        }
+
+                        if let MeshGeometryData::ObjAsset(path) = &mesh_data.geometry {
+                            assets.queue::<ObjFile>(&path);
+                        }
                     }
 
                     world.insert(entity, mesh_data);
+
                     Ok(())
                 });
 
