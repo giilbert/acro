@@ -1,4 +1,4 @@
-import { Vec2 } from "./mod.ts";
+import { Vec2 } from "jsr:@acro/math";
 
 declare namespace Deno.core.ops {
   const op_get_key_press: (key: string) => boolean;

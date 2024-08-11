@@ -1,5 +1,8 @@
-import { getPropertyNumber, setPropertyNumber } from "./deno.ts";
-import type { Attachment } from "./core.ts";
+import {
+  type Attachment,
+  getPropertyNumber,
+  setPropertyNumber,
+} from "jsr:@acro/core";
 
 interface Vec3Like {
   x: number;

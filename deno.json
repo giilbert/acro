@@ -1,4 +1,4 @@
 {
-  "workspace": ["./lib", "./examples/simple"],
+  "workspace": ["./lib/core", "./lib/input", "./lib/math", "./examples/simple"],
   "imports": {}
 }

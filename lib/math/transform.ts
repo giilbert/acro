@@ -1,5 +1,9 @@
-import { getPropertyVec3, setPropertyVec3 } from "./deno.ts";
-import { type Attachment, Vec3 } from "./mod.ts";
+import {
+  type Attachment,
+  getPropertyVec3,
+  setPropertyVec3,
+} from "jsr:@acro/core";
+import { Vec3 } from "jsr:@acro/math";
 
 export class Transform {
   private _position: Vec3;

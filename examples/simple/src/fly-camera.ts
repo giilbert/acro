@@ -1,4 +1,6 @@
-import { Behavior, Entity, Input, Vec2, Vec3 } from "jsr:@acro/lib";
+import { Behavior, Entity } from "jsr:@acro/core";
+import { Input } from "jsr:@acro/input";
+import { Vec2 } from "jsr:@acro/math";
 
 const MOVE_SPEED = 20;
 

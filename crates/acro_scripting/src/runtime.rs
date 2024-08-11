@@ -172,9 +172,12 @@ impl ImportProvider for AcroLibImportProvider {
         _kind: deno_core::ResolutionKind,
     ) -> Option<Result<deno_core::ModuleSpecifier, deno_core::anyhow::Error>> {
         match specifier.scheme() {
-            "jsr" if specifier.path() == "@acro/lib" => {
+            "jsr" if specifier.path().starts_with("@acro/") => {
                 let mut cwd = std::env::current_dir().expect("failed to get current directory");
-                cwd.push("lib/mod.ts");
+                cwd.push(&format!(
+                    "lib/{}/mod.ts",
+                    specifier.path().replace("@acro/", "")
+                ));
                 cwd.to_str()
                     .map(|path| Ok(Url::parse(&format!("file://{}", path)).unwrap()))
             }
@@ -217,7 +220,7 @@ pub fn init_scripting_runtime(
         .borrow_mut()
         .put(runtime.world_handle.clone());
 
-    let acro_init_module = Module::load("lib/init.ts")?;
+    let acro_init_module = Module::load("lib/core/init.ts")?;
     let acro_init_module_handle = inner_runtime
         .load_module(&acro_init_module)
         .expect("error loading init module");

@@ -1,5 +1,4 @@
-import { Transform } from "./transform.ts";
-import { Vec3 } from "./vec3.ts";
+import { Transform, Vec3 } from "jsr:@acro/math";
 
 export class Entity {
   generation: number;

@@ -1,4 +1,5 @@
-import { Behavior, Entity, Input, Vec3 } from "jsr:@acro/lib";
+import { Behavior, Entity } from "jsr:@acro/core";
+import { Vec3 } from "jsr:@acro/math";
 
 class TestBehavior extends Behavior {
   constructor(entity: Entity) {

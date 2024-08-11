@@ -1,7 +1,7 @@
 // interface Deno {}
 
-import type { Attachment } from "./core.ts";
-import { Vec3 } from "./vec3.ts";
+import type { Attachment } from "./mod.ts";
+import { Vec3 } from "jsr:@acro/math";
 
 declare namespace Deno.core.ops {
   const op_get_property_string: (

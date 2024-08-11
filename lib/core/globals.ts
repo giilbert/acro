@@ -1,4 +1,4 @@
-import { type Behavior, Entity } from "./core.ts";
+import { type Behavior, Entity } from "./mod.ts";
 
 interface ConstructableBehavior {
   new (entity: Entity, ...args: unknown[]): unknown;
