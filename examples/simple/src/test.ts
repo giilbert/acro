@@ -12,9 +12,9 @@ class TestBehavior extends Behavior {
 
   update(deltaTime: number) {
     if (Input.isMousePressed("Left"))
-      this.transform.rotation.y += 5 * deltaTime;
-    if (Input.isMousePressed("Right"))
       this.transform.rotation.y -= 5 * deltaTime;
+    if (Input.isMousePressed("Right"))
+      this.transform.rotation.y += 5 * deltaTime;
 
     this.text.content = `y rotation (radians): ${this.transform.rotation.y.toFixed(
       2

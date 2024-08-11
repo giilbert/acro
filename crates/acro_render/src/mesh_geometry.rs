@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 pub struct Vertex {
     pub position: Vec3,
     pub tex_coords: Vec2,
+    pub normal: Vec3,
 }
 
 cfg_if::cfg_if! {
@@ -39,6 +40,12 @@ impl Vertex {
                     offset: std::mem::size_of::<Vec3>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: VEC2_FORMAT,
+                },
+                wgpu::VertexAttribute {
+                    offset: (std::mem::size_of::<Vec2>() + std::mem::size_of::<Vec3>())
+                        as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: VEC3_FORMAT,
                 },
             ],
         }
@@ -109,6 +116,7 @@ impl Loadable for ObjFile {
                     vertices.push(Vertex {
                         position: Vec3::new(x, y, z),
                         tex_coords: Vec2::zeros(),
+                        normal: Vec3::zeros(),
                     });
                 }
                 Some("f") => {
@@ -131,6 +139,22 @@ impl Loadable for ObjFile {
                 }
                 _ => {}
             }
+        }
+
+        for face in indices.chunks_exact(3) {
+            let a = vertices[face[0] as usize].position;
+            let b = vertices[face[1] as usize].position;
+            let c = vertices[face[2] as usize].position;
+
+            let normal = (b - a).cross(&(c - a));
+
+            for &i in face {
+                vertices[i as usize].normal += normal;
+            }
+        }
+
+        for vertex in &mut vertices {
+            vertex.normal = vertex.normal.normalize();
         }
 
         // TODO: calculate normals

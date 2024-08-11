@@ -23,9 +23,10 @@ pub struct RendererState {
     pub size: RefCell<winit::dpi::PhysicalSize<u32>>,
     pub window: Arc<winit::window::Window>,
     pub frame_state: RefCell<Option<FrameState>>,
-    pub depth_stencil_texture: wgpu::Texture,
-    pub depth_stencil_view: wgpu::TextureView,
-    pub depth_stencil_sampler: wgpu::Sampler,
+
+    pub depth_stencil_texture: RefCell<wgpu::Texture>,
+    pub depth_stencil_view: RefCell<wgpu::TextureView>,
+    pub depth_stencil_sampler: RefCell<wgpu::Sampler>,
 }
 
 #[derive(Debug)]
@@ -90,6 +91,30 @@ impl RendererState {
         };
         surface.configure(&device, &config);
 
+        let (depth_stencil_texture, depth_stencil_view, depth_stencil_sampler) =
+            Self::create_depth_stencil(&device, size);
+
+        RendererHandle {
+            state: Arc::new(RendererState {
+                adapter,
+                surface,
+                device,
+                queue,
+                config: RefCell::new(config),
+                size: RefCell::new(size),
+                window,
+                frame_state: RefCell::new(None),
+                depth_stencil_texture: RefCell::new(depth_stencil_texture),
+                depth_stencil_view: RefCell::new(depth_stencil_view),
+                depth_stencil_sampler: RefCell::new(depth_stencil_sampler),
+            }),
+        }
+    }
+
+    fn create_depth_stencil(
+        device: &wgpu::Device,
+        size: PhysicalSize<u32>,
+    ) -> (wgpu::Texture, wgpu::TextureView, wgpu::Sampler) {
         let depth_stencil_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Depth Stencil Texture"),
             size: wgpu::Extent3d {
@@ -120,21 +145,11 @@ impl RendererState {
             ..Default::default()
         });
 
-        RendererHandle {
-            state: Arc::new(RendererState {
-                adapter,
-                surface,
-                device,
-                queue,
-                config: RefCell::new(config),
-                size: RefCell::new(size),
-                window,
-                frame_state: RefCell::new(None),
-                depth_stencil_texture,
-                depth_stencil_view,
-                depth_stencil_sampler,
-            }),
-        }
+        (
+            depth_stencil_texture,
+            depth_stencil_view,
+            depth_stencil_sampler,
+        )
     }
 
     pub fn resize(&self, size: PhysicalSize<u32>) {
@@ -143,7 +158,13 @@ impl RendererState {
         if size.width != 0 && size.height != 0 {
             self.config.borrow_mut().width = size.width;
             self.config.borrow_mut().height = size.height;
+
             self.surface.configure(&self.device, &self.config.borrow());
+
+            let (depth_stencil_texture, depth_stencil_view, _) =
+                Self::create_depth_stencil(&self.device, size);
+            self.depth_stencil_texture.replace(depth_stencil_texture);
+            self.depth_stencil_view.replace(depth_stencil_view);
         }
     }
 
