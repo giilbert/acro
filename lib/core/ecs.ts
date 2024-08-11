@@ -15,17 +15,7 @@ export class Entity {
 
   getComponent<T>(ComponentClass: ComponentConstructor<T>): T {
     const attachment = this.newAttachment(ComponentClass.getComponentId(), "");
-
-    if (ComponentClass === Transform) {
-      return new Transform(
-        new Vec3(0, 0, 0, attachment.add("position")),
-        new Vec3(0, 0, 0, attachment.add("rotation")),
-        new Vec3(0, 0, 0, attachment.add("scale")),
-        attachment
-      ) as T;
-    }
-
-    throw new Error(`Unknown component class: ${ComponentClass}`);
+    return ComponentClass.createDefault(attachment);
   }
 }
 
@@ -53,6 +43,7 @@ interface ComponentConstructor<T> {
   // deno-lint-ignore no-explicit-any
   new (...args: any[]): T;
   getComponentId(): number;
+  createDefault(attachment: Attachment): T;
 }
 
 export class Behavior {

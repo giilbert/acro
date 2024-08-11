@@ -16,6 +16,15 @@ export class Transform {
     return acro.COMPONENT_IDS["Transform"];
   }
 
+  static createDefault(attachment: Attachment) {
+    return new Transform(
+      new Vec3(0, 0, 0),
+      new Vec3(0, 0, 0),
+      new Vec3(1, 1, 1),
+      attachment
+    );
+  }
+
   constructor(
     position: Vec3,
     rotation: Vec3,

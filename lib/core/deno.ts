@@ -32,6 +32,20 @@ declare namespace Deno.core.ops {
     value: number
   ) => void;
 
+  const op_get_property_boolean: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string
+  ) => boolean;
+  const op_set_property_boolean: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string,
+    value: boolean
+  ) => void;
+
   const op_get_property_vec3: (
     generation: number,
     index: number,
@@ -79,6 +93,25 @@ export function getPropertyNumber(attachment: Attachment): number {
 
 export function setPropertyNumber(attachment: Attachment, value: number) {
   Deno.core.ops.op_set_property_number(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path,
+    value
+  );
+}
+
+export function getPropertyBoolean(attachment: Attachment): boolean {
+  return Deno.core.ops.op_get_property_boolean(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path
+  );
+}
+
+export function setPropertyBoolean(attachment: Attachment, value: boolean) {
+  Deno.core.ops.op_set_property_boolean(
     attachment.entity.generation,
     attachment.entity.index,
     attachment.componentId,

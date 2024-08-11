@@ -144,3 +144,55 @@ pub fn op_set_property_number(
 
     Ok(())
 }
+
+#[op2(fast)]
+pub fn op_get_property_boolean(
+    #[state] world: &Rc<RefCell<World>>,
+    #[state] component_ids_to_vtables: &HashMap<ComponentId, *const ()>,
+    #[state] tick: &Tick,
+    generation: u32,
+    index: u32,
+    component_id: u32,
+    #[string] path: &str,
+) -> Result<bool, AnyError> {
+    let path = ReflectPath::parse(path);
+    let object = get_dyn_reflect(
+        world,
+        component_ids_to_vtables,
+        tick,
+        generation,
+        index,
+        component_id,
+        false,
+    )?;
+
+    Ok(*object.get::<bool>(&path))
+}
+
+#[op2(fast)]
+pub fn op_set_property_boolean(
+    #[state] world: &Rc<RefCell<World>>,
+    #[state] component_ids_to_vtables: &HashMap<ComponentId, *const ()>,
+    #[state] tick: &Tick,
+    generation: u32,
+    index: u32,
+    component_id: u32,
+    #[string] path: &str,
+    value: bool,
+) -> Result<(), AnyError> {
+    let path = ReflectPath::parse(path);
+
+    let object = get_dyn_reflect(
+        world,
+        component_ids_to_vtables,
+        tick,
+        generation,
+        index,
+        component_id,
+        true,
+    )?;
+
+    object.set::<bool>(&path, value);
+
+    Ok(())
+}

@@ -39,25 +39,25 @@ class FlyCamera extends Behavior {
 
     // if (mouseDelta.magnitude > 0) console.log(mouseDelta);
 
-    if (Input.isMousePressed("Left")) {
-      // this.transform.rotation.x += mouseDelta.y * 0.002;
-      // this.transform.rotation.y += mouseDelta.x * 0.002;
-      const currentRotation = Quaternion.fromEulerAngles(
-        this.transform.rotation
-      );
-      // const vertical = Quaternion.fromAxisAngle(
-      //   this.transform.right,
-      //   -mouseDelta.y * LOOK_SPEED
-      // );
-      const horizontal = Quaternion.fromAxisAngle(
-        this.transform.up,
-        mouseDelta.x * LOOK_SPEED
-      );
-
-      const newRotation = horizontal.mul(currentRotation);
-      console.log(newRotation.toEulerAngles());
-      this.transform.rotation = newRotation.toEulerAngles();
-    }
+    // if (Input.isMousePressed("Left")) {
+    // this.transform.rotation.x += mouseDelta.y * 0.002;
+    // this.transform.rotation.y += mouseDelta.x * 0.002;
+    // const currentRotation = Quaternion.fromEulerAngles(
+    //   this.transform.rotation
+    // );
+    // // const vertical = Quaternion.fromAxisAngle(
+    // //   this.transform.right,
+    // //   -mouseDelta.y * LOOK_SPEED
+    // // );
+    // const horizontal = Quaternion.fromAxisAngle(
+    //   this.transform.up,
+    //   mouseDelta.x * LOOK_SPEED
+    // );
+    // console.log(this.transform.up);
+    // const newRotation = currentRotation.mul(horizontal);
+    // // console.log(newRotation.toEulerAngles());
+    // this.transform.rotation = newRotation.toEulerAngles();
+    // }
 
     // this.transform.scale = new Vec3(2, 2, 2);
   }
