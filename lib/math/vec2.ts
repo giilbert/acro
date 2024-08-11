@@ -4,7 +4,7 @@ import {
   setPropertyNumber,
 } from "jsr:@acro/core";
 
-interface Vec2Like {
+export interface Vec2Like {
   x: number;
   y: number;
 }

@@ -4,7 +4,7 @@ import {
   setPropertyNumber,
 } from "jsr:@acro/core";
 
-interface Vec3Like {
+export interface Vec3Like {
   x: number;
   y: number;
   z: number;
