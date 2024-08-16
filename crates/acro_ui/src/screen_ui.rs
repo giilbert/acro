@@ -21,17 +21,21 @@ pub fn update_screen_ui_rect(
     let renderer_size = renderer.size.borrow();
     for (entity_id, _screen_ui, rect) in screen_ui_query.over(&ctx) {
         {
-            let mut document_rect = rect.inner_mut();
-            document_rect.options = PositioningOptions {
+            let mut screen_ui_rect = rect.inner_mut();
+
+            screen_ui_rect.options = PositioningOptions {
                 width: Dim::Px(renderer_size.width as f32),
                 height: Dim::Px(renderer_size.height as f32),
                 min_width: Some(Dim::Px(renderer_size.width as f32)),
                 min_height: Some(Dim::Px(renderer_size.height as f32)),
-                flex: document_rect.options.flex,
-                margin: document_rect.options.margin,
-                padding: document_rect.options.padding,
+
+                flex: screen_ui_rect.options.flex,
+                margin: screen_ui_rect.options.margin,
+                padding: screen_ui_rect.options.padding,
             };
-            document_rect.size = Vec2::new(renderer_size.width as f32, renderer_size.height as f32);
+
+            screen_ui_rect.size =
+                Vec2::new(renderer_size.width as f32, renderer_size.height as f32);
         }
 
         rect.recalculate(

@@ -1,10 +1,10 @@
 mod box_renderer;
 mod context;
-mod document;
 mod panel;
 mod positioning_options;
 mod rect;
 mod rendering;
+mod screen_ui;
 mod text;
 
 use acro_ecs::{Application, Plugin, Res, ResMut, Stage, SystemRunContext};
@@ -13,10 +13,10 @@ use acro_render::RendererHandle;
 use acro_scene::ComponentLoaders;
 use acro_scripting::ScriptingRuntime;
 use context::UiContext;
-use document::{update_screen_ui_rect, ScreenUi};
 use panel::{render_panel, Panel};
 use positioning_options::{Dim, FlexOptions, PositioningOptions};
 use rect::{Rect, RootOptions};
+use screen_ui::{update_screen_ui_rect, ScreenUi};
 use text::{init_text, render_text, Text};
 
 pub struct UiPlugin;
@@ -31,19 +31,11 @@ impl Plugin for UiPlugin {
             .init_component::<Panel>()
             .insert_resource(ui_context)
             .with_resource::<ComponentLoaders>(|loaders| {
-                loaders.register("ScreenUi", |world, entity, _value| {
+                loaders.register("ScreenUi", |world, entity, value| {
                     world.insert(entity, TransformBoundary);
-                    world.insert(
-                        entity,
-                        Rect::new_root(RootOptions {
-                            flex: FlexOptions {
-                                gap: Dim::Px(10.0),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        }),
-                    );
+                    world.insert(entity, Rect::new_root(serde_yml::from_value(value)?));
                     world.insert(entity, ScreenUi);
+
                     Ok(())
                 });
 

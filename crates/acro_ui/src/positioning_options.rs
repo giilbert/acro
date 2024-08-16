@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use serde::{
     de::{self, Visitor},
+    ser::SerializeTuple,
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
@@ -25,9 +26,9 @@ pub struct PositioningOptions {
     #[serde(default)]
     pub min_height: Option<Dim>,
 
-    #[serde(default, with = "serde_dirdim")]
+    #[serde(default)]
     pub padding: DirDim,
-    #[serde(default, with = "serde_dirdim")]
+    #[serde(default)]
     pub margin: DirDim,
     #[serde(default)]
     pub flex: FlexOptions,
@@ -35,6 +36,7 @@ pub struct PositioningOptions {
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct FlexOptions {
+    #[serde(default)]
     pub direction: FlexDirection,
     #[serde(default)]
     pub gap: Dim,
@@ -49,7 +51,7 @@ pub enum FlexDirection {
     // ColumnReverse,
 }
 
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct DirDim {
     pub left: Dim,
     pub right: Dim,
@@ -132,24 +134,22 @@ impl<'de> Deserialize<'de> for Dim {
     }
 }
 
-mod serde_dirdim {
-    use serde::{de::Visitor, ser::SerializeTuple, Deserializer, Serializer};
-
-    use super::DirDim;
-
-    pub fn serialize<S>(data: &DirDim, serializer: S) -> Result<S::Ok, S::Error>
+impl Serialize for DirDim {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut tup = serializer.serialize_tuple(4)?;
-        tup.serialize_element(&data.top)?;
-        tup.serialize_element(&data.right)?;
-        tup.serialize_element(&data.bottom)?;
-        tup.serialize_element(&data.left)?;
+        tup.serialize_element(&self.top)?;
+        tup.serialize_element(&self.right)?;
+        tup.serialize_element(&self.bottom)?;
+        tup.serialize_element(&self.left)?;
         tup.end()
     }
+}
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<DirDim, D::Error>
+impl<'de> Deserialize<'de> for DirDim {
+    fn deserialize<D>(deserializer: D) -> Result<DirDim, D::Error>
     where
         D: Deserializer<'de>,
     {

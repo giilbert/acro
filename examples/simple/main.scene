@@ -30,13 +30,17 @@ entities:
   - name: UI
     components:
       - name: ScreenUi
+        padding: [10px, 10px, 10px, 10px]
+        flex:
+          direction: Column
+          gap: 10px
     children:
       - name: Panel
         components:
           - name: Rect
             width: 100.0%
             height: 100px
-            margin: [10px, 10px, 10px, 10px]
+            margin: [0px, 0px, 0px, 0px]
           - name: Panel
             color:
               type: Srgba
@@ -52,3 +56,13 @@ entities:
                 width: 100.0%
                 height: 100.0%
                 margin: [10px, 10px, 10px, 10px]
+      - name: Panel 2
+        components:
+          - name: Rect
+            width: 300px
+            height: 100%
+            margin: [0px, 0px, 0px, 0px]
+          - name: Panel
+            color:
+              type: Srgba
+              value: [0.02, 0.02, 0.02, 1.0]

@@ -37,10 +37,13 @@ pub struct UiBox {
     pub size: Vec2,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct RootOptions {
+    #[serde(default)]
     pub size: Vec2,
+    #[serde(default)]
     pub padding: DirDim,
+    #[serde(default)]
     pub flex: FlexOptions,
 }
 
@@ -221,8 +224,7 @@ impl RectInner {
                 let parent_rect = queries.get_rect(parent_id);
 
                 if is_in_flex_direction {
-                    (parent_rect.free_space * percent)
-                        - get_parent_available_size(self.calculate_margin_all())
+                    parent_rect.free_space * percent
                 } else {
                     get_parent_available_size(
                         parent_rect.calculate_available_space(parent_id, queries) * percent,
@@ -236,7 +238,7 @@ impl RectInner {
     }
 
     pub fn calculate_free_space(&self, entity_id: EntityId, queries: &RectQueries) -> f32 {
-        let size = self.calculate_size(entity_id, queries);
+        let size = self.calculate_available_space(entity_id, queries);
 
         let mut free_space = match self.options.flex.direction {
             FlexDirection::Row => size.x,
@@ -365,7 +367,7 @@ impl RectInner {
         self.calculate_padding_top_left() + self.calculate_padding_bottom_right()
     }
 
-    /// "Available space" of an element = its width - padding_left - padding_right
+    /// "Available space" of an element = its size - its padding on both sides
     pub fn calculate_available_space(&self, entity_id: EntityId, queries: &RectQueries) -> Vec2 {
         self.calculate_size(entity_id, queries)
             - self.calculate_padding_top_left()
@@ -444,8 +446,8 @@ mod tests {
     use acro_math::{Children, Parent, Root, Vec2};
 
     use crate::{
-        document::ScreenUi,
         rect::{FlexDirection, FlexOptions, PositioningOptions, RectQueries, RootOptions},
+        screen_ui::ScreenUi,
     };
 
     use super::{Dim, DirDim, Rect};
@@ -563,9 +565,9 @@ mod tests {
             );
             assert_eq!(root_rect.inner().size, Vec2::new(1200.0, 800.0));
 
+            assert_eq!(child_rect.inner().calculate_height(child, queries), 760.0);
             assert_eq!(child_rect.inner().size, Vec2::new(1160.0, 760.0));
 
-            println!("entity_id: {:?}", child_of_child);
             assert_eq!(child_of_child_rect.inner().size, Vec2::new(570.0, 760.0));
         });
     }
