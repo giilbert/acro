@@ -27,6 +27,11 @@ pub struct PositioningOptions {
     pub min_height: Option<Dim>,
 
     #[serde(default)]
+    pub max_width: Option<Dim>,
+    #[serde(default)]
+    pub max_height: Option<Dim>,
+
+    #[serde(default)]
     pub padding: DirDim,
     #[serde(default)]
     pub margin: DirDim,

@@ -23,7 +23,10 @@ pub struct RectInner {
     pub(crate) offset: Vec2,
 
     pub(crate) min_width: Option<f32>,
+    pub(crate) max_width: Option<f32>,
+
     pub(crate) min_height: Option<f32>,
+    pub(crate) max_height: Option<f32>,
 
     pub(crate) options: PositioningOptions,
 
@@ -114,13 +117,19 @@ impl Rect {
             inner: Rc::new(RefCell::new(RectInner {
                 size: options.size,
                 offset: Vec2::zeros(),
+
                 min_width: Some(options.size.x),
                 min_height: Some(options.size.y),
+                max_width: None,
+                max_height: None,
+
                 options: PositioningOptions {
                     width,
                     height,
                     min_width: Some(width),
                     min_height: Some(height),
+                    max_width: None,
+                    max_height: None,
                     padding: options.padding,
                     margin: DirDim::default(),
                     flex: options.flex,
@@ -138,6 +147,8 @@ impl Rect {
                 offset: Vec2::zeros(),
                 min_width: None,
                 min_height: None,
+                max_width: None,
+                max_height: None,
                 options,
                 free_space: 0.0,
                 children_outer_boxes: HashMap::new(),
@@ -378,14 +389,18 @@ impl RectInner {
     // Percent: makes the element take up a % of the available space given by its parent
     // Px:      makes the element have a fixed width
     pub fn calculate_width(&self, entity_id: EntityId, queries: &RectQueries) -> f32 {
-        self.calculate_size_dim(
-            entity_id,
-            self.options.width,
-            self.calculate_margin_all().x,
-            |size| size.x,
-            |child_id, child| child.calculate_width(child_id, queries),
-            queries,
-            FlexDirection::Row,
+        opt_clamp(
+            self.calculate_size_dim(
+                entity_id,
+                self.options.width,
+                self.calculate_margin_all().x,
+                |size| size.x,
+                |child_id, child| child.calculate_width(child_id, queries),
+                queries,
+                FlexDirection::Row,
+            ),
+            self.min_width,
+            self.max_width,
         )
     }
 
@@ -409,6 +424,54 @@ impl RectInner {
     }
 
     pub fn recalculate_self(&mut self, entity_id: EntityId, queries: &RectQueries) {
+        self.min_width = self.options.min_width.map(|dim| {
+            self.calculate_size_dim(
+                entity_id,
+                dim,
+                self.calculate_margin_all().x,
+                |size| size.x,
+                |child_id, child| child.calculate_width(child_id, queries),
+                queries,
+                FlexDirection::Row,
+            )
+        });
+
+        self.min_height = self.options.min_height.map(|dim| {
+            self.calculate_size_dim(
+                entity_id,
+                dim,
+                self.calculate_margin_all().y,
+                |size| size.y,
+                |child_id, child| child.calculate_height(child_id, queries),
+                queries,
+                FlexDirection::Column,
+            )
+        });
+
+        self.max_width = self.options.max_width.map(|dim| {
+            self.calculate_size_dim(
+                entity_id,
+                dim,
+                self.calculate_margin_all().x,
+                |size| size.x,
+                |child_id, child| child.calculate_width(child_id, queries),
+                queries,
+                FlexDirection::Row,
+            )
+        });
+
+        self.max_height = self.options.max_height.map(|dim| {
+            self.calculate_size_dim(
+                entity_id,
+                dim,
+                self.calculate_margin_all().y,
+                |size| size.y,
+                |child_id, child| child.calculate_height(child_id, queries),
+                queries,
+                FlexDirection::Column,
+            )
+        });
+
         self.offset = self.calculate_total_top_left_offset(entity_id, queries);
         self.size = self.calculate_size(entity_id, queries);
     }
@@ -440,6 +503,14 @@ impl RectInner {
     // }
 }
 
+fn opt_clamp(value: f32, min: Option<f32>, max: Option<f32>) -> f32 {
+    match (min, max) {
+        (Some(min), Some(max)) => value.clamp(min, max),
+        (Some(min), None) => value.max(min),
+        (None, Some(max)) => value.min(max),
+        (None, None) => value,
+    }
+}
 #[cfg(test)]
 mod tests {
     use acro_ecs::{EntityId, Query, SystemRunContext, Tick, World};
@@ -740,6 +811,36 @@ mod tests {
             assert_eq!(root.free_space, 700.0);
             assert_eq!(child_1.size, Vec2::new(400.0, 100.0));
             assert_eq!(child_2.size, Vec2::new(400.0, 700.0));
+        });
+    }
+
+    fn min_width_and_height_1() {
+        let mut world = create_world();
+
+        let screen_ui = world.spawn((ScreenUi,));
+
+        let root_rect = Rect::new_root(RootOptions {
+            size: Vec2::new(400.0, 800.0),
+            ..Default::default()
+        });
+
+        let child_1_rect = Rect::new(PositioningOptions {
+            width: Dim::Percent(1.0),
+            height: Dim::Px(100.0),
+            max_width: Some(Dim::Px(200.0)),
+            ..Default::default()
+        });
+
+        let root = world.spawn((root_rect.clone(), Parent(screen_ui)));
+        let child_1 = world.spawn((child_1_rect.clone(), Parent(root)));
+
+        world.insert(root, Children(vec![child_1]));
+        world.insert(child_1, Children(vec![]));
+
+        update_and_test(&mut world, root, move |_rect_queries| {
+            let child_1 = child_1_rect.inner();
+
+            assert_eq!(child_1.size, Vec2::new(400.0, 200.0));
         });
     }
 }

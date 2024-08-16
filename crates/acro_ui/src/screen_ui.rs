@@ -26,8 +26,12 @@ pub fn update_screen_ui_rect(
             screen_ui_rect.options = PositioningOptions {
                 width: Dim::Px(renderer_size.width as f32),
                 height: Dim::Px(renderer_size.height as f32),
+
                 min_width: Some(Dim::Px(renderer_size.width as f32)),
                 min_height: Some(Dim::Px(renderer_size.height as f32)),
+
+                max_width: None,
+                max_height: None,
 
                 flex: screen_ui_rect.options.flex,
                 margin: screen_ui_rect.options.margin,
