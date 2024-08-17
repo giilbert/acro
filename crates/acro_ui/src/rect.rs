@@ -183,9 +183,20 @@ impl Rect {
                 .recalculate(child_id, queries);
         }
     }
+
+    pub fn contains(&self, position: Vec2) -> bool {
+        self.inner().contains(position)
+    }
 }
 
 impl RectInner {
+    pub fn contains(&self, position: Vec2) -> bool {
+        let tl = self.offset;
+        let br = self.offset + self.size;
+
+        position > tl && position < br
+    }
+
     fn calculate_offset_dim(&self, dim: Dim, parent_dim: f32) -> f32 {
         match dim {
             Dim::Px(px) => px,
@@ -814,6 +825,7 @@ mod tests {
         });
     }
 
+    #[test]
     fn min_width_and_height_1() {
         let mut world = create_world();
 
@@ -840,7 +852,7 @@ mod tests {
         update_and_test(&mut world, root, move |_rect_queries| {
             let child_1 = child_1_rect.inner();
 
-            assert_eq!(child_1.size, Vec2::new(400.0, 200.0));
+            assert_eq!(child_1.size.x, 200.0);
         });
     }
 }

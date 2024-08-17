@@ -1,4 +1,5 @@
 mod box_renderer;
+mod button;
 mod context;
 mod panel;
 mod positioning_options;
@@ -6,18 +7,26 @@ mod rect;
 mod rendering;
 mod screen_ui;
 mod text;
+mod ui_element_state;
 
-use acro_ecs::{Application, Plugin, Res, ResMut, Stage, SystemRunContext};
+use std::any::Any;
+
+use acro_ecs::{
+    systems::SystemId, Application, Plugin, Res, ResMut, Stage, SystemRunContext,
+    SystemSchedulingRequirement,
+};
 use acro_math::TransformBoundary;
 use acro_render::RendererHandle;
 use acro_scene::ComponentLoaders;
 use acro_scripting::ScriptingRuntime;
+use button::{handle_button_click_test, poll_button_interaction, Button, ButtonClickTestQueue};
 use context::UiContext;
 use panel::{render_panel, Panel};
 use positioning_options::{Dim, FlexOptions, PositioningOptions};
 use rect::{Rect, RootOptions};
 use screen_ui::{update_screen_ui_rect, ScreenUi};
 use text::{init_text, render_text, Text};
+use ui_element_state::{poll_ui_element_state, UiElementState};
 
 pub struct UiPlugin;
 
@@ -26,10 +35,13 @@ impl Plugin for UiPlugin {
         let ui_context = UiContext::default();
 
         app.init_component::<Rect>()
+            .init_component::<UiElementState>()
             .init_component::<Text>()
             .init_component::<ScreenUi>()
             .init_component::<Panel>()
+            .init_component::<Button>()
             .insert_resource(ui_context)
+            .insert_resource(ButtonClickTestQueue::default())
             .with_resource::<ComponentLoaders>(|loaders| {
                 loaders.register("ScreenUi", |world, entity, value| {
                     world.insert(entity, TransformBoundary);
@@ -41,6 +53,7 @@ impl Plugin for UiPlugin {
 
                 loaders.register("Rect", |world, entity, value| {
                     let position = serde_yml::from_value::<PositioningOptions>(value)?;
+                    world.insert(entity, UiElementState::default());
                     Ok(world.insert(entity, Rect::new(position)))
                 });
 
@@ -52,10 +65,23 @@ impl Plugin for UiPlugin {
                     let panel = serde_yml::from_value::<Panel>(value)?;
                     Ok(world.insert(entity, panel))
                 });
+
+                loaders.register("Button", |world, entity, _value| {
+                    Ok(world.insert(entity, Button::default()))
+                });
             })
             .with_resource::<ScriptingRuntime>(|mut runtime| {
                 runtime.register_component::<Text>("Text");
             })
+            .add_system(Stage::Update, [], poll_ui_element_state)
+            .add_system(
+                Stage::Update,
+                [SystemSchedulingRequirement::RunAfter(SystemId::Native(
+                    poll_button_interaction.type_id(),
+                ))],
+                poll_button_interaction,
+            )
+            .add_system(Stage::Update, [], handle_button_click_test)
             .add_system(Stage::PreRender, [], update_screen_ui_rect)
             .add_system(
                 Stage::PreRender,

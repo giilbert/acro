@@ -66,3 +66,4 @@ entities:
             color:
               type: Srgba
               value: [0.02, 0.02, 0.02, 1.0]
+          - name: Button
