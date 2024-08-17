@@ -1,8 +1,12 @@
 use std::{
+    borrow::BorrowMut,
+    cell::{RefCell, RefMut},
     collections::{HashMap, VecDeque},
     fmt::Debug,
     rc::Rc,
 };
+
+use tracing::info;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EventListenerId(usize);
@@ -15,6 +19,12 @@ pub struct EventEmitter<T> {
 
 #[derive(Debug, Default)]
 pub struct EventQueue<T> {
+    inner: Rc<RefCell<EventQueueInner<T>>>,
+}
+
+#[derive(Debug, Default)]
+pub struct EventQueueInner<T> {
+    is_attached: bool,
     data: VecDeque<Rc<T>>,
 }
 
@@ -40,14 +50,41 @@ impl<T> EventEmitter<T> {
         id
     }
 
-    pub fn emit(&mut self, data: T) {
+    pub fn emit(&self, data: T) {
         let data = Rc::new(data);
 
-        for (_id, mut listener) in &mut self.listeners {
-            match &mut listener {
-                EventListener::Native(queue) => queue.data.push_back(data.clone()),
+        for (_id, listener) in &self.listeners {
+            match listener {
+                EventListener::Native(queue) => queue.inner_mut().data.push_back(data.clone()),
                 _ => todo!(),
             }
         }
+    }
+}
+
+impl<T> Clone for EventQueue<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Rc::clone(&self.inner),
+        }
+    }
+}
+
+impl<T> EventQueue<T> {
+    pub fn inner_mut(&self) -> RefMut<EventQueueInner<T>> {
+        RefCell::borrow_mut(&self.inner)
+    }
+
+    pub fn attach_if_not_attached(&self, emitter: &mut EventEmitter<T>) {
+        let mut inner = self.inner_mut();
+        if !inner.is_attached {
+            emitter.attach_event_queue(self.clone());
+            inner.is_attached = true;
+        }
+    }
+
+    pub fn next(&self) -> Option<Rc<T>> {
+        let mut inner = self.inner_mut();
+        inner.data.pop_front()
     }
 }
