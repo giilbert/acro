@@ -9,3 +9,20 @@ declare global {
 export const init = () => {
   globalThis.acro = new AcroGlobalHook();
 };
+
+export const registerComponents = (components: Record<string, number>) => {
+  acro.COMPONENT_IDS = components;
+};
+
+export const createBehavior = (
+  generation: number,
+  index: number,
+  behaviorId: number,
+  behaviorName: string
+) => {
+  acro.createBehavior(generation, index, behaviorId, behaviorName);
+};
+
+export const update = (deltaTime: number) => {
+  acro.update(deltaTime);
+};

@@ -6,6 +6,8 @@ use std::{
     rc::Rc,
 };
 
+use deno_core::{op2, v8, v8::HandleScope, OpState};
+use rustyscript::js_value::Function;
 use tracing::info;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -34,7 +36,7 @@ pub struct ScriptableEventListenerId(usize);
 #[derive(Debug)]
 pub enum EventListener<T> {
     Native(EventQueue<T>),
-    Scriptable(ScriptableEventListenerId),
+    Scriptable(Function),
 }
 
 impl<T> EventEmitter<T> {
@@ -88,3 +90,6 @@ impl<T> EventQueue<T> {
         inner.data.pop_front()
     }
 }
+
+#[op2]
+fn register_event_listener(#[global] function: v8::Global<v8::Function>) {}

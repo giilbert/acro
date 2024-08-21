@@ -6,8 +6,8 @@ use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunCont
 use acro_reflect::Reflect;
 use deno_core::url::Url;
 use rustyscript::{
-    deno_core, json_args, module_loader::ImportProvider, Module, Runtime as JsRuntime,
-    RuntimeOptions, Undefined,
+    deno_core, json_args, module_loader::ImportProvider, Module, ModuleHandle,
+    Runtime as JsRuntime, RuntimeOptions, Undefined,
 };
 use tracing::info;
 
@@ -28,6 +28,7 @@ pub struct ScriptingRuntime {
     decl: Option<Vec<deno_core::OpDecl>>,
     inner: Option<JsRuntime>,
     component_vtables: Option<HashMap<ComponentId, *const ()>>,
+    init_module_handle: Option<ModuleHandle>,
 }
 
 impl std::fmt::Debug for ScriptingRuntime {
@@ -48,6 +49,7 @@ impl ScriptingRuntime {
             decl: Some(vec![]),
             inner: None,
             component_vtables: Some(HashMap::new()),
+            init_module_handle: None,
         }
     }
 
@@ -117,16 +119,17 @@ impl ScriptingRuntime {
         self.behavior_id += 1;
         behavior.data = Some(BehaviorData { id });
 
-        self.inner_mut()
-            .deno_runtime()
-            .execute_script(
-                "<create-behavior>",
-                format!(
-                    "acro.createBehavior({}, {}, {}, \"{}\")",
-                    attached_to.generation, attached_to.index, id, source_file.config.name
-                ),
-            )
-            .map_err(|e| eyre::eyre!("failed to execute behavior init script: {e:?}"))?;
+        let module_handle = self.init_module_handle.as_ref().map(|h| h.clone());
+        self.inner_mut().call_function(
+            module_handle.as_ref(),
+            "createBehavior",
+            json_args!(
+                attached_to.generation,
+                attached_to.index,
+                id,
+                source_file.config.name.as_str()
+            ),
+        )?;
 
         Ok(())
     }
@@ -138,11 +141,12 @@ impl ScriptingRuntime {
             .borrow_mut()
             .put(tick);
 
-        let since_last_update = self.last_update.elapsed()?.as_secs_f64();
+        let delta_time = self.last_update.elapsed()?.as_secs_f64();
+
+        let module_handle = self.init_module_handle.as_ref().map(|h| h.clone());
         self.inner_mut()
-            .deno_runtime()
-            .execute_script("<update>", format!("acro.update({since_last_update})"))
-            .map_err(|e| eyre::eyre!("failed to execute update script: {e:?}"))?;
+            .call_function(module_handle.as_ref(), "update", json_args!(delta_time))?;
+
         self.last_update = SystemTime::now();
 
         Ok(())
@@ -220,32 +224,26 @@ pub fn init_scripting_runtime(
         .borrow_mut()
         .put(runtime.world_handle.clone());
 
-    let acro_init_module = Module::load("lib/core/init.ts")?;
-    let acro_init_module_handle = inner_runtime
-        .load_module(&acro_init_module)
+    let init_module = Module::load("lib/core/init.ts")?;
+    let init_module_handle = inner_runtime
+        .load_module(&init_module)
         .expect("error loading init module");
 
-    inner_runtime.call_entrypoint::<Undefined>(&acro_init_module_handle, json_args!())?;
+    inner_runtime.call_function(Some(&init_module_handle), "init", json_args!())?;
 
     info!(
         "registered {} component(s)",
         runtime.name_to_component_id.len()
     );
-    inner_runtime
-        .deno_runtime()
-        .execute_script(
-            "<register-component>",
-            runtime
-                .name_to_component_id
-                .iter()
-                .map(|(name, ComponentId(component_id))| {
-                    format!("acro.COMPONENT_IDS['{}']={};", name, component_id)
-                })
-                .collect::<String>(),
-        )
-        .map_err(|e| eyre::eyre!("failed to register component: {e:?}"))?;
+
+    inner_runtime.call_function(
+        Some(&init_module_handle),
+        "registerComponents",
+        json_args!(runtime.name_to_component_id),
+    )?;
 
     runtime.inner = Some(inner_runtime);
+    runtime.init_module_handle = Some(init_module_handle);
 
     Ok(())
 }

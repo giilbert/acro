@@ -1,3 +1,4 @@
+import { EventBridge } from "./events.ts";
 import { type Behavior, Entity } from "./mod.ts";
 
 interface ConstructableBehavior {
@@ -8,6 +9,7 @@ export class AcroGlobalHook {
   COMPONENT_IDS: Record<string, number>;
   behaviorConstructors: Record<string, ConstructableBehavior>;
   behaviors: Map<number, Behavior>;
+  eventBridge: EventBridge;
 
   constructor() {
     // maps component names to ids
@@ -15,6 +17,7 @@ export class AcroGlobalHook {
 
     this.behaviorConstructors = {};
     this.behaviors = new Map();
+    this.eventBridge = new EventBridge();
   }
 
   update(deltaTime: number) {

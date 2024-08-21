@@ -6,6 +6,7 @@ use std::{
 };
 
 use fnv::FnvHashMap;
+use serde::{Deserialize, Serialize};
 
 use crate::{storage::anyvec::Dropper, Name};
 
@@ -16,7 +17,7 @@ pub struct ComponentRegistry {
     components: FnvHashMap<ComponentId, ComponentInfo>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ComponentId(pub u32);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
