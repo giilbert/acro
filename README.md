@@ -23,12 +23,12 @@ a non-exhaustive list of stuff I want to do
 | ❓  | Feature                               |
 | --- | ------------------------------------- |
 | 🟩  | Entity Component System               |
+| 🟩  | Hot Reloading With Code and Resources |
+| 🟩  | Resource and Scene Management System  |
 | 🟨  | 2D and 3D Rendering                   |
-| 🟨  | Resource and Scene Management System  |
-| ⬛  | Logging System and Debug Renderer     |
-| ⬛  | UI System                             |
-| ⬛  | Scripting In JavaScript               |
-| ⬛  | Hot Reloading With Code and Resources |
+| 🟨  | Logging System and Debug Renderer     |
+| 🟨  | UI System                             |
+| 🟨  | Scripting In JavaScript               |
 | ⬛  | Editor                                |
 | ⬛  | Web-based Editor and Player           |
 | ⬛  | 2D and 3D Physics System              |
@@ -37,8 +37,9 @@ a non-exhaustive list of stuff I want to do
 
 uhhhh....
 
-it's very much not finished but you can just `cargo run` (rust 1.80.0) in the root of the project to run whatever example I made
+it's very much not finished but you can just `cargo run` (rust 1.80.0) in the root of the project to
+run whatever example I made. you can edit the example and the game will refresh when it's running
 
-_current status of project_: moving red triangle
+_current status of project_: bunch of random ui elements and a spinning teapot
 
-[video here](https://us-east-1.tixte.net/uploads/gilbert.is-from.space/2024-07-29_11-33-45.mp4)
+[video here](https://gilbert.is-from.space/button-go-clicky.mp4)
