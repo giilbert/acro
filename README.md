@@ -1,4 +1,4 @@
-![acro banner. on the left is a visual showing various colored boxes with names and arrows coming off of them showing their velocities. in the middle is a blob holding a heart looking at the title "acro" and a description (below). on the right are various emojis: a paint palette, a hammer, a bar graph, a space invader alien, a protractor, and a person doing acrobatics.](./images/acro-banner.png)
+![acro banner. on the left is a visual showing various colored boxes with names and arrows coming off of them showing their velocities. in the middle is a blob holding a heart looking at the title "acro" and a description (below). on the right are various emojis: a paint palette, a hammer, a bar graph, a space invader alien, a protractor, and a person doing acrobatics.](https://us-east-1.tixte.net/uploads/gilbert.is-from.space/acro-banner.png)
 
 # acro
 
