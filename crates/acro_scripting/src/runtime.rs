@@ -4,7 +4,7 @@ use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc, time::System
 use acro_assets::Assets;
 use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
 use acro_reflect::Reflect;
-use deno_core::url::Url;
+use deno_core::{url::Url, v8::Function};
 use rustyscript::{
     deno_core, json_args, module_loader::ImportProvider, Module, ModuleHandle,
     Runtime as JsRuntime, RuntimeOptions, Undefined,
@@ -18,6 +18,7 @@ use crate::{
         op_set_property_string,
     },
     source_file::SourceFile,
+    WeakEventQueueRef,
 };
 
 pub struct ScriptingRuntime {
@@ -29,6 +30,10 @@ pub struct ScriptingRuntime {
     inner: Option<JsRuntime>,
     component_vtables: Option<HashMap<ComponentId, *const ()>>,
     init_module_handle: Option<ModuleHandle>,
+
+    event_listener_id: u32,
+    event_listeners: HashMap<u32, Function>,
+    active_event_queues: Vec<WeakEventQueueRef>,
 }
 
 impl std::fmt::Debug for ScriptingRuntime {
@@ -50,6 +55,10 @@ impl ScriptingRuntime {
             inner: None,
             component_vtables: Some(HashMap::new()),
             init_module_handle: None,
+
+            event_listener_id: 0,
+            event_listeners: HashMap::new(),
+            active_event_queues: vec![],
         }
     }
 
@@ -162,6 +171,21 @@ impl ScriptingRuntime {
 
     pub fn take_ops(&mut self) -> Vec<deno_core::OpDecl> {
         self.decl.take().expect("ops already initialized")
+    }
+
+    pub fn create_event_listener_function(&mut self, function: Function) -> u32 {
+        let id = self.event_listener_id;
+        self.event_listener_id += 1;
+        self.event_listeners.insert(id, function);
+        id
+    }
+
+    pub fn get_event_listener_function(&mut self, handle: &u32) -> Option<Function> {
+        self.event_listeners.remove(handle)
+    }
+
+    pub fn update_active_event_listeners(&self) -> eyre::Result<()> {
+        todo!();
     }
 }
 
