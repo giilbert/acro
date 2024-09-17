@@ -18,7 +18,7 @@ use crate::{
         op_set_property_string,
     },
     source_file::SourceFile,
-    WeakEventQueueRef,
+    AnyEventQueue, WeakEventQueueRef,
 };
 
 pub struct ScriptingRuntime {
@@ -31,9 +31,20 @@ pub struct ScriptingRuntime {
     component_vtables: Option<HashMap<ComponentId, *const ()>>,
     init_module_handle: Option<ModuleHandle>,
 
-    event_listener_id: u32,
-    event_listeners: HashMap<u32, Function>,
+    event_listener_id: EventListenerId,
+    event_listeners: HashMap<EventListenerId, usize>,
     active_event_queues: Vec<WeakEventQueueRef>,
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub struct EventListenerId(pub u32);
+
+impl EventListenerId {
+    pub fn next_id(&mut self) -> Self {
+        let id = self.0;
+        self.0 += 1;
+        Self(id)
+    }
 }
 
 impl std::fmt::Debug for ScriptingRuntime {
@@ -56,7 +67,7 @@ impl ScriptingRuntime {
             component_vtables: Some(HashMap::new()),
             init_module_handle: None,
 
-            event_listener_id: 0,
+            event_listener_id: EventListenerId(0),
             event_listeners: HashMap::new(),
             active_event_queues: vec![],
         }
@@ -173,16 +184,16 @@ impl ScriptingRuntime {
         self.decl.take().expect("ops already initialized")
     }
 
-    pub fn create_event_listener_function(&mut self, function: Function) -> u32 {
-        let id = self.event_listener_id;
-        self.event_listener_id += 1;
-        self.event_listeners.insert(id, function);
-        id
+    pub fn create_event_listener_function(&mut self, function: Function) -> EventListenerId {
+        let queue = AnyEventQueue::new();
+
+        let weak_ref = queue.into_weak();
+        self.active_event_queues.push(weak_ref.clone());
+
+        weak_ref
     }
 
-    pub fn get_event_listener_function(&mut self, handle: &u32) -> Option<Function> {
-        self.event_listeners.remove(handle)
-    }
+    pub fn remove_event_listener(&mut self, id: EventListenerId) {}
 
     pub fn update_active_event_listeners(&self) -> eyre::Result<()> {
         todo!();
