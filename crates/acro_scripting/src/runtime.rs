@@ -4,9 +4,10 @@ use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc, time::System
 use acro_assets::Assets;
 use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
 use acro_reflect::Reflect;
-use deno_core::{url::Url, v8::Function};
+use deno_core::url::Url;
+use fnv::FnvHashMap;
 use rustyscript::{
-    deno_core, json_args, module_loader::ImportProvider, Module, ModuleHandle,
+    deno_core, js_value::Function, json_args, module_loader::ImportProvider, Module, ModuleHandle,
     Runtime as JsRuntime, RuntimeOptions, Undefined,
 };
 use tracing::info;
@@ -32,8 +33,12 @@ pub struct ScriptingRuntime {
     init_module_handle: Option<ModuleHandle>,
 
     event_listener_id: EventListenerId,
-    event_listeners: HashMap<EventListenerId, usize>,
-    active_event_queues: Vec<WeakEventQueueRef>,
+    event_listeners: FnvHashMap<EventListenerId, BoundEventQueue>,
+}
+
+struct BoundEventQueue {
+    pub queue: WeakEventQueueRef,
+    pub function: Function,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
@@ -68,8 +73,7 @@ impl ScriptingRuntime {
             init_module_handle: None,
 
             event_listener_id: EventListenerId(0),
-            event_listeners: HashMap::new(),
-            active_event_queues: vec![],
+            event_listeners: FnvHashMap::default(),
         }
     }
 
@@ -186,17 +190,37 @@ impl ScriptingRuntime {
 
     pub fn create_event_listener_function(&mut self, function: Function) -> EventListenerId {
         let queue = AnyEventQueue::new();
+        let id = self.event_listener_id.next_id();
 
         let weak_ref = queue.into_weak();
-        self.active_event_queues.push(weak_ref.clone());
+        self.event_listeners.insert(
+            id,
+            BoundEventQueue {
+                queue: weak_ref,
+                function,
+            },
+        );
 
-        weak_ref
+        id
     }
 
     pub fn remove_event_listener(&mut self, id: EventListenerId) {}
 
     pub fn update_active_event_listeners(&self) -> eyre::Result<()> {
-        todo!();
+        let mut dead_listeners = vec![];
+
+        for (id, bound_queue) in &self.event_listeners {
+            match bound_queue.queue.upgrade() {
+                Some(queue) => {
+                    while let Some(data) = queue.next() {
+                        // TODO: call function with data
+                    }
+                }
+                None => dead_listeners.push(*id),
+            }
+        }
+
+        Ok(())
     }
 }
 

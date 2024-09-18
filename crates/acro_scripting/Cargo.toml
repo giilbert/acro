@@ -9,6 +9,7 @@ acro_ecs = { path = "../acro_ecs" }
 acro_reflect = { path = "../acro_reflect" }
 deno_core = "0.299.0"
 eyre = "0.6.12"
+fnv = "1.0.7"
 rustyscript = { version = "0.8.0", features = ["fs_import"] }
 serde = { version = "1.0.204", features = ["derive"] }
 tracing = "0.1.40"

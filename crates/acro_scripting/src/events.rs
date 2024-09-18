@@ -45,7 +45,7 @@ pub struct WeakEventQueueRef {
 pub struct EventQueueInner {
     type_id: std::any::TypeId,
     is_attached: bool,
-    data: VecDeque<Rc<dyn Any>>,
+    pub(crate) data: VecDeque<Rc<dyn Any>>,
 }
 
 impl<T> EventEmitter<T> {
@@ -126,6 +126,17 @@ impl EventQueueInner {
             data: VecDeque::new(),
         }
     }
+
+    #[inline(always)]
+    pub fn has_events(&self) -> bool {
+        !self.data.is_empty()
+    }
+}
+
+impl WeakEventQueueRef {
+    pub fn upgrade(&self) -> Option<AnyEventQueue> {
+        self.inner.upgrade().map(|inner| AnyEventQueue { inner })
+    }
 }
 
 impl AnyEventQueue {
@@ -141,6 +152,14 @@ impl AnyEventQueue {
         WeakEventQueueRef {
             inner: Rc::downgrade(&self.inner),
         }
+    }
+
+    pub fn next(&self) -> Option<Rc<dyn Any>> {
+        let mut inner = self
+            .inner
+            .try_borrow_mut()
+            .expect("inner is already borrowed");
+        inner.data.pop_front()
     }
 
     pub fn downcast<T: 'static>(&self) -> Option<EventQueue<T>> {
@@ -209,12 +228,13 @@ impl<T: 'static> Reflect for EventEmitter<T> {
 #[op2]
 fn create_event_listener(
     #[state] world: &Rc<RefCell<World>>,
-    #[global] function: v8::Global<v8::Function>,
+    #[global] function: v8::Global<v8::Value>,
 ) -> Result<u32, deno_core::error::AnyError> {
     let world = world.borrow();
-    let runtime = world.resource_mut::<ScriptingRuntime>();
+    let mut runtime = world.resource_mut::<ScriptingRuntime>();
 
-    // runtime.create_event_listener_function(function);
+    let event_listener_handle =
+        runtime.create_event_listener_function(unsafe { Function::from_v8_unchecked(function) });
 
-    todo!();
+    Ok(event_listener_handle.0)
 }

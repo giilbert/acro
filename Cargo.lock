@@ -153,6 +153,7 @@ dependencies = [
  "acro_reflect",
  "deno_core",
  "eyre",
+ "fnv",
  "rustyscript",
  "serde",
  "tracing",
