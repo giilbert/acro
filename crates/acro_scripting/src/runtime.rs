@@ -15,11 +15,11 @@ use tracing::info;
 use crate::{
     behavior::{Behavior, BehaviorData},
     ops::{
-        op_get_property_number, op_get_property_string, op_set_property_number,
+        op_call_function, op_get_property_number, op_get_property_string, op_set_property_number,
         op_set_property_string,
     },
     source_file::SourceFile,
-    AnyEventQueue, WeakEventQueueRef,
+    AnyEventQueue, EventListenerStore, WeakEventQueueRef,
 };
 
 pub struct ScriptingRuntime {
@@ -31,25 +31,6 @@ pub struct ScriptingRuntime {
     inner: Option<JsRuntime>,
     component_vtables: Option<HashMap<ComponentId, *const ()>>,
     init_module_handle: Option<ModuleHandle>,
-
-    event_listener_id: EventListenerId,
-    event_listeners: FnvHashMap<EventListenerId, BoundEventQueue>,
-}
-
-struct BoundEventQueue {
-    pub queue: WeakEventQueueRef,
-    pub function: Function,
-}
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub struct EventListenerId(pub u32);
-
-impl EventListenerId {
-    pub fn next_id(&mut self) -> Self {
-        let id = self.0;
-        self.0 += 1;
-        Self(id)
-    }
 }
 
 impl std::fmt::Debug for ScriptingRuntime {
@@ -71,9 +52,6 @@ impl ScriptingRuntime {
             inner: None,
             component_vtables: Some(HashMap::new()),
             init_module_handle: None,
-
-            event_listener_id: EventListenerId(0),
-            event_listeners: FnvHashMap::default(),
         }
     }
 
@@ -187,41 +165,6 @@ impl ScriptingRuntime {
     pub fn take_ops(&mut self) -> Vec<deno_core::OpDecl> {
         self.decl.take().expect("ops already initialized")
     }
-
-    pub fn create_event_listener_function(&mut self, function: Function) -> EventListenerId {
-        let queue = AnyEventQueue::new();
-        let id = self.event_listener_id.next_id();
-
-        let weak_ref = queue.into_weak();
-        self.event_listeners.insert(
-            id,
-            BoundEventQueue {
-                queue: weak_ref,
-                function,
-            },
-        );
-
-        id
-    }
-
-    pub fn remove_event_listener(&mut self, id: EventListenerId) {}
-
-    pub fn update_active_event_listeners(&self) -> eyre::Result<()> {
-        let mut dead_listeners = vec![];
-
-        for (id, bound_queue) in &self.event_listeners {
-            match bound_queue.queue.upgrade() {
-                Some(queue) => {
-                    while let Some(data) = queue.next() {
-                        // TODO: call function with data
-                    }
-                }
-                None => dead_listeners.push(*id),
-            }
-        }
-
-        Ok(())
-    }
 }
 
 #[derive(Default)]
@@ -263,6 +206,7 @@ pub fn init_scripting_runtime(
     registered_ops.push(op_set_property_string());
     registered_ops.push(op_get_property_number());
     registered_ops.push(op_set_property_number());
+    registered_ops.push(op_call_function());
 
     let ext = deno_core::Extension {
         name: "reflect",
@@ -277,11 +221,13 @@ pub fn init_scripting_runtime(
         ..Default::default()
     })?;
 
-    inner_runtime
-        .deno_runtime()
-        .op_state()
-        .borrow_mut()
-        .put(runtime.world_handle.clone());
+    {
+        let op_state = inner_runtime.deno_runtime().op_state();
+        let mut op_state = op_state.borrow_mut();
+
+        op_state.put(runtime.world_handle.clone());
+        op_state.put(Tick::new(0));
+    }
 
     let init_module = Module::load("lib/core/init.ts")?;
     let init_module_handle = inner_runtime
@@ -329,5 +275,17 @@ pub fn update_behaviors(
     // let now = std::time::Instant::now();
     runtime.update(ctx.tick)?;
     // info!("update_behaviors: {:?}", now.elapsed());
+    Ok(())
+}
+
+pub fn flush_events(
+    ctx: SystemRunContext,
+    mut event_listeners: ResMut<EventListenerStore>,
+    mut runtime: ResMut<ScriptingRuntime>,
+) -> eyre::Result<()> {
+    event_listeners
+        .inner_mut()
+        .update_active_event_listeners(&mut runtime)?;
+
     Ok(())
 }

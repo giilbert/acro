@@ -1,13 +1,18 @@
 import { $, Behavior, Entity } from "jsr:@acro/core";
 import { Input } from "jsr:@acro/input";
-import { Text } from "jsr:@acro/ui";
+import { Button, Text } from "jsr:@acro/ui";
 
 class TestBehavior extends Behavior {
   text: Text;
+  button: Button;
 
   constructor(entity: Entity) {
     super(entity);
+
     this.text = $("/UI/Panel/Text")?.getComponent(Text)!;
+    this.button = $("/UI/Panel 2")?.getComponent(Button)!;
+
+    this.button.click.bind(() => (this.transform.position.y += 1));
   }
 
   update(deltaTime: number) {

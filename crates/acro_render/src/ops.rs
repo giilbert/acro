@@ -39,5 +39,6 @@ pub fn op_get_mouse_press(
 
     Ok(window_state
         .mouse_buttons_pressed
-        .contains(&deno_core::serde_json::from_str::<winit::event::MouseButton>(button)?))
+        .contains(&deno_core::serde_json::from_str::<winit::event::MouseButton>(button)?)
+        && !window_state.ui_processed_click)
 }

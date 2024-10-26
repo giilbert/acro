@@ -19,7 +19,7 @@ use acro_math::TransformBoundary;
 use acro_render::RendererHandle;
 use acro_scene::ComponentLoaders;
 use acro_scripting::ScriptingRuntime;
-use button::{handle_button_click_test, poll_button_interaction, Button, ButtonClickTestQueue};
+use button::{poll_button_interaction, Button};
 use context::UiContext;
 use panel::{render_panel, Panel};
 use positioning_options::{Dim, FlexOptions, PositioningOptions};
@@ -41,7 +41,6 @@ impl Plugin for UiPlugin {
             .init_component::<Panel>()
             .init_component::<Button>()
             .insert_resource(ui_context)
-            .insert_resource(ButtonClickTestQueue::default())
             .with_resource::<ComponentLoaders>(|loaders| {
                 loaders.register("ScreenUi", |world, entity, value| {
                     world.insert(entity, TransformBoundary);
@@ -72,8 +71,9 @@ impl Plugin for UiPlugin {
             })
             .with_resource::<ScriptingRuntime>(|mut runtime| {
                 runtime.register_component::<Text>("Text");
+                runtime.register_component::<Button>("Button");
             })
-            .add_system(Stage::Update, [], poll_ui_element_state)
+            .add_system(Stage::PreUpdate, [], poll_ui_element_state)
             .add_system(
                 Stage::Update,
                 [SystemSchedulingRequirement::RunAfter(SystemId::Native(
@@ -81,7 +81,6 @@ impl Plugin for UiPlugin {
                 ))],
                 poll_button_interaction,
             )
-            .add_system(Stage::Update, [], handle_button_click_test)
             .add_system(Stage::PreRender, [], update_screen_ui_rect)
             .add_system(
                 Stage::PreRender,

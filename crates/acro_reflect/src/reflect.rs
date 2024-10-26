@@ -49,7 +49,7 @@ pub trait Reflect {
     fn get_opt(&self, path: &ReflectPath) -> Option<&dyn Any>;
 
     fn call_method(
-        &self,
+        &mut self,
         _path: &ReflectPath,
         _arguments: Vec<Box<dyn Any>>,
     ) -> Result<Option<Box<dyn Any>>, ReflectFunctionCallError> {
@@ -179,7 +179,7 @@ mod tests {
         }
 
         fn call_method(
-            &self,
+            &mut self,
             path: &R,
             arguments: Vec<Box<dyn Any>>,
         ) -> Result<Option<Box<dyn Any>>, ReflectFunctionCallError> {
@@ -233,7 +233,7 @@ mod tests {
         }
 
         fn call_method(
-            &self,
+            &mut self,
             path: &R,
             arguments: Vec<Box<dyn Any>>,
         ) -> Result<Option<Box<dyn Any>>, ReflectFunctionCallError> {

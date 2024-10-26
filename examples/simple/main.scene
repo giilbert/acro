@@ -71,8 +71,8 @@ entities:
           - name: Text
             components:
               - name: Text
-                content: this is a button
-                font_size: 48.0
+                content: move the teapot up
+                font_size: 24.0
                 line_height: 48.0
                 weight: 700
               - name: Rect

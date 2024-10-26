@@ -52,6 +52,8 @@ fn reflect_derive_struct(
     let field_names_string_2 = field_names_string.clone();
     let field_idents_3 = field_idents.clone();
     let field_names_string_3 = field_names_string.clone();
+    let field_idents_4 = field_idents.clone();
+    let field_names_string_4 = field_names_string.clone();
 
     quote! {
         impl acro_reflect::Reflect for #name {
@@ -82,6 +84,20 @@ fn reflect_derive_struct(
                             => self.#field_idents_3.set_any(rest, data),
                     )*
                     _ => Err(acro_reflect::ReflectSetError::PathNotFound),
+                }
+            }
+
+            fn call_method(
+                &mut self,
+                path: &acro_reflect::ReflectPath,
+                arguments: Vec<Box<dyn std::any::Any>>,
+            ) -> Result<Option<Box<dyn std::any::Any>>, acro_reflect::ReflectFunctionCallError> {
+                match path {
+                    #(
+                        acro_reflect::ReflectPath::Property(#field_names_string_4, rest)
+                            => self.#field_idents_4.call_method(rest, arguments),
+                    )*
+                    _ => Err(acro_reflect::ReflectFunctionCallError::PathNotFound),
                 }
             }
         }

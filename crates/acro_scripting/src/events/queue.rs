@@ -16,13 +16,17 @@ use tracing::info;
 
 use crate::ScriptingRuntime;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EventListenerId(usize);
+use super::EventEmitter;
 
-#[derive(Debug, Default)]
-pub struct EventEmitter<T: 'static> {
-    listener_id: usize,
-    listeners: HashMap<EventListenerId, EventQueue<T>>,
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EventListenerId(pub usize);
+
+impl EventListenerId {
+    pub fn next_id(&mut self) -> Self {
+        let id = *self;
+        self.0 += 1;
+        id
+    }
 }
 
 #[derive(Debug)]
@@ -46,28 +50,6 @@ pub struct EventQueueInner {
     type_id: std::any::TypeId,
     is_attached: bool,
     pub(crate) data: VecDeque<Rc<dyn Any>>,
-}
-
-impl<T> EventEmitter<T> {
-    fn next_id(&mut self) -> EventListenerId {
-        let id = self.listener_id;
-        self.listener_id += 1;
-        EventListenerId(id)
-    }
-
-    pub fn attach(&mut self, queue: EventQueue<T>) -> EventListenerId {
-        let id = self.next_id();
-        self.listeners.insert(id, queue);
-        id
-    }
-
-    pub fn emit(&self, data: T) {
-        let data = Rc::new(data);
-
-        for (_id, queue) in &self.listeners {
-            queue.inner_mut().data.push_back(data.clone());
-        }
-    }
 }
 
 impl<T: 'static> Default for EventQueue<T> {
@@ -172,69 +154,4 @@ impl AnyEventQueue {
             })
         }
     }
-}
-
-impl<T: 'static> Reflect for EventEmitter<T> {
-    fn get_name(&self) -> &'static str {
-        "EventEmitter<T>"
-    }
-
-    fn get_field_names(&self) -> &'static [&'static str] {
-        &[]
-    }
-
-    fn get_full_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
-
-    fn get_opt(&self, path: &R) -> Option<&dyn Any> {
-        None
-    }
-
-    fn set_any(&mut self, path: &R, data: Box<dyn Any>) -> Result<(), ReflectSetError> {
-        Err(ReflectSetError::PathNotFound)
-    }
-
-    fn call_method(
-        &self,
-        path: &R,
-        arguments: Vec<Box<dyn Any>>,
-    ) -> Result<Option<Box<dyn Any>>, ReflectFunctionCallError> {
-        match path {
-            R::Property("attach_javascript_function", path) if **path == R::End => {
-                // let mut arguments = arguments.into_iter();
-                // let arg_0 = arguments
-                //     .next()
-                //     .ok_or_else(|| ReflectFunctionCallError::MissingArgument(0))?
-                //     .downcast()
-                //     .map_err(|_| ReflectFunctionCallError::ArgumentTypeMismatch(0))?;
-                // let arg_1 = arguments
-                //     .next()
-                //     .ok_or_else(|| ReflectFunctionCallError::MissingArgument(1))?
-                //     .downcast()
-                //     .map_err(|_| ReflectFunctionCallError::ArgumentTypeMismatch(1))?;
-
-                // self.attach_javascript_function(*arg_0, *arg_1);
-
-                Ok(None)
-            }
-            _ => Err(ReflectFunctionCallError::PathNotFound),
-        }
-    }
-}
-
-/// Registers a function as an event handler and returns a handle to it. The handle can be passed in
-/// to `Reflect`ed methods to bind JavaScript functions to Rust event emitters.
-#[op2]
-fn create_event_listener(
-    #[state] world: &Rc<RefCell<World>>,
-    #[global] function: v8::Global<v8::Value>,
-) -> Result<u32, deno_core::error::AnyError> {
-    let world = world.borrow();
-    let mut runtime = world.resource_mut::<ScriptingRuntime>();
-
-    let event_listener_handle =
-        runtime.create_event_listener_function(unsafe { Function::from_v8_unchecked(function) });
-
-    Ok(event_listener_handle.0)
 }

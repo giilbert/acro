@@ -61,6 +61,14 @@ declare namespace Deno.core.ops {
     y: number,
     z: number
   ) => void;
+
+  const op_call_function: (
+    generation: number,
+    index: number,
+    componentId: number,
+    path: string,
+    args: any[]
+  ) => any;
 }
 
 export function getPropertyString(attachment: Attachment): string {
@@ -140,5 +148,15 @@ export function setPropertyVec3(attachment: Attachment, value: Vec3) {
     value.x,
     value.y,
     value.z
+  );
+}
+
+export function callFunction(attachment: Attachment, args: any[]): any {
+  Deno.core.ops.op_call_function(
+    attachment.entity.generation,
+    attachment.entity.index,
+    attachment.componentId,
+    attachment.path,
+    args
   );
 }

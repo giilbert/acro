@@ -25,6 +25,7 @@ pub struct WindowState {
     pub mouse_position: Vec2,
     pub keys_pressed: HashSet<KeyCode>,
     pub mouse_buttons_pressed: HashSet<winit::event::MouseButton>,
+    pub ui_processed_click: bool,
 }
 
 impl Window {

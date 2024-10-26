@@ -1,17 +1,18 @@
+import { Attachment, callFunction } from "./mod.ts";
+
 type AnyEventListener = (...args: any[]) => void;
+export class EventEmitter {
+  private attachment?: Attachment;
 
-export class EventBridge {
-  listeners: Map<number, AnyEventListener>;
+  private handlers: AnyEventListener[];
 
-  constructor() {
-    this.listeners = new Map();
+  constructor(attachment?: Attachment) {
+    this.attachment = attachment;
+    this.handlers = [];
   }
 
-  addListener(id: number, listener: AnyEventListener) {
-    this.listeners.set(id, listener);
-  }
-
-  removeListener(id: number) {
-    this.listeners.delete(id);
+  public bind(handler: AnyEventListener) {
+    this.handlers.push(handler);
+    if (this.attachment) callFunction(this.attachment.add("bind"), [handler]);
   }
 }
