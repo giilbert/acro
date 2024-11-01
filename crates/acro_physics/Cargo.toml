@@ -1,16 +1,20 @@
 [package]
-name = "acro_bin"
+name = "acro_physics"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 acro_assets = { path = "../acro_assets" }
 acro_ecs = { path = "../acro_ecs" }
-acro_log = { path = "../acro_log" }
 acro_math = { path = "../acro_math" }
-acro_physics = { path = "../acro_physics" }
-acro_render = { path = "../acro_render" }
 acro_scene = { path = "../acro_scene" }
 acro_scripting = { path = "../acro_scripting" }
-acro_ui = { path = "../acro_ui" }
+cfg-if = "1.0.0"
+eyre = "0.6.12"
+deno_core = "0.299.0"
+parking_lot = "0.12.3"
+pollster = "0.3.0"
+nalgebra = { version = "0.33.0", features = ["serde-serialize"] }
+serde = { version = "1.0.204", features = ["derive"] }
+serde_yml = "0.0.11"
 tracing = "0.1.40"

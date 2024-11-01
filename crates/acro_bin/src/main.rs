@@ -4,6 +4,7 @@ use acro_assets::{Assets, AssetsPlugin};
 use acro_ecs::{Application, Plugin, Query, Res, Stage, SystemRunContext, With};
 use acro_log::LogPlugin;
 use acro_math::{Children, GlobalTransform, MathPlugin, Parent, Root, Transform};
+use acro_physics::PhysicsPlugin;
 use acro_render::{Mesh, RenderPlugin, WindowState};
 use acro_scene::{SceneManager, ScenePlugin};
 use acro_scripting::{Behavior, ScriptingPlugin, SourceFile};
@@ -40,6 +41,7 @@ fn main() {
         .add_plugin(MathPlugin::default())
         .add_plugin(ScenePlugin)
         .add_plugin(RenderPlugin)
+        .add_plugin(PhysicsPlugin)
         .add_plugin(UiPlugin)
         .add_plugin(TestPlugin)
         .run();

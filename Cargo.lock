@@ -49,6 +49,7 @@ dependencies = [
  "acro_ecs",
  "acro_log",
  "acro_math",
+ "acro_physics",
  "acro_render",
  "acro_scene",
  "acro_scripting",
@@ -92,6 +93,26 @@ dependencies = [
  "nalgebra",
  "rustyscript",
  "serde",
+ "tracing",
+]
+
+[[package]]
+name = "acro_physics"
+version = "0.1.0"
+dependencies = [
+ "acro_assets",
+ "acro_ecs",
+ "acro_math",
+ "acro_scene",
+ "acro_scripting",
+ "cfg-if",
+ "deno_core",
+ "eyre",
+ "nalgebra",
+ "parking_lot",
+ "pollster",
+ "serde",
+ "serde_yml",
  "tracing",
 ]
 

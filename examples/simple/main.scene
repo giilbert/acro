@@ -13,11 +13,12 @@ entities:
         shader_path: examples/simple/shaders/basic-mesh.wgsl
       - name: Behavior
         source: examples/simple/src/test.ts
+      - name: Rigidbody3D
     children: []
   - name: Camera
     components:
       - name: Transform
-        position: [0.0, -5.0, -12.0]
+        position: [0.0, -5.0, -100.0]
         rotation: [0.2, 0.0, 0.0]
         scale: [1.0, 1.0, 1.0]
       - name: Camera
