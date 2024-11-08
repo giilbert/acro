@@ -15,8 +15,8 @@ pub struct Transform {
 impl Transform {
     pub fn get_matrix(&self) -> Mat4 {
         Mat4::new_nonuniform_scaling(&self.scale)
-            * Mat4::new_rotation(self.rotation)
             * Mat4::new_translation(&self.position)
+            * Mat4::new_rotation(self.rotation)
     }
 }
 
