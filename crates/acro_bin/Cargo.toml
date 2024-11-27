@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 acro_assets = { path = "../acro_assets" }
+acro_build = { path = "../acro_build" }
 acro_ecs = { path = "../acro_ecs" }
-acro_log = { path = "../acro_log" }
 acro_math = { path = "../acro_math" }
 acro_physics = { path = "../acro_physics" }
 acro_render = { path = "../acro_render" }
@@ -14,3 +14,4 @@ acro_scene = { path = "../acro_scene" }
 acro_scripting = { path = "../acro_scripting" }
 acro_ui = { path = "../acro_ui" }
 tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
