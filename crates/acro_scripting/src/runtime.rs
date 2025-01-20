@@ -1,25 +1,27 @@
-use core::panic;
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc, time::SystemTime};
 
 use acro_assets::Assets;
 use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
 use acro_reflect::Reflect;
-use deno_core::url::Url;
-use fnv::FnvHashMap;
-use rustyscript::{
-    deno_core, js_value::Function, json_args, module_loader::ImportProvider, Module, ModuleHandle,
-    Runtime as JsRuntime, RuntimeOptions, Undefined,
-};
+
+cfg_if::cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        use js_sys::Function;
+    } else {
+        use deno_core::url::Url;
+        use rustyscript::{
+            deno_core, json_args, module_loader::ImportProvider, Module, ModuleHandle,
+            Runtime as JsRuntime, RuntimeOptions, Undefined,
+        };
+    }
+}
+
 use tracing::info;
 
 use crate::{
     behavior::{Behavior, BehaviorData},
-    ops::{
-        op_call_function, op_get_property_number, op_get_property_string, op_set_property_number,
-        op_set_property_string,
-    },
     source_file::SourceFile,
-    AnyEventQueue, EventListenerStore, WeakEventQueueRef,
+    EventListenerStore,
 };
 
 pub struct ScriptingRuntime {
@@ -27,6 +29,7 @@ pub struct ScriptingRuntime {
     world_handle: Rc<RefCell<World>>,
     behavior_id: u32,
     name_to_component_id: HashMap<String, ComponentId>,
+
     decl: Option<Vec<deno_core::OpDecl>>,
     inner: Option<JsRuntime>,
     component_vtables: Option<HashMap<ComponentId, *const ()>>,
@@ -200,55 +203,61 @@ pub fn init_scripting_runtime(
         return Ok(());
     }
 
-    let mut registered_ops = runtime.take_ops();
-
-    registered_ops.push(op_get_property_string());
-    registered_ops.push(op_set_property_string());
-    registered_ops.push(op_get_property_number());
-    registered_ops.push(op_set_property_number());
-    registered_ops.push(op_call_function());
-
-    let ext = deno_core::Extension {
-        name: "reflect",
-        ops: Cow::Owned(registered_ops),
-        ..Default::default()
-    };
-
-    let mut inner_runtime = JsRuntime::new(RuntimeOptions {
-        extensions: vec![ext],
-        default_entrypoint: Some("init".to_string()),
-        import_provider: Some(Box::new(AcroLibImportProvider)),
-        ..Default::default()
-    })?;
-
+    #[cfg(not(target_arch = "wasm32"))]
     {
-        let op_state = inner_runtime.deno_runtime().op_state();
-        let mut op_state = op_state.borrow_mut();
+        let mut registered_ops = runtime.take_ops();
+        use crate::platform::deno_ops::{
+            op_call_function, op_get_property_number, op_get_property_string,
+            op_set_property_number, op_set_property_string,
+        };
+        registered_ops.push(op_get_property_string());
+        registered_ops.push(op_set_property_string());
+        registered_ops.push(op_get_property_number());
+        registered_ops.push(op_set_property_number());
+        registered_ops.push(op_call_function());
 
-        op_state.put(runtime.world_handle.clone());
-        op_state.put(Tick::new(0));
+        let ext = deno_core::Extension {
+            name: "reflect",
+            ops: Cow::Owned(registered_ops),
+            ..Default::default()
+        };
+
+        let mut inner_runtime = JsRuntime::new(RuntimeOptions {
+            extensions: vec![ext],
+            default_entrypoint: Some("init".to_string()),
+            import_provider: Some(Box::new(AcroLibImportProvider)),
+            ..Default::default()
+        })?;
+
+        {
+            let op_state = inner_runtime.deno_runtime().op_state();
+            let mut op_state = op_state.borrow_mut();
+
+            op_state.put(runtime.world_handle.clone());
+            op_state.put(Tick::new(0));
+        }
+
+        let init_module = Module::load("lib/core/init.ts")?;
+        let init_module_handle = inner_runtime
+            .load_module(&init_module)
+            .expect("error loading init module");
+
+        inner_runtime.call_function(Some(&init_module_handle), "init", json_args!())?;
+
+        info!(
+            "registered {} component(s)",
+            runtime.name_to_component_id.len()
+        );
+
+        inner_runtime.call_function(
+            Some(&init_module_handle),
+            "registerComponents",
+            json_args!(runtime.name_to_component_id),
+        )?;
+
+        runtime.inner = Some(inner_runtime);
+        runtime.init_module_handle = Some(init_module_handle);
     }
-
-    let init_module = Module::load("lib/core/init.ts")?;
-    let init_module_handle = inner_runtime
-        .load_module(&init_module)
-        .expect("error loading init module");
-
-    inner_runtime.call_function(Some(&init_module_handle), "init", json_args!())?;
-
-    info!(
-        "registered {} component(s)",
-        runtime.name_to_component_id.len()
-    );
-
-    inner_runtime.call_function(
-        Some(&init_module_handle),
-        "registerComponents",
-        json_args!(runtime.name_to_component_id),
-    )?;
-
-    runtime.inner = Some(inner_runtime);
-    runtime.init_module_handle = Some(init_module_handle);
 
     Ok(())
 }

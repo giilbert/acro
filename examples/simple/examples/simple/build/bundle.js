@@ -1,11 +1,11 @@
 (() => {
-  var r = class e {
+  var a = class e {
     _x;
     _y;
     _z;
     attachment;
-    constructor(t, n, s, m) {
-      (this._x = t), (this._y = n), (this._z = s), (this.attachment = m);
+    constructor(t, n, r, m) {
+      (this._x = t), (this._y = n), (this._z = r), (this.attachment = m);
     }
     add(t) {
       return new e(this.x + t.x, this.y + t.y, this.z + t.z);
@@ -72,12 +72,12 @@
       return acro.COMPONENT_IDS.Transform;
     }
     static createDefault(t) {
-      return new e(new r(0, 0, 0), new r(0, 0, 0), new r(1, 1, 1), t);
+      return new e(new a(0, 0, 0), new a(0, 0, 0), new a(1, 1, 1), t);
     }
-    constructor(t, n, s, m) {
+    constructor(t, n, r, m) {
       (this._position = t),
         (this._rotation = n),
-        (this._scale = s),
+        (this._scale = r),
         (this.attachment = m);
     }
     get position() {
@@ -122,14 +122,14 @@
       this._scale = t;
     }
     get forward() {
-      return new r(
+      return new a(
         Math.cos(-this.rotation.x) * Math.sin(-this.rotation.y),
         -Math.sin(-this.rotation.x),
         Math.cos(-this.rotation.x) * Math.cos(-this.rotation.y)
       ).normalized;
     }
     get right() {
-      return new r(Math.cos(-this.rotation.y), 0, -Math.sin(-this.rotation.y))
+      return new a(Math.cos(-this.rotation.y), 0, -Math.sin(-this.rotation.y))
         .normalized;
     }
     get up() {
@@ -140,8 +140,8 @@
     _x;
     _y;
     attachment;
-    constructor(t, n, s) {
-      (this._x = t), (this._y = n), (this.attachment = s);
+    constructor(t, n, r) {
+      (this._x = t), (this._y = n), (this.attachment = r);
     }
     add(t) {
       return new e(this.x + t.x, this.y + t.y);
@@ -192,7 +192,7 @@
       e.path
     );
   }
-  function P(e, t) {
+  function v(e, t) {
     Deno.core.ops.op_set_property_string(
       e.entity.generation,
       e.entity.index,
@@ -218,7 +218,7 @@
       t
     );
   }
-  function v(e) {
+  function P(e) {
     return Deno.core.ops.op_get_property_boolean(
       e.entity.generation,
       e.entity.index,
@@ -226,7 +226,7 @@
       e.path
     );
   }
-  function M(e, t) {
+  function V(e, t) {
     Deno.core.ops.op_set_property_boolean(
       e.entity.generation,
       e.entity.index,
@@ -236,13 +236,7 @@
     );
   }
   function p(e) {
-    let t = Deno.core.ops.op_get_property_vec3(
-      e.entity.generation,
-      e.entity.index,
-      e.componentId,
-      e.path
-    );
-    return new r(t.x, t.y, t.z, e);
+    throw new Error("getPropertyVec3 not implemented in browser!");
   }
   function u(e, t) {
     Deno.core.ops.op_set_property_vec3(
@@ -255,7 +249,7 @@
       t.z
     );
   }
-  function V(e, t) {
+  function M(e, t) {
     Deno.core.ops.op_call_function(
       e.entity.generation,
       e.entity.index,
@@ -271,19 +265,19 @@
         (this.generation = t), (this.index = n);
       }
       newAttachment(t, n) {
-        return new f(this, t, n);
+        return new l(this, t, n);
       }
       getComponent(t) {
         let n = this.newAttachment(t.getComponentId(), "");
         return t.createDefault(n);
       }
     },
-    f = class e {
+    l = class e {
       entity;
       componentId;
       path;
-      constructor(t, n, s) {
-        (this.entity = t), (this.componentId = n), (this.path = s);
+      constructor(t, n, r) {
+        (this.entity = t), (this.componentId = n), (this.path = r);
       }
       add(t) {
         return new e(this.entity, this.componentId, this.path + "." + t);
@@ -300,7 +294,7 @@
       }
       update(t) {}
     },
-    l = (e) => {
+    f = (e) => {
       let t = Deno.core.ops.op_get_entity_by_absolute_path(e);
       return t ? new y(t.generation, t.index) : null;
     };
@@ -312,7 +306,7 @@
     }
     bind(t) {
       this.handlers.push(t),
-        this.attachment && V(this.attachment.add("bind"), [t]);
+        this.attachment && M(this.attachment.add("bind"), [t]);
     }
   };
   var B = (e) => Deno.core.ops.op_get_key_press(JSON.stringify(e)),
@@ -321,36 +315,8 @@
       let [e, t] = Deno.core.ops.op_get_mouse_position();
       return new c(e, t);
     },
-    a = { isKeyPressed: B, isMousePressed: N, getMousePosition: S };
-  var g = 20;
-  var w = class extends h {
-      lastMousePosition = new c(0, 0);
-      constructor(t) {
-        super(t);
-      }
-      update(t) {
-        let s = a.getMousePosition().sub(this.lastMousePosition);
-        (this.lastMousePosition = a.getMousePosition()),
-          a.isKeyPressed("KeyW")
-            ? this.transform.position.addAssign(
-                this.transform.forward.scale(g * t)
-              )
-            : a.isKeyPressed("KeyS") &&
-              this.transform.position.addAssign(
-                this.transform.forward.scale(-g * t)
-              ),
-          a.isKeyPressed("KeyA")
-            ? this.transform.position.addAssign(
-                this.transform.right.scale(g * t)
-              )
-            : a.isKeyPressed("KeyD") &&
-              this.transform.position.addAssign(
-                this.transform.right.scale(-g * t)
-              );
-      }
-    },
-    I = () => acro.registerBehavior("FlyCamera", w);
-  var _ = class e {
+    s = { isKeyPressed: B, isMousePressed: N, getMousePosition: S };
+  var g = class e {
     _content;
     _fontSize;
     _lineHeight;
@@ -363,10 +329,10 @@
     static createDefault(t) {
       return new e("", 14, 16, 400, !1, t);
     }
-    constructor(t, n, s, m, E, k) {
+    constructor(t, n, r, m, E, k) {
       (this._content = t),
         (this._fontSize = n),
-        (this._lineHeight = s),
+        (this._lineHeight = r),
         (this._weight = m),
         (this._italic = E),
         (this.attachment = k);
@@ -378,7 +344,7 @@
       );
     }
     set content(t) {
-      this.attachment && P(this.attachment.add("content"), t),
+      this.attachment && v(this.attachment.add("content"), t),
         (this._content = t);
     }
     get fontSize() {
@@ -415,16 +381,16 @@
     }
     get italic() {
       return (
-        this.attachment && (this._italic = v(this.attachment.add("italic"))),
+        this.attachment && (this._italic = P(this.attachment.add("italic"))),
         this._italic
       );
     }
     set italic(t) {
-      this.attachment && M(this.attachment.add("italic"), t),
+      this.attachment && V(this.attachment.add("italic"), t),
         (this._italic = t);
     }
   };
-  var x = class e {
+  var _ = class e {
     click;
     static getComponentId() {
       return acro.COMPONENT_IDS.Button;
@@ -436,25 +402,53 @@
       this.click = new d(t?.add("click"));
     }
   };
-  var z = class extends h {
+  var w = class extends h {
       text;
       button;
       constructor(t) {
         super(t),
-          (this.text = l("/UI/Panel/Text")?.getComponent(_)),
-          (this.button = l("/UI/Panel 2")?.getComponent(x)),
+          (this.text = f("/UI/Panel/Text")?.getComponent(g)),
+          (this.button = f("/UI/Panel 2")?.getComponent(_)),
           this.button.click.bind(() => (this.transform.position.y += 1));
       }
       update(t) {
-        a.isMousePressed("Left") && (this.transform.rotation.y -= 5 * t),
-          a.isMousePressed("Right") && (this.transform.rotation.z += 5 * t),
+        s.isMousePressed("Left") && (this.transform.rotation.y -= 5 * t),
+          s.isMousePressed("Right") && (this.transform.rotation.z += 5 * t),
           (this.text.content = `y rotation (radians): ${this.transform.rotation.y.toFixed(
             2
           )}`);
       }
     },
-    D = () => acro.registerBehavior("TestBehavior", z);
-  (void 0)?.();
+    I = () => acro.registerBehavior("TestBehavior", w);
+  var x = 20;
+  var z = class extends h {
+      lastMousePosition = new c(0, 0);
+      constructor(t) {
+        super(t);
+      }
+      update(t) {
+        let r = s.getMousePosition().sub(this.lastMousePosition);
+        (this.lastMousePosition = s.getMousePosition()),
+          s.isKeyPressed("KeyW")
+            ? this.transform.position.addAssign(
+                this.transform.forward.scale(x * t)
+              )
+            : s.isKeyPressed("KeyS") &&
+              this.transform.position.addAssign(
+                this.transform.forward.scale(-x * t)
+              ),
+          s.isKeyPressed("KeyA")
+            ? this.transform.position.addAssign(
+                this.transform.right.scale(x * t)
+              )
+            : s.isKeyPressed("KeyD") &&
+              this.transform.position.addAssign(
+                this.transform.right.scale(-x * t)
+              );
+      }
+    },
+    D = () => acro.registerBehavior("FlyCamera", z);
   I?.();
   D?.();
+  (void 0)?.();
 })();

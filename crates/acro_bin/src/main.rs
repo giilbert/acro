@@ -37,8 +37,15 @@ fn main() {
     let subscriber = tracing_subscriber::FmtSubscriber::new().with(EnvFilter::from_default_env());
 
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set global subscriber");
-    acro_build::web::get_esbuild_binary_or_download().unwrap();
-    acro_build::web::build_javascript_bundle("examples/simple").unwrap();
+
+    let args = std::env::args().collect::<Vec<_>>();
+
+    // TODO: MAKE AN ACTUALLY GOOD CLI INTERFACE
+    if args[1] == "build" {
+        acro_build::web::get_esbuild_binary_or_download().unwrap();
+        acro_build::web::build_javascript_bundle("examples/simple").unwrap();
+        return;
+    }
 
     Application::new()
         .add_plugin(AssetsPlugin)
@@ -48,6 +55,6 @@ fn main() {
         .add_plugin(RenderPlugin)
         .add_plugin(PhysicsPlugin)
         .add_plugin(UiPlugin)
-        .add_plugin(TestPlugin);
-    // .run();
+        .add_plugin(TestPlugin)
+        .run();
 }

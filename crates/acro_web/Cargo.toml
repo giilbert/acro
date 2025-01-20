@@ -7,4 +7,7 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-acro_ecs = { path = "../acro_ecs" }
+# acro_ecs = { path = "../acro_ecs" }
+# acro_render = { path = "../acro_render" }
+acro_scripting = { path = "../acro_scripting" }
+wasm-bindgen = "0.2.100"

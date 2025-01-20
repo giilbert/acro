@@ -7,9 +7,17 @@ edition = "2021"
 acro_assets = { path = "../acro_assets" }
 acro_ecs = { path = "../acro_ecs" }
 acro_reflect = { path = "../acro_reflect" }
-deno_core = "0.299.0"
+cfg-if = "1.0.0"
 eyre = "0.6.12"
 fnv = "1.0.7"
-rustyscript = { version = "0.8.0", features = ["fs_import"] }
 serde = { version = "1.0.204", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
 tracing = "0.1.40"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.100"
+js-sys = "0.3.77"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+deno_core = "0.299.0"
+rustyscript = { version = "0.8.0", features = ["fs_import"] }

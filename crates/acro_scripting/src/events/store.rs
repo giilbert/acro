@@ -4,9 +4,8 @@ use std::{
 };
 
 use fnv::FnvHashMap;
-use rustyscript::{js_value::Function, Undefined};
 
-use crate::ScriptingRuntime;
+use crate::{platform::FunctionHandle, ScriptingRuntime};
 
 use super::{AnyEventQueue, EventListenerId, WeakEventQueueRef};
 
@@ -27,7 +26,7 @@ impl EventListenerStore {
 
 struct BoundEventQueue {
     pub queue: WeakEventQueueRef,
-    pub function: Function,
+    pub function: FunctionHandle,
 }
 
 #[derive(Default)]
@@ -37,7 +36,7 @@ pub struct EventListenerStoreInner {
 }
 
 impl EventListenerStoreInner {
-    pub fn create_event_listener_function(&mut self, function: Function) -> AnyEventQueue {
+    pub fn create_event_listener_function(&mut self, function: FunctionHandle) -> AnyEventQueue {
         let queue = AnyEventQueue::new();
         let id = self.event_listener_id.next_id();
 
@@ -66,10 +65,10 @@ impl EventListenerStoreInner {
                 Some(queue) => {
                     while let Some(data) = queue.next() {
                         // TODO: call function with data
-                        bound_queue
-                            .function
-                            .call::<Undefined>(runtime.inner_mut(), None, &[()])
-                            .expect("call failed");
+                        // bound_queue
+                        //     .function
+                        //     .call::<()>(runtime.inner_mut(), None, &[()])
+                        //     .expect("call failed");
                     }
                 }
                 None => dead_listeners.push(*id),

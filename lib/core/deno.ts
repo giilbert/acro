@@ -3,6 +3,12 @@
 import type { Attachment } from "./mod.ts";
 import { Vec3 } from "jsr:@acro/math";
 
+declare global {
+  interface ImportMeta {
+    platform: "deno" | "web";
+  }
+}
+
 declare namespace Deno.core.ops {
   const op_get_property_string: (
     generation: number,
@@ -129,14 +135,18 @@ export function setPropertyBoolean(attachment: Attachment, value: boolean) {
 }
 
 export function getPropertyVec3(attachment: Attachment): Vec3 {
-  const value = Deno.core.ops.op_get_property_vec3(
-    attachment.entity.generation,
-    attachment.entity.index,
-    attachment.componentId,
-    attachment.path
-  ) as { x: number; y: number; z: number };
+  if (import.meta.platform === "web") {
+    throw new Error("getPropertyVec3 not implemented in browser!");
+  } else {
+    const value = Deno.core.ops.op_get_property_vec3(
+      attachment.entity.generation,
+      attachment.entity.index,
+      attachment.componentId,
+      attachment.path
+    ) as { x: number; y: number; z: number };
 
-  return new Vec3(value.x, value.y, value.z, attachment);
+    return new Vec3(value.x, value.y, value.z, attachment);
+  }
 }
 
 export function setPropertyVec3(attachment: Attachment, value: Vec3) {

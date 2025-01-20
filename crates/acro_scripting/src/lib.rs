@@ -1,15 +1,14 @@
 mod behavior;
 mod events;
-mod function;
 mod ops;
+mod platform;
 mod runtime;
 mod source_file;
 
 use std::any::Any;
 
 pub use crate::{
-    behavior::Behavior, events::*, ops::get_dyn_reflect, runtime::ScriptingRuntime,
-    source_file::SourceFile,
+    behavior::Behavior, events::*, runtime::ScriptingRuntime, source_file::SourceFile,
 };
 
 use acro_assets::{load_queued_assets, Assets};

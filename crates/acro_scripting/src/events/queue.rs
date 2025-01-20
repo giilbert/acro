@@ -1,20 +1,11 @@
 use std::{
     any::Any,
-    borrow::BorrowMut,
-    cell::{Ref, RefCell, RefMut},
-    collections::{HashMap, VecDeque},
+    cell::{RefCell, RefMut},
+    collections::VecDeque,
     fmt::Debug,
     marker::PhantomData,
     rc::{Rc, Weak},
 };
-
-use acro_ecs::World;
-use acro_reflect::{Reflect, ReflectFunctionCallError, ReflectPath as R, ReflectSetError};
-use deno_core::{op2, v8, v8::HandleScope, OpState};
-use rustyscript::js_value::Function;
-use tracing::info;
-
-use crate::ScriptingRuntime;
 
 use super::EventEmitter;
 

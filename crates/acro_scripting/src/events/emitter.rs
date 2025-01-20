@@ -1,6 +1,6 @@
 use std::{any::Any, collections::HashMap, fmt::Debug, rc::Rc};
 
-use crate::function::FunctionHandle;
+use crate::platform::FunctionHandle;
 use acro_reflect::{Reflect, ReflectFunctionCallError, ReflectPath as R, ReflectSetError};
 
 use super::{queue::EventQueue, EventListenerId};

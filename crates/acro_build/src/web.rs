@@ -1,5 +1,6 @@
 use std::{
     collections::HashSet,
+    io::Write,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -125,6 +126,7 @@ pub fn build_javascript_bundle(project_base_path: impl Into<PathBuf>) -> eyre::R
         entry_file.to_string_lossy().to_string(),
         "--bundle".to_string(),
         "--minify".to_string(),
+        "--define:import.meta.platform=\"web\"".to_string(),
         "--log-override:import-is-undefined=silent".to_string(),
         format!(
             "--outfile={}",
@@ -135,11 +137,16 @@ pub fn build_javascript_bundle(project_base_path: impl Into<PathBuf>) -> eyre::R
 
     tracing::info!("running esbuild: {args:?}");
 
-    let child = Command::new(&esbuild_path)
+    // let path_as_string = esbuild_path.to_string_lossy().to_string();
+    // tracing::info!("command: {} {}", path_as_string, args.join(" "));
+
+    let mut child = Command::new(&esbuild_path)
         .current_dir(&project_base_path)
         .args(args)
-        // .stdout(Stdio::null())
+        .stdout(Stdio::piped())
         .spawn()?;
+
+    child.wait()?;
 
     Ok(())
 }
