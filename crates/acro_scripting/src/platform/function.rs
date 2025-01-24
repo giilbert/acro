@@ -9,9 +9,9 @@ use crate::{EventListenerStore, ScriptingRuntime};
 
 pub struct FunctionHandle {
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) function: Function,
+    pub(crate) inner: Function,
     #[cfg(target_arch = "wasm32")]
-    pub(crate) function: js_sys::Function,
+    pub(crate) inner: js_sys::Function,
 
     event_listener_store: EventListenerStore,
 }
@@ -20,7 +20,7 @@ impl FunctionHandle {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new_native(event_listener_store: &EventListenerStore, function: Function) -> Self {
         Self {
-            function,
+            inner: function,
             event_listener_store: event_listener_store.clone(),
         }
     }
@@ -31,7 +31,7 @@ impl FunctionHandle {
         function: js_sys::Function,
     ) -> Self {
         Self {
-            function,
+            inner: function,
             event_listener_store: event_listener_store.clone(),
         }
     }
@@ -48,16 +48,6 @@ impl FunctionHandle {
         runtime: &mut ScriptingRuntime,
         arguments: &impl Serialize,
     ) -> eyre::Result<T> {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            return Ok(self.function.call(runtime.inner_mut(), None, arguments)?);
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            self.function
-                .call1(&JsValue::NULL, &serde_wasm_bindgen::to_value(arguments)?)
-                .unwrap();
-        };
+        runtime.call_function(self, arguments)
     }
 }

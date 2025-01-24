@@ -13,7 +13,7 @@ pub use crate::{
 
 use acro_assets::{load_queued_assets, Assets};
 use acro_ecs::{systems::SystemId, Application, Plugin, Stage, SystemSchedulingRequirement};
-use runtime::{flush_events, init_behavior, init_scripting_runtime, update_behaviors};
+use runtime::{flush_events, init_behavior, late_init_scripting_runtime, update_behaviors};
 
 pub struct ScriptingPlugin;
 
@@ -32,7 +32,7 @@ impl Plugin for ScriptingPlugin {
                 [SystemSchedulingRequirement::RunBefore(SystemId::Native(
                     load_queued_assets.type_id(),
                 ))],
-                init_scripting_runtime,
+                late_init_scripting_runtime,
             )
             .add_system(Stage::Update, [], update_behaviors)
             .add_system(

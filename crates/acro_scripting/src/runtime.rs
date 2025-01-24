@@ -20,7 +20,16 @@ pub trait Platform {
         behavior: &mut Behavior,
     ) -> eyre::Result<()>;
     fn update(&mut self, last_update: SystemTime, tick: Tick) -> eyre::Result<SystemTime>;
-    fn late_init(&self) -> eyre::Result<()>;
+    fn late_init(
+        &mut self,
+        world_handle: Rc<RefCell<World>>,
+        name_to_component_id: &HashMap<String, ComponentId>,
+    ) -> eyre::Result<()>;
+    fn call_function<T: DeserializeOwned>(
+        &mut self,
+        function: &FunctionHandle,
+        arguments: &impl serde::Serialize,
+    ) -> eyre::Result<T>;
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -133,7 +142,11 @@ mod runtime_impl {
             Ok(SystemTime::now())
         }
 
-        fn late_init(&self, world_handle: Rc<RefCell<World>>) -> eyre::Result<()> {
+        fn late_init(
+            &mut self,
+            world_handle: Rc<RefCell<World>>,
+            name_to_component_id: &HashMap<String, ComponentId>,
+        ) -> eyre::Result<()> {
             if self.inner.is_some() {
                 return Ok(());
             }
@@ -178,10 +191,7 @@ mod runtime_impl {
 
                 runtime.call_function(Some(&init_module_handle), "init", json_args!())?;
 
-                info!(
-                    "registered {} component(s)",
-                    self.name_to_component_id.len()
-                );
+                info!("registered {} component(s)", name_to_component_id.len());
 
                 runtime.call_function(
                     Some(&init_module_handle),
@@ -189,11 +199,22 @@ mod runtime_impl {
                     json_args!(name_to_component_id),
                 )?;
 
-                runtime.inner = Some(runtime);
+                self.inner = Some(runtime);
                 self.init_module_handle = Some(init_module_handle);
             }
 
             Ok(())
+        }
+
+        fn call_function<T: DeserializeOwned>(
+            &mut self,
+            function: &FunctionHandle,
+            arguments: &impl serde::Serialize,
+        ) -> eyre::Result<T> {
+            let runtime = self.inner_mut();
+            // TODO: figure out what a module_context is
+            let results = function.inner.call::<T>(runtime, None, arguments)?;
+            Ok(results)
         }
     }
 
@@ -222,6 +243,7 @@ mod runtime_impl {
         }
     }
 
+    use serde::de::DeserializeOwned;
     pub use NativePlatform as Platform;
 
     use crate::SourceFile;
@@ -252,10 +274,12 @@ mod runtime_impl {
     pub use WasmPlatform as Platform;
 }
 
+use serde::de::DeserializeOwned;
 use tracing::info;
 
 use crate::{
     behavior::{Behavior, BehaviorData},
+    platform::FunctionHandle,
     source_file::SourceFile,
     EventListenerStore,
 };
@@ -333,26 +357,22 @@ impl ScriptingRuntime {
         Ok(())
     }
 
-    pub fn late_init(&self) {}
+    pub fn late_init(&mut self) {
+        self.platform
+            .late_init(self.world_handle.clone(), &self.name_to_component_id);
+    }
 
-    // pub fn add_op(&mut self, decl: deno_core::OpDecl) -> &mut Self {
-    //     self.decl
-    //         .as_mut()
-    //         .expect("ops already initialized")
-    //         .push(decl);
-    //     self
-    // }
-
-    // pub fn take_ops(&mut self) -> Vec<deno_core::OpDecl> {
-    //     self.decl.take().expect("ops already initialized")
-    // }
+    pub fn call_function<T: DeserializeOwned>(
+        &mut self,
+        function: &FunctionHandle,
+        arguments: &impl serde::Serialize,
+    ) -> eyre::Result<T> {
+        Ok(self.platform.call_function(function, arguments)?)
+    }
 }
 
-pub fn init_scripting_runtime(
-    _ctx: SystemRunContext,
-    mut runtime: ResMut<ScriptingRuntime>,
-) -> eyre::Result<()> {
-    Ok(())
+pub fn late_init_scripting_runtime(_ctx: SystemRunContext, mut runtime: ResMut<ScriptingRuntime>) {
+    runtime.late_init();
 }
 
 pub fn init_behavior(
