@@ -40,15 +40,18 @@ impl Plugin for MathPlugin {
             app.with_resource::<ScriptingRuntime>(|mut runtime| {
                 runtime.register_component::<Transform>("Transform");
 
-                runtime.add_op(op_get_property_vec2());
-                runtime.add_op(op_get_property_vec3());
-                runtime.add_op(op_get_property_vec4());
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    runtime.native_add_op(op_get_property_vec2());
+                    runtime.native_add_op(op_get_property_vec3());
+                    runtime.native_add_op(op_get_property_vec4());
 
-                runtime.add_op(op_set_property_vec2());
-                runtime.add_op(op_set_property_vec3());
-                runtime.add_op(op_set_property_vec4());
+                    runtime.native_add_op(op_set_property_vec2());
+                    runtime.native_add_op(op_set_property_vec3());
+                    runtime.native_add_op(op_set_property_vec4());
 
-                runtime.add_op(op_get_entity_by_absolute_path());
+                    runtime.native_add_op(op_get_entity_by_absolute_path());
+                }
             });
         }
 

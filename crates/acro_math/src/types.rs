@@ -2,7 +2,8 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_ecs::{ComponentId, Tick, World};
 use acro_reflect::{ReflectExt, ReflectPath};
-use acro_scripting::get_dyn_reflect;
+#[cfg(not(target_arch = "wasm32"))]
+use acro_scripting::deno_ops::get_dyn_reflect;
 use deno_core::op2;
 use nalgebra as na;
 

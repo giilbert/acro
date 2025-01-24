@@ -1,6 +1,5 @@
 mod behavior;
 mod events;
-mod ops;
 mod platform;
 mod runtime;
 mod source_file;
@@ -10,6 +9,9 @@ use std::any::Any;
 pub use crate::{
     behavior::Behavior, events::*, runtime::ScriptingRuntime, source_file::SourceFile,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use crate::platform::deno_ops;
 
 use acro_assets::{load_queued_assets, Assets};
 use acro_ecs::{systems::SystemId, Application, Plugin, Stage, SystemSchedulingRequirement};

@@ -41,7 +41,7 @@ fn main() {
     let args = std::env::args().collect::<Vec<_>>();
 
     // TODO: MAKE AN ACTUALLY GOOD CLI INTERFACE
-    if args[1] == "build" {
+    if args.get(1) == Some(&"build".to_string()) {
         acro_build::web::get_esbuild_binary_or_download().unwrap();
         acro_build::web::build_javascript_bundle("examples/simple").unwrap();
         return;

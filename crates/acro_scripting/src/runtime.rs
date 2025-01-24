@@ -61,6 +61,10 @@ mod runtime_impl {
                 .as_mut()
                 .expect("js runtime has not been initialized")
         }
+
+        pub fn add_op(&mut self, op: deno_core::OpDecl) {
+            self.ops_dec.as_mut().expect("ops already taken").push(op);
+        }
     }
 
     impl super::Platform for NativePlatform {
@@ -368,6 +372,11 @@ impl ScriptingRuntime {
         arguments: &impl serde::Serialize,
     ) -> eyre::Result<T> {
         Ok(self.platform.call_function(function, arguments)?)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn native_add_op(&mut self, op: deno_core::OpDecl) {
+        self.platform.add_op(op);
     }
 }
 
