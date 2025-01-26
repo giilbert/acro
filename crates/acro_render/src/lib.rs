@@ -26,7 +26,6 @@ use acro_scripting::ScriptingRuntime;
 use camera::{update_projection_matrix, CameraOptions};
 use mesh::{render_mesh_system, upload_mesh_system};
 use mesh_geometry::{MeshGeometryData, ObjFile};
-use ops::{op_get_key_press, op_get_mouse_position, op_get_mouse_press};
 use shader::Shader;
 use window::Window;
 
@@ -40,6 +39,7 @@ impl Plugin for RenderPlugin {
             .with_resource::<ScriptingRuntime>(|mut runtime| {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
+                    use ops::{op_get_key_press, op_get_mouse_position, op_get_mouse_press};
                     runtime.native_add_op(op_get_key_press());
                     runtime.native_add_op(op_get_mouse_position());
                     runtime.native_add_op(op_get_mouse_press());

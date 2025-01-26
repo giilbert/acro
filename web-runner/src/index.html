@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>acro web</title>
+  </head>
+  <body>
+    <script type="module">
+      import wasmUrl from "../../crates/acro_web/pkg/acro_web_bg.wasm?url";
+      import init from "../../crates/acro_web/pkg";
+
+      console.log("[acro] loading wasm...");
+      fetch(wasmUrl)
+        .then((response) => {
+          init(response).then((module) => {
+            console.log("[acro] wasm loaded");
+            module.run();
+          });
+        })
+        .catch(console.error);
+    </script>
+  </body>
+</html>

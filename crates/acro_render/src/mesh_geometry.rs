@@ -1,5 +1,5 @@
 use core::str;
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
 use acro_assets::{Assets, Loadable, LoaderContext};
 use acro_math::{Vec2, Vec3};

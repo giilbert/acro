@@ -1,11 +1,6 @@
 use acro_math::Vec2;
-use acro_render::{Color, RendererHandle, Srgba};
-use deno_core::futures::SinkExt;
-use tracing::info;
-use wgpu::{
-    core::instance, util::DeviceExt, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
-    VertexAttribute,
-};
+use acro_render::{RendererHandle, Srgba};
+use wgpu::{util::DeviceExt, BindGroupLayoutDescriptor, BindGroupLayoutEntry, VertexAttribute};
 
 #[rustfmt::skip]
 const BOX_VERTICES: &[f32] = &[

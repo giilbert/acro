@@ -13,6 +13,11 @@ pub struct Texture {
     pub(crate) sampler: wgpu::Sampler,
 }
 
+#[cfg(target_arch = "wasm32")]
+unsafe impl Send for Texture {}
+#[cfg(target_arch = "wasm32")]
+unsafe impl Sync for Texture {}
+
 #[derive(Debug, serde::Deserialize)]
 pub struct TextureOptions {
     address_mode_u: wgpu::AddressMode,

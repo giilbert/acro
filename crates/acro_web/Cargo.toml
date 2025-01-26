@@ -7,9 +7,15 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+acro_assets = { path = "../acro_assets" }
 acro_ecs = { path = "../acro_ecs" }
 acro_math = { path = "../acro_math" }
-# acro_render = { path = "../acro_render" }
+acro_physics = { path = "../acro_physics" }
+acro_render = { path = "../acro_render" }
 acro_scene = { path = "../acro_scene" }
 acro_scripting = { path = "../acro_scripting" }
+acro_ui = { path = "../acro_ui" }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+console_error_panic_hook = "0.1.7"
 wasm-bindgen = "0.2.100"
