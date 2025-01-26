@@ -53,4 +53,8 @@ export class AcroGlobalHook {
     ) as Behavior;
     this.behaviors.set(id, behavior);
   }
+
+  registerComponents(components: Record<string, number>) {
+    acro.COMPONENT_IDS = components;
+  }
 }

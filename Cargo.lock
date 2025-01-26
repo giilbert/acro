@@ -94,10 +94,13 @@ dependencies = [
  "acro_scripting",
  "cfg-if",
  "deno_core",
+ "js-sys",
  "nalgebra",
  "rustyscript",
  "serde",
+ "serde-wasm-bindgen",
  "tracing",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -112,12 +115,15 @@ dependencies = [
  "cfg-if",
  "deno_core",
  "eyre",
+ "js-sys",
  "nalgebra",
  "parking_lot",
  "pollster",
+ "rustyscript",
  "serde",
  "serde_yml",
  "tracing",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -146,11 +152,14 @@ dependencies = [
  "eyre",
  "getrandom",
  "image",
+ "js-sys",
  "parking_lot",
  "pollster",
+ "rustyscript",
  "serde",
  "serde_yml",
  "tracing",
+ "wasm-bindgen",
  "wgpu",
  "winit",
 ]
@@ -206,11 +215,14 @@ dependencies = [
  "eyre",
  "glyphon",
  "image",
+ "js-sys",
  "parking_lot",
  "pollster",
+ "rustyscript",
  "serde",
  "serde_yml",
  "tracing",
+ "wasm-bindgen",
  "wgpu",
  "winit",
 ]
@@ -219,6 +231,9 @@ dependencies = [
 name = "acro_web"
 version = "0.1.0"
 dependencies = [
+ "acro_ecs",
+ "acro_math",
+ "acro_scene",
  "acro_scripting",
  "wasm-bindgen",
 ]

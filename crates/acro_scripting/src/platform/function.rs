@@ -26,10 +26,7 @@ impl FunctionHandle {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn new_browser(
-        event_listener_store: &EventListenerStore,
-        function: js_sys::Function,
-    ) -> Self {
+    pub fn new_wasm(event_listener_store: &EventListenerStore, function: js_sys::Function) -> Self {
         Self {
             inner: function,
             event_listener_store: event_listener_store.clone(),

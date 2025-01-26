@@ -11,7 +11,7 @@ export const init = () => {
 };
 
 export const registerComponents = (components: Record<string, number>) => {
-  acro.COMPONENT_IDS = components;
+  acro.registerComponents(components);
 };
 
 export const createBehavior = (

@@ -273,6 +273,40 @@ mod runtime_impl {
         ) -> eyre::Result<()> {
             todo!();
         }
+
+        fn init_behavior(
+            &mut self,
+            id: u32,
+            attached_to: acro_ecs::EntityId,
+            source_file: &crate::SourceFile,
+            behavior: &mut crate::Behavior,
+        ) -> eyre::Result<()> {
+            todo!()
+        }
+
+        fn update(
+            &mut self,
+            last_update: std::time::SystemTime,
+            tick: acro_ecs::Tick,
+        ) -> eyre::Result<std::time::SystemTime> {
+            todo!()
+        }
+
+        fn late_init(
+            &mut self,
+            world_handle: std::rc::Rc<std::cell::RefCell<acro_ecs::World>>,
+            name_to_component_id: &std::collections::HashMap<String, acro_ecs::ComponentId>,
+        ) -> eyre::Result<()> {
+            todo!()
+        }
+
+        fn call_function<T: serde::de::DeserializeOwned>(
+            &mut self,
+            function: &crate::platform::FunctionHandle,
+            arguments: &impl serde::Serialize,
+        ) -> eyre::Result<T> {
+            todo!()
+        }
     }
 
     pub use WasmPlatform as Platform;

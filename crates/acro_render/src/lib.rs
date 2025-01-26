@@ -38,9 +38,12 @@ impl Plugin for RenderPlugin {
             .init_component::<Camera>()
             .init_component::<MainCamera>()
             .with_resource::<ScriptingRuntime>(|mut runtime| {
-                runtime.native_add_op(op_get_key_press());
-                runtime.native_add_op(op_get_mouse_position());
-                runtime.native_add_op(op_get_mouse_press());
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    runtime.native_add_op(op_get_key_press());
+                    runtime.native_add_op(op_get_mouse_position());
+                    runtime.native_add_op(op_get_mouse_press());
+                }
             })
             .with_resource::<Assets>(|mut assets| {
                 assets.register_loader::<Shader>();

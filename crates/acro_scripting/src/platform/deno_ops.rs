@@ -13,40 +13,7 @@ use rustyscript::{
 };
 use tracing::info;
 
-use crate::{platform::FunctionHandle, EventListenerStore, ScriptingRuntime};
-
-pub fn get_dyn_reflect<'a>(
-    world: &Rc<RefCell<World>>,
-    component_ids_to_vtables: &HashMap<ComponentId, *const ()>,
-    tick: &Tick,
-    generation: u32,
-    index: u32,
-    component_id: u32,
-    notify_change_detection: bool,
-) -> Result<&'a mut dyn Reflect, AnyError> {
-    let entity = EntityId::new(generation, index);
-    let component = ComponentId(component_id);
-
-    let data_ptr = world
-        .borrow()
-        .get_ptr(
-            entity,
-            component,
-            if notify_change_detection {
-                Some(*tick)
-            } else {
-                None
-            },
-        )
-        .ok_or_else(|| anyhow::anyhow!("entity or component not found"))?;
-
-    Ok(unsafe {
-        std::mem::transmute::<(*const (), *const ()), &mut dyn Reflect>((
-            data_ptr.as_ptr() as *const (),
-            component_ids_to_vtables[&ComponentId(component_id)] as *const (),
-        ))
-    })
-}
+use crate::{ops::get_dyn_reflect, platform::FunctionHandle, EventListenerStore, ScriptingRuntime};
 
 #[op2]
 #[string]

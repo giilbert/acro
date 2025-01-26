@@ -13,7 +13,6 @@ acro_scene = { path = "../acro_scene" }
 acro_scripting = { path = "../acro_scripting" }
 bytemuck = { version = "1.16.1", features = ["derive"] }
 cfg-if = "1.0.0"
-deno_core = "0.299.0"
 eyre = "0.6.12"
 glyphon = { git = "https://github.com/grovesNL/glyphon" }
 parking_lot = "0.12.3"
@@ -24,3 +23,11 @@ tracing = "0.1.40"
 wgpu = { version = "22.1.0", features = ["serde"] }
 winit = { version = "0.30.2", features = ["serde"] }
 image = "0.25.2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.100"
+js-sys = "0.3.77"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+deno_core = "0.299.0"
+rustyscript = { version = "0.8.0", features = ["fs_import"] }

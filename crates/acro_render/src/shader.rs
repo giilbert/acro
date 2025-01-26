@@ -12,6 +12,11 @@ pub struct Shader {
     pub(crate) bind_groups: HashMap<BindGroupId, BindGroupData>,
 }
 
+#[cfg(target_arch = "wasm32")]
+unsafe impl Send for Shader {}
+#[cfg(target_arch = "wasm32")]
+unsafe impl Sync for Shader {}
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq, serde::Deserialize)]
 pub enum BindGroupId {
     ModelMatrix,

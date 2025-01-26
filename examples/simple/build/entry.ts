@@ -1,3 +1,5 @@
+import { init } from "jsr:@acro/core";
+init();
 // deno-lint-ignore-file no-explicit-any
 import * as file_0 from "../src/test.ts";
 (file_0 as any).init?.();

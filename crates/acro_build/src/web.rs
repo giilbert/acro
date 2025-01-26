@@ -58,7 +58,11 @@ fn create_entry_file_content(
     project_base_path: &Path,
     files: impl Iterator<Item = PathBuf>,
 ) -> eyre::Result<String> {
-    let mut content = "// deno-lint-ignore-file no-explicit-any\n".to_string();
+    let mut content = r#"import { init } from "jsr:@acro/core";
+init();
+// deno-lint-ignore-file no-explicit-any
+"#
+    .to_string();
     for (index, file) in files.enumerate() {
         content.push_str(&format!(
             "import * as file_{index} from \"../{}\";\n",
