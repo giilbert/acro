@@ -1,3 +1,4 @@
+#[cfg(target_arch = "wasm32")]
 use acro_scripting::wasm_ops;
 use cfg_if::cfg_if;
 use std::{cell::RefCell, rc::Rc};

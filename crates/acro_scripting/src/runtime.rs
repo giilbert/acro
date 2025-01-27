@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, time::SystemTime};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_assets::Assets;
 use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
@@ -19,7 +19,7 @@ pub trait Platform {
         source_file: &SourceFile,
         behavior: &mut Behavior,
     ) -> eyre::Result<()>;
-    fn update(&mut self, last_update: SystemTime, tick: Tick) -> eyre::Result<SystemTime>;
+    fn update(&mut self, last_update: DateTime<Utc>, tick: Tick) -> eyre::Result<DateTime<Utc>>;
     fn late_init(
         &mut self,
         world_handle: Rc<RefCell<World>>,
@@ -127,14 +127,19 @@ mod runtime_impl {
             Ok(())
         }
 
-        fn update(&mut self, last_update: SystemTime, tick: Tick) -> eyre::Result<SystemTime> {
+        fn update(
+            &mut self,
+            last_update: DateTime<Utc>,
+            tick: Tick,
+        ) -> eyre::Result<DateTime<Utc>> {
             self.inner_mut()
                 .deno_runtime()
                 .op_state()
                 .borrow_mut()
                 .put(tick);
 
-            let delta_time = last_update.elapsed()?.as_secs_f64();
+            let delta_time = Utc::now().timestamp_subsec_nanos() as f64 / 1_000_000_000.0
+                - last_update.timestamp_subsec_nanos() as f64 / 1_000_000_000.0;
 
             let module_handle = self.init_module_handle.as_ref().map(|h| h.clone());
             self.inner_mut().call_function(
@@ -143,7 +148,7 @@ mod runtime_impl {
                 json_args!(delta_time),
             )?;
 
-            Ok(SystemTime::now())
+            Ok(Utc::now())
         }
 
         fn late_init(
@@ -257,13 +262,15 @@ mod runtime_impl {
 
 #[cfg(target_arch = "wasm32")]
 mod runtime_impl {
+    use acro_ecs::Tick;
+    use chrono::{DateTime, Utc};
     use js_sys::Function;
 
     pub struct WasmPlatform {}
 
     impl super::Platform for WasmPlatform {
         fn new() -> Self {
-            todo!();
+            Self {}
         }
 
         fn init_source_file(
@@ -271,7 +278,8 @@ mod runtime_impl {
             component_vtables: &mut super::ComponentVTables,
             source_file: &crate::SourceFile,
         ) -> eyre::Result<()> {
-            todo!();
+            info!("initializing source file: {:?}", source_file.config.name);
+            Ok(())
         }
 
         fn init_behavior(
@@ -281,15 +289,20 @@ mod runtime_impl {
             source_file: &crate::SourceFile,
             behavior: &mut crate::Behavior,
         ) -> eyre::Result<()> {
-            todo!()
+            info!(
+                "initializing behavior: {} attached to {:?}",
+                source_file.config.name, attached_to
+            );
+            Ok(())
         }
 
         fn update(
             &mut self,
-            last_update: std::time::SystemTime,
-            tick: acro_ecs::Tick,
-        ) -> eyre::Result<std::time::SystemTime> {
-            todo!()
+            last_update: DateTime<Utc>,
+            tick: Tick,
+        ) -> eyre::Result<DateTime<Utc>> {
+            info!("updating behaviors");
+            Ok(Utc::now())
         }
 
         fn late_init(
@@ -297,7 +310,8 @@ mod runtime_impl {
             world_handle: std::rc::Rc<std::cell::RefCell<acro_ecs::World>>,
             name_to_component_id: &std::collections::HashMap<String, acro_ecs::ComponentId>,
         ) -> eyre::Result<()> {
-            todo!()
+            info!("late init");
+            Ok(())
         }
 
         fn call_function<T: serde::de::DeserializeOwned>(
@@ -305,13 +319,17 @@ mod runtime_impl {
             function: &crate::platform::FunctionHandle,
             arguments: &impl serde::Serialize,
         ) -> eyre::Result<T> {
-            todo!()
+            info!("calling function");
+
+            todo!();
         }
     }
 
+    use tracing::info;
     pub use WasmPlatform as Platform;
 }
 
+use chrono::{DateTime, Utc};
 use serde::de::DeserializeOwned;
 use tracing::info;
 
@@ -325,7 +343,7 @@ use crate::{
 type ComponentVTables = Option<HashMap<ComponentId, *const ()>>;
 
 pub struct ScriptingRuntime {
-    last_update: SystemTime,
+    last_update: DateTime<Utc>,
     world_handle: Rc<RefCell<World>>,
     behavior_id: u32,
     name_to_component_id: HashMap<String, ComponentId>,
@@ -344,7 +362,7 @@ impl std::fmt::Debug for ScriptingRuntime {
 impl ScriptingRuntime {
     pub fn new(world_handle: Rc<RefCell<World>>) -> Self {
         Self {
-            last_update: SystemTime::now(),
+            last_update: Utc::now(),
             behavior_id: 0,
             world_handle,
             name_to_component_id: HashMap::new(),
@@ -397,7 +415,8 @@ impl ScriptingRuntime {
 
     pub fn late_init(&mut self) {
         self.platform
-            .late_init(self.world_handle.clone(), &self.name_to_component_id);
+            .late_init(self.world_handle.clone(), &self.name_to_component_id)
+            .expect("failed to late init");
     }
 
     pub fn call_function<T: DeserializeOwned>(

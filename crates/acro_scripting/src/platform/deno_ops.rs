@@ -13,7 +13,10 @@ use rustyscript::{
 };
 use tracing::info;
 
-use crate::{ops::get_dyn_reflect, platform::FunctionHandle, EventListenerStore, ScriptingRuntime};
+use crate::{
+    eyre_to_any_error, get_dyn_reflect, platform::FunctionHandle, EventListenerStore,
+    ScriptingRuntime,
+};
 
 #[op2]
 #[string]
@@ -35,7 +38,8 @@ pub fn op_get_property_string(
         index,
         component_id,
         false,
-    )?;
+    )
+    .map_err(eyre_to_any_error)?;
 
     Ok(object.get::<String>(&path).clone())
 }
@@ -62,7 +66,8 @@ pub fn op_set_property_string(
         index,
         component_id,
         true,
-    )?;
+    )
+    .map_err(eyre_to_any_error)?;
 
     object.set::<String>(&path, value);
 
@@ -88,7 +93,8 @@ pub fn op_get_property_number(
         index,
         component_id,
         false,
-    )?;
+    )
+    .map_err(eyre_to_any_error)?;
 
     Ok(*object.get::<f32>(&path) as f64)
 }
@@ -114,7 +120,8 @@ pub fn op_set_property_number(
         index,
         component_id,
         true,
-    )?;
+    )
+    .map_err(eyre_to_any_error)?;
 
     object.set::<f32>(&path, value as f32);
 
@@ -140,7 +147,8 @@ pub fn op_get_property_boolean(
         index,
         component_id,
         false,
-    )?;
+    )
+    .map_err(eyre_to_any_error)?;
 
     Ok(*object.get::<bool>(&path))
 }
@@ -166,7 +174,8 @@ pub fn op_set_property_boolean(
         index,
         component_id,
         true,
-    )?;
+    )
+    .map_err(eyre_to_any_error)?;
 
     object.set::<bool>(&path, value);
 
@@ -230,7 +239,8 @@ pub fn op_call_function<'s>(
         index,
         component_id,
         true,
-    )?;
+    )
+    .map_err(eyre_to_any_error)?;
 
     object
         .call_method(&path, items)

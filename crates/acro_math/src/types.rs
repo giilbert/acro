@@ -2,9 +2,9 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_ecs::{ComponentId, Tick, World};
 use acro_reflect::{ReflectExt, ReflectPath};
-use acro_scripting::get_dyn_reflect;
 #[cfg(target_arch = "wasm32")]
 use acro_scripting::wasm_ops;
+use acro_scripting::{eyre_to_any_error, get_dyn_reflect};
 #[cfg(not(target_arch = "wasm32"))]
 use deno_core::op2;
 use nalgebra as na;
@@ -53,7 +53,8 @@ macro_rules! set_vector_op {
                 index,
                 component_id,
                 true,
-            )?;
+            )
+            .map_err(eyre_to_any_error)?;
 
             object.set::<$vector_type>(&path, <$vector_type>::new($($fields as Float),+));
 
@@ -91,7 +92,8 @@ macro_rules! get_vector_op {
                 index,
                 component_id,
                 true,
-            )?;
+            )
+            .map_err(eyre_to_any_error)?;
 
             let data = *object.get::<$vector_type>(&path);
 

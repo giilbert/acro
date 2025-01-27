@@ -1,6 +1,6 @@
 use std::{collections::HashSet, sync::Arc};
 
-use acro_ecs::Application;
+use acro_ecs::{Application, World};
 use acro_math::{Float, Vec2};
 use tracing::{info, warn};
 use winit::{
@@ -15,7 +15,7 @@ use crate::state::{RendererHandle, RendererState};
 
 pub struct Window {
     event_loop: Option<EventLoop<()>>,
-    window: Option<Arc<winit::window::Window>>,
+    inner: Option<Arc<winit::window::Window>>,
     state: Option<RendererHandle>,
     application: Option<Application>,
 }
@@ -34,7 +34,7 @@ impl Window {
 
         Self {
             event_loop: Some(event_loop),
-            window: None,
+            inner: None,
             state: None,
             application: None,
         }
@@ -62,28 +62,62 @@ impl Window {
                 .unwrap(),
         );
 
+        #[cfg(target_arch = "wasm32")]
+        {
+            use web_sys::Node;
+            use winit::platform::web::WindowExtWebSys;
+
+            let canvas = window.canvas().expect("canvas not found");
+            // let _ = window.request_inner_size(PhysicalSize::new(800, 600));
+
+            web_sys::window()
+                .and_then(|window| window.document())
+                .and_then(|document| document.body())
+                .and_then(|body| body.append_child(&Node::from(canvas)).ok())
+                .expect("unable to append canvas to body");
+
+            info!("added canvas to DOM")
+        }
+
         window
+    }
+
+    fn init_renderer_if_none(&mut self, window: &Arc<winit::window::Window>) {
+        if self.state.is_some() {
+            return;
+        }
+
+        let state = pollster::block_on(RendererState::new(window.clone()));
+
+        self.application
+            .as_mut()
+            .expect("application not created")
+            .world()
+            .insert_resource(state.clone());
+
+        self.state = Some(state);
     }
 }
 
 impl ApplicationHandler for Window {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
+        if self.inner.is_none() {
             let window = self.create_window(event_loop);
-            let state = pollster::block_on(RendererState::new(window.clone()));
             window.set_visible(true);
 
-            let mut world = self
-                .application
+            self.application
                 .as_mut()
                 .expect("application not created")
-                .world();
+                .world()
+                .insert_resource(WindowState::default());
 
-            world.insert_resource(state.clone());
-            world.insert_resource(WindowState::default());
+            // On web platform, the renderer should not be created until a resize event has been
+            // emitted. This is because the window's inner size is not set until a resize event happens
+            // (and will cause the renderer to error if it tries to initialize with a size of 0x0).
+            #[cfg(not(target_arch = "wasm32"))]
+            self.init_renderer_if_none(&window);
 
-            self.window = Some(window);
-            self.state = Some(state);
+            self.inner = Some(window);
         }
     }
 
@@ -93,7 +127,12 @@ impl ApplicationHandler for Window {
         window_id: winit::window::WindowId,
         event: event::WindowEvent,
     ) {
-        let window = self.window.as_ref().expect("window not created");
+        if let &WindowEvent::Resized(_) = &event {
+            let window = self.inner.clone().expect("window not created");
+            self.init_renderer_if_none(&window.clone());
+        }
+
+        let window = self.inner.as_ref().expect("window not created");
         let state = self.state.as_ref().expect("state not created");
         let application = self.application.as_mut().expect("application not created");
 

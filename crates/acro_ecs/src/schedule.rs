@@ -1,8 +1,6 @@
-use std::{
-    cell::RefCell,
-    time::{Duration, Instant, SystemTime},
-};
+use std::cell::RefCell;
 
+use chrono::{DateTime, TimeDelta, Utc};
 use fnv::FnvHashMap;
 use tracing::{error, info, warn};
 
@@ -17,10 +15,10 @@ use crate::{
 pub struct Schedule {
     pub current_tick: Tick,
     pub stages: FnvHashMap<Stage, Vec<SystemData>>,
-    last_render_run: SystemTime,
-    render_interval: Duration,
-    time_accumulator: Duration,
-    time_count: u32,
+    last_render_run: DateTime<Utc>,
+    render_interval: TimeDelta,
+    time_accumulator: TimeDelta,
+    time_count: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -53,9 +51,12 @@ impl Schedule {
         Self {
             current_tick: Tick::new(1),
             stages: Default::default(),
-            last_render_run: SystemTime::now(),
-            render_interval: Duration::from_secs_f64(1.0 / FRAMES_PER_SECOND),
-            time_accumulator: Duration::new(0, 0),
+            last_render_run: Utc::now(),
+            render_interval: TimeDelta::from_std(std::time::Duration::from_secs_f64(
+                1.0 / FRAMES_PER_SECOND,
+            ))
+            .expect("invalid render interval"),
+            time_accumulator: TimeDelta::zero(),
             time_count: 0,
         }
     }
@@ -142,10 +143,8 @@ impl Schedule {
     }
 
     pub fn run_once(&mut self, world: &RefCell<World>) {
-        let now = std::time::SystemTime::now();
-        let time_since_last_render = now
-            .duration_since(self.last_render_run)
-            .unwrap_or(Duration::new(0, 0));
+        let start = chrono::Utc::now();
+        let time_since_last_render = start.signed_duration_since(self.last_render_run);
         let should_render = time_since_last_render > self.render_interval;
 
         self.run_stage(Stage::PreUpdate, world);
@@ -156,26 +155,31 @@ impl Schedule {
         self.run_stage(Stage::PostUpdate, world);
 
         if should_render {
-            self.last_render_run = now;
+            self.last_render_run = start;
 
             self.run_stage(Stage::PreRender, world);
             self.run_stage(Stage::Render, world);
             self.run_stage(Stage::PostRender, world);
 
-            let elapsed = now.elapsed().expect("time went backwards");
+            let elapsed = Utc::now().signed_duration_since(start);
 
             self.time_accumulator += elapsed;
             self.time_count += 1;
 
-            const FRAME_TIME_INTERVAL: Duration = Duration::from_secs(5);
-            if self.time_count * self.render_interval > FRAME_TIME_INTERVAL {
+            const FRAME_TIME_INTERVAL: TimeDelta = TimeDelta::seconds(5);
+            if self
+                .render_interval
+                .checked_mul(self.time_count)
+                .expect("frame time accumulator overflow")
+                > FRAME_TIME_INTERVAL
+            {
                 let average_frame_time = self.time_accumulator / self.time_count;
                 info!(
                     "{FRAME_TIME_INTERVAL:?} average frame time: {:?} (theoretical max = {:.02}fps)",
                     average_frame_time,
-                    1.0 / average_frame_time.as_secs_f64()
+                    1.0 / average_frame_time.num_seconds() as f64
                 );
-                self.time_accumulator = Duration::new(0, 0);
+                self.time_accumulator = TimeDelta::zero();
                 self.time_count = 0;
             }
 

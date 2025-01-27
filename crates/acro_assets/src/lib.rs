@@ -28,7 +28,7 @@ type AssetId = String;
 pub struct Assets {
     queue: Arc<Mutex<VecDeque<QueuedAsset>>>,
     data: Arc<RwLock<HashMap<AssetId, AnyAssetData>>>,
-    watcher: Mutex<notify::RecommendedWatcher>,
+    watcher: Option<Mutex<notify::RecommendedWatcher>>,
     asset_loaders: HashMap<TypeId, AssetLoader>,
 }
 
@@ -85,70 +85,79 @@ impl Assets {
 
         let queue_clone = queue.clone();
         let data_clone = data.clone();
-        let watcher = notify::recommended_watcher(
-            move |res: Result<notify::Event, notify::Error>| match res {
-                Ok(event) => {
-                    if matches!(event.kind, EventKind::Access(AccessKind::Close(_))) {
-                        let mut queue = queue_clone.lock();
-                        for path in event.paths {
-                            let mut path = path
-                                .strip_prefix(
-                                    std::env::current_dir()
-                                        .expect("unable to get working directory"),
-                                )
-                                .expect("unable to get relative path from working directory")
-                                .to_str()
-                                .expect("unable to convert path to string")
-                                .to_string();
-
-                            if path.ends_with(".meta") {
-                                path = path
-                                    .strip_suffix(".meta")
-                                    .expect("error stripping .meta suffix")
+        let watcher =
+            if !cfg!(target_arch = "wasm32") {
+                Some(
+                    notify::recommended_watcher(
+                        move |res: Result<notify::Event, notify::Error>| match res {
+                            Ok(event) => {
+                                if matches!(event.kind, EventKind::Access(AccessKind::Close(_))) {
+                                    let mut queue = queue_clone.lock();
+                                    for path in event.paths {
+                                        let mut path = path
+                                    .strip_prefix(
+                                        std::env::current_dir()
+                                            .expect("unable to get working directory"),
+                                    )
+                                    .expect("unable to get relative path from working directory")
+                                    .to_str()
+                                    .expect("unable to convert path to string")
                                     .to_string();
+
+                                        if path.ends_with(".meta") {
+                                            path = path
+                                                .strip_suffix(".meta")
+                                                .expect("error stripping .meta suffix")
+                                                .to_string();
+                                        }
+
+                                        let data = data_clone.read();
+                                        let asset_data: &AnyAssetData =
+                                            data.get(&path).expect("asset not loaded");
+                                        let id = asset_data.id;
+
+                                        queue.push_back(QueuedAsset {
+                                            type_id: id,
+                                            path,
+                                            queue_type: QueueType::Reload,
+                                        });
+                                    }
+                                }
                             }
-
-                            let data = data_clone.read();
-                            let asset_data: &AnyAssetData =
-                                data.get(&path).expect("asset not loaded");
-                            let id = asset_data.id;
-
-                            queue.push_back(QueuedAsset {
-                                type_id: id,
-                                path,
-                                queue_type: QueueType::Reload,
-                            });
-                        }
-                    }
-                }
-                Err(e) => {
-                    error!("watch error: {:?}", e);
-                }
-            },
-        )
-        .expect("error initializing file watcher");
+                            Err(e) => {
+                                error!("watch error: {:?}", e);
+                            }
+                        },
+                    )
+                    .expect("error initializing file watcher"),
+                )
+            } else {
+                None
+            };
 
         Self {
             queue,
             data,
-            watcher: Mutex::new(watcher),
+            watcher: watcher.map(Mutex::new),
             asset_loaders: HashMap::new(),
         }
     }
 
     fn watch(&self, path: &str) {
-        self.watcher
-            .lock()
-            .watch(Path::new(path), RecursiveMode::NonRecursive)
-            .expect("failed to watch file");
-        // Also watch the config file
-        self.watcher
-            .lock()
-            .watch(
-                Path::new(format!("{}.meta", &path).as_str()),
-                RecursiveMode::NonRecursive,
-            )
-            .expect("failed to watch file");
+        if let Some(watcher) = &self.watcher {
+            watcher
+                .lock()
+                .watch(Path::new(path), RecursiveMode::NonRecursive)
+                .expect("failed to watch file");
+            // Also watch the config file
+            watcher
+                .lock()
+                .watch(
+                    Path::new(format!("{}.meta", &path).as_str()),
+                    RecursiveMode::NonRecursive,
+                )
+                .expect("failed to watch file");
+        }
     }
 
     pub fn queue<T: Loadable>(&self, path: &str) {

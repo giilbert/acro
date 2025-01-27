@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>acro web</title>
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
   </head>
   <body>
     <script type="module">
@@ -13,7 +18,7 @@
       console.log("[acro] loading wasm...");
       fetch(wasmUrl)
         .then((response) => {
-          init(response).then((module) => {
+          init({ module_or_path: response }).then((module) => {
             console.log("[acro] wasm loaded");
             module.run();
           });

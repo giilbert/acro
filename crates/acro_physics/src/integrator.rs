@@ -1,7 +1,6 @@
-use std::time::SystemTime;
-
 use acro_ecs::{Query, ResMut, SystemRunContext, With};
 use acro_math::{Float, GlobalTransform, Transform};
+use chrono::Utc;
 use tracing::info;
 
 use crate::properties::{Force, Mass, Rigidbody3D, Velocity};
@@ -25,10 +24,7 @@ pub fn integrate_velocity_and_acceleration(
         With<Rigidbody3D>,
     >,
 ) {
-    let now = std::time::SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs_f64() as f64;
+    let now = Utc::now().timestamp_micros() as f64 / 1_000_000.0;
 
     let last_integrate = match context.last_integrate {
         Some(last_integrate) => last_integrate,

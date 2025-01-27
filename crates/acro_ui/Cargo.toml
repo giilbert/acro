@@ -20,7 +20,7 @@ pollster = "0.3.0"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_yml = "0.0.11"
 tracing = "0.1.40"
-wgpu = { version = "22.1.0", features = ["serde"] }
+wgpu = { version = "22.1.0", features = ["serde", "webgl"] }
 winit = { version = "0.30.2", features = ["serde"] }
 image = "0.25.2"
 

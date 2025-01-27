@@ -39,7 +39,7 @@ pub struct FrameState {
 impl RendererState {
     pub async fn new(window: Arc<winit::window::Window>) -> RendererHandle {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN,
+            backends: wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all()),
             ..Default::default()
         });
 
@@ -62,7 +62,7 @@ impl RendererState {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
+                    required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
                     memory_hints: MemoryHints::Performance,
                     label: None,
                 },
@@ -89,6 +89,8 @@ impl RendererState {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
+        #[cfg(target_arch = "wasm32")]
+        info!("configuring surface with args {config:#?}");
         surface.configure(&device, &config);
 
         let (depth_stencil_texture, depth_stencil_view, depth_stencil_sampler) =

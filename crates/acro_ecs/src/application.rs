@@ -4,6 +4,7 @@ use std::{
     rc::Rc,
 };
 
+use chrono::Utc;
 use tracing::info;
 
 use crate::{
@@ -90,11 +91,11 @@ impl Application {
     }
 
     pub fn run_once(&mut self) {
-        // let now = std::time::Instant::now();
+        // let start = Utc::now();
         self.schedule.run_once(&self.world);
 
-        // let elapsed = now.elapsed();
-        // println!("run once took {:?}", elapsed);
+        // let elapsed = Utc::now().signed_duration_since(start);
+        // tracing::info!("run once took {:?}", elapsed);
     }
 
     pub fn set_runner(&mut self, runner: impl FnOnce(Application) + 'static) {

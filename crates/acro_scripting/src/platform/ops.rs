@@ -2,6 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_ecs::{ComponentId, EntityId, Tick, World};
 use acro_reflect::Reflect;
+use anyhow::{anyhow, Error as AnyError};
 
 pub fn get_dyn_reflect<'a>(
     world: &Rc<RefCell<World>>,
@@ -34,4 +35,8 @@ pub fn get_dyn_reflect<'a>(
             component_ids_to_vtables[&ComponentId(component_id)] as *const (),
         ))
     })
+}
+
+pub fn eyre_to_any_error(err: eyre::Report) -> AnyError {
+    anyhow!(err)
 }

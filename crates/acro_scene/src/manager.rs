@@ -1,4 +1,5 @@
 use acro_ecs::{ResMut, SystemRunContext};
+use chrono::Utc;
 use tracing::info;
 
 use crate::scene::Scene;
@@ -22,9 +23,12 @@ pub fn load_queued_scene(
     if let Some(scene_path) = &scene_manager.queued_scene {
         let scene = serde_yml::from_str::<Scene>(&std::fs::read_to_string(scene_path)?)?;
         ctx.world.queue_swap(move |world| {
-            let now = std::time::Instant::now();
+            let now = Utc::now();
             scene.load(world);
-            info!("loading scene took {:?}", now.elapsed());
+            info!(
+                "loading scene took {:?}",
+                Utc::now().signed_duration_since(now)
+            );
         });
         scene_manager.queued_scene = None;
     }

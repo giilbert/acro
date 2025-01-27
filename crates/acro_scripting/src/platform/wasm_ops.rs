@@ -7,7 +7,6 @@ use std::{
 
 use acro_ecs::{ComponentId, Tick, World};
 use acro_reflect::{ReflectExt, ReflectPath};
-use eyre::OptionExt;
 use fnv::FnvHashMap;
 use js_sys::{Boolean, Function, JsString, Number};
 use wasm_bindgen::prelude::*;

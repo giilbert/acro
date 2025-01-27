@@ -7,7 +7,7 @@ edition = "2021"
 acro_ecs = { path = "../acro_ecs" }
 eyre = "0.6.12"
 parking_lot = "0.12.3"
-notify = "6.1.1"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_yml = "0.0.11"
 tracing = "0.1.40"
+notify = "6.1.1"

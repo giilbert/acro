@@ -7,6 +7,8 @@ edition = "2021"
 acro_assets = { path = "../acro_assets" }
 acro_ecs = { path = "../acro_ecs" }
 acro_reflect = { path = "../acro_reflect" }
+anyhow = "1.0.86"
+chrono = "0.4.39"
 cfg-if = "1.0.0"
 eyre = "0.6.12"
 fnv = "1.0.7"

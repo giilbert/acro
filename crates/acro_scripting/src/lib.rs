@@ -7,7 +7,10 @@ mod source_file;
 use std::any::Any;
 
 pub use crate::{
-    behavior::Behavior, events::*, platform::ops::get_dyn_reflect, runtime::ScriptingRuntime,
+    behavior::Behavior,
+    events::*,
+    platform::ops::{eyre_to_any_error, get_dyn_reflect},
+    runtime::ScriptingRuntime,
     source_file::SourceFile,
 };
 
