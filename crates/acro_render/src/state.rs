@@ -39,6 +39,9 @@ pub struct FrameState {
 impl RendererState {
     pub async fn new(window: Arc<winit::window::Window>) -> RendererHandle {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            #[cfg(target_arch = "wasm32")]
+            backends: wgpu::Backends::GL,
+            #[cfg(not(target_arch = "wasm32"))]
             backends: wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all()),
             ..Default::default()
         });
@@ -95,6 +98,41 @@ impl RendererState {
 
         let (depth_stencil_texture, depth_stencil_view, depth_stencil_sampler) =
             Self::create_depth_stencil(&device, size);
+
+        // TEST: Clear the screen
+        {
+            let output = surface.get_current_texture().unwrap();
+            let view = output
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
+            {
+                let _clear_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.05,
+                                g: 0.05,
+                                b: 0.05,
+                                a: 1.0,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    ..Default::default()
+                });
+            }
+
+            let commands = encoder.finish();
+            queue.submit(std::iter::once(commands));
+            output.present();
+        }
 
         RendererHandle {
             state: Arc::new(RendererState {

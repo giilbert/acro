@@ -120,7 +120,6 @@ dependencies = [
  "js-sys",
  "nalgebra",
  "parking_lot",
- "pollster",
  "rustyscript",
  "serde",
  "serde_yml",
@@ -162,6 +161,7 @@ dependencies = [
  "serde_yml",
  "tracing",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
  "winit",
@@ -223,7 +223,6 @@ dependencies = [
  "image",
  "js-sys",
  "parking_lot",
- "pollster",
  "rustyscript",
  "serde",
  "serde_yml",
@@ -5724,12 +5723,13 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.42"
+version = "0.4.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76bc14366121efc8dbb487ab05bcc9d346b3b5ec0eaa76e46594cabbe51762c0"
+checksum = "555d470ec0bc3bb57890405e5d4322cc9ea83cebb085523ced7be4144dac1e61"
 dependencies = [
  "cfg-if",
  "js-sys",
+ "once_cell",
  "wasm-bindgen",
  "web-sys",
 ]

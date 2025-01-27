@@ -13,7 +13,6 @@ chrono = "0.4.39"
 cfg-if = "1.0.0"
 eyre = "0.6.12"
 parking_lot = "0.12.3"
-pollster = "0.3.0"
 nalgebra = { version = "0.33.0", features = ["serde-serialize"] }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_yml = "0.0.11"

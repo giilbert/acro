@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::Arc};
 
 use acro_ecs::{Application, World};
 use acro_math::{Float, Vec2};
@@ -16,8 +16,8 @@ use crate::state::{RendererHandle, RendererState};
 pub struct Window {
     event_loop: Option<EventLoop<()>>,
     inner: Option<Arc<winit::window::Window>>,
-    state: Option<RendererHandle>,
-    application: Option<Application>,
+    state: Rc<RefCell<Option<RendererHandle>>>,
+    application: Rc<RefCell<Option<Application>>>,
 }
 
 #[derive(Debug, Default)]
@@ -35,13 +35,13 @@ impl Window {
         Self {
             event_loop: Some(event_loop),
             inner: None,
-            state: None,
-            application: None,
+            state: Rc::new(RefCell::new(None)),
+            application: Rc::new(RefCell::new(None)),
         }
     }
 
     pub fn run(mut self, application: Application) {
-        self.application = Some(application);
+        *self.application.borrow_mut() = Some(application);
         let event_loop = self.event_loop.take().unwrap();
         event_loop
             .run_app(&mut self)
@@ -68,7 +68,8 @@ impl Window {
             use winit::platform::web::WindowExtWebSys;
 
             let canvas = window.canvas().expect("canvas not found");
-            // let _ = window.request_inner_size(PhysicalSize::new(800, 600));
+            canvas.set_width(800);
+            canvas.set_height(600);
 
             web_sys::window()
                 .and_then(|window| window.document())
@@ -82,20 +83,27 @@ impl Window {
         window
     }
 
-    fn init_renderer_if_none(&mut self, window: &Arc<winit::window::Window>) {
-        if self.state.is_some() {
+    async fn init_renderer_if_none(
+        window: Arc<winit::window::Window>,
+        state: Rc<RefCell<Option<RendererHandle>>>,
+        application: Rc<RefCell<Option<Application>>>,
+    ) {
+        if state.borrow().is_some() {
             return;
         }
 
-        let state = pollster::block_on(RendererState::new(window.clone()));
+        let new_state = RendererState::new(window.clone()).await;
 
-        self.application
+        application
+            .borrow_mut()
             .as_mut()
             .expect("application not created")
             .world()
-            .insert_resource(state.clone());
+            .insert_resource(new_state.clone());
 
-        self.state = Some(state);
+        *state.borrow_mut() = Some(new_state);
+
+        info!("init_renderer_if_none done");
     }
 }
 
@@ -106,6 +114,7 @@ impl ApplicationHandler for Window {
             window.set_visible(true);
 
             self.application
+                .borrow_mut()
                 .as_mut()
                 .expect("application not created")
                 .world()
@@ -115,7 +124,11 @@ impl ApplicationHandler for Window {
             // emitted. This is because the window's inner size is not set until a resize event happens
             // (and will cause the renderer to error if it tries to initialize with a size of 0x0).
             #[cfg(not(target_arch = "wasm32"))]
-            self.init_renderer_if_none(&window);
+            pollster::block_on(Self::init_renderer_if_none(
+                window.clone(),
+                self.state.clone(),
+                self.application.clone(),
+            ));
 
             self.inner = Some(window);
         }
@@ -124,17 +137,37 @@ impl ApplicationHandler for Window {
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
-        window_id: winit::window::WindowId,
+        _window_id: winit::window::WindowId,
         event: event::WindowEvent,
     ) {
+        #[cfg(target_arch = "wasm32")]
         if let &WindowEvent::Resized(_) = &event {
             let window = self.inner.clone().expect("window not created");
-            self.init_renderer_if_none(&window.clone());
+            wasm_bindgen_futures::spawn_local(Self::init_renderer_if_none(
+                window.clone(),
+                self.state.clone(),
+                self.application.clone(),
+            ));
+            return;
         }
 
         let window = self.inner.as_ref().expect("window not created");
-        let state = self.state.as_ref().expect("state not created");
-        let application = self.application.as_mut().expect("application not created");
+
+        let state = self.state.borrow();
+        // If the renderer hasn't been created yet, keep waiting until the future is ready
+        let state = match state.as_ref() {
+            Some(state) => state,
+            None => {
+                if let WindowEvent::RedrawRequested = event {
+                    window.request_redraw();
+                }
+
+                return;
+            }
+        };
+
+        let mut application = self.application.borrow_mut();
+        let application = application.as_mut().expect("application not created");
 
         match event {
             WindowEvent::RedrawRequested => {
