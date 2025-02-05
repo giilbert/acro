@@ -44,6 +44,7 @@ fn main() {
     if args.get(1) == Some(&"build".to_string()) {
         acro_build::web::get_esbuild_binary_or_download().unwrap();
         acro_build::web::build_javascript_bundle("examples/simple").unwrap();
+        acro_build::pack::pack_project("examples/simple", false).unwrap();
         return;
     }
 

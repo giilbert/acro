@@ -6,6 +6,10 @@ use std::{
     process::{Command, Stdio},
 };
 
+use walkdir::WalkDir;
+
+use crate::utils::{self, find_files_by_predicate};
+
 pub fn get_esbuild_binary_or_download() -> eyre::Result<PathBuf> {
     let mut esbuild_download_path = std::env::current_exe()?;
     esbuild_download_path.pop();
@@ -46,14 +50,6 @@ pub fn get_esbuild_binary_or_download() -> eyre::Result<PathBuf> {
     Ok(esbuild_download_path)
 }
 
-fn create_directory_if_not_exists(path: impl AsRef<Path>) -> eyre::Result<PathBuf> {
-    let path = path.as_ref();
-    if !path.exists() {
-        std::fs::create_dir_all(path)?;
-    }
-    Ok(path.into())
-}
-
 fn create_entry_file_content(
     project_base_path: &Path,
     files: impl Iterator<Item = PathBuf>,
@@ -71,30 +67,6 @@ init();
         content.push_str(&format!("(file_{index} as any).init?.();\n",));
     }
     Ok(content)
-}
-
-fn find_script_files(project_base_path: &Path) -> eyre::Result<Vec<PathBuf>> {
-    Ok(walkdir::WalkDir::new(project_base_path)
-        .into_iter()
-        .filter(|entry| {
-            entry
-                .as_ref()
-                .map(|entry| {
-                    entry
-                        .path()
-                        .extension()
-                        .map(|ext| ext == "ts")
-                        .unwrap_or(false)
-                })
-                .unwrap_or(false)
-        })
-        .map(|result| match result {
-            Ok(entry) => Ok(entry.path().into()),
-            Err(err) => Err(err.into()),
-        })
-        .collect::<eyre::Result<HashSet<_>>>()?
-        .into_iter()
-        .collect::<Vec<PathBuf>>())
 }
 
 fn generate_aliases() -> eyre::Result<Vec<String>> {
@@ -117,10 +89,12 @@ fn generate_aliases() -> eyre::Result<Vec<String>> {
 pub fn build_javascript_bundle(project_base_path: impl Into<PathBuf>) -> eyre::Result<()> {
     let project_base_path = project_base_path.into();
     let esbuild_path = get_esbuild_binary_or_download()?;
-    let build_directory = create_directory_if_not_exists(project_base_path.join("build"))?;
+    let build_directory = utils::create_directory_if_not_exists(project_base_path.join("build"))?;
 
     let entry_file = std::fs::canonicalize(&build_directory)?.join("entry.ts");
-    let files = find_script_files(&project_base_path)?;
+    let files = find_files_by_predicate(&project_base_path, |entry| {
+        entry.path().extension().map(|ext| ext == "ts")
+    })?;
     std::fs::write(
         &entry_file,
         create_entry_file_content(&project_base_path, files.into_iter())?,
@@ -132,10 +106,7 @@ pub fn build_javascript_bundle(project_base_path: impl Into<PathBuf>) -> eyre::R
         "--minify".to_string(),
         "--define:import.meta.platform=\"web\"".to_string(),
         "--log-override:import-is-undefined=silent".to_string(),
-        format!(
-            "--outfile={}",
-            build_directory.join("bundle.js").to_string_lossy()
-        ),
+        "--outfile=build/bundle.js".to_string(),
     ];
     args.append(&mut generate_aliases()?);
 
