@@ -9,7 +9,7 @@ struct VertexOutput {
 
 // Context bind group
 @group(0) @binding(0)
-var<uniform> screen_size: vec2<f32>;
+var<uniform> screen_size: vec4<f32>;
 
 struct InstanceInput {
     @location(1) offset: vec2<f32>,
@@ -23,8 +23,8 @@ fn vs_main(
     instance: InstanceInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    var scale = instance.size / screen_size * 2;
-    var translation = (instance.offset - screen_size / 2) / screen_size * 2;
+    var scale = instance.size / screen_size.xy * 2;
+    var translation = (instance.offset - screen_size.xy / 2) / screen_size.xy * 2;
 
     out.clip_position = vec4<f32>(
         model.position * scale + vec2<f32>(translation.x, -translation.y),

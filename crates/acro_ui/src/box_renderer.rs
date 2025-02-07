@@ -1,4 +1,4 @@
-use acro_math::Vec2;
+use acro_math::{Vec2, Vec3, Vec4};
 use acro_render::{RendererHandle, Srgba};
 use wgpu::{util::DeviceExt, BindGroupLayoutDescriptor, BindGroupLayoutEntry, VertexAttribute};
 
@@ -92,7 +92,7 @@ impl BoxRenderer {
 
         let screen_size_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("BoxRenderer Context Buffer"),
-            size: std::mem::size_of::<Vec2>() as u64,
+            size: std::mem::size_of::<Vec4>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -127,13 +127,15 @@ impl BoxRenderer {
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
+                label: Some("UI Render Pipeline Layout"),
                 bind_group_layouts: &[&context_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
+        tracing::info!("size_of::<Vec4> = {}", std::mem::size_of::<Vec4>());
+
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
+            label: Some("UI Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -238,7 +240,7 @@ impl BoxRenderer {
         renderer.queue.write_buffer(
             &self.screen_size_buffer,
             0,
-            bytemuck::cast_slice(&[size.width as f32, size.height as f32]),
+            bytemuck::cast_slice(&[size.width as f32, size.height as f32, 0.0, 0.0]),
         );
         ui_render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         ui_render_pass.set_vertex_buffer(1, instance_buffer.slice(..));

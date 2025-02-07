@@ -21,11 +21,16 @@ impl Plugin for TestPlugin {
 }
 
 #[wasm_bindgen]
-pub fn run() {
+pub fn init() {
     std::panic::set_hook(Box::new(panic_hook::panic_hook));
     tracing_wasm::set_as_global_default();
 
     tracing::info!("hello world from wasm!");
+}
+
+#[wasm_bindgen]
+pub fn run() {
+    tracing::info!("starting application..");
 
     acro_ecs::Application::new()
         .add_plugin(AssetsPlugin)

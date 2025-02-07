@@ -45,8 +45,8 @@ pub fn integrate_velocity_and_acceleration(
         transform.position += velocity.0.scale(dt);
         velocity.0 += acceleration.scale(dt);
 
-        info!("position: {:?}", transform.position);
-        info!("velocity: {:?}", velocity.0);
+        // info!("position: {:?}", transform.position);
+        // info!("velocity: {:?}", velocity.0);
     }
 
     context.last_integrate = Some(now);

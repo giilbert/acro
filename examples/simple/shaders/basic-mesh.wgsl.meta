@@ -1,4 +1,4 @@
-diffuse_texture: examples/simple/textures/ferris.png
+diffuse_texture: textures/ferris.png
 bind_groups:
   - id: ModelMatrix
     uniforms:

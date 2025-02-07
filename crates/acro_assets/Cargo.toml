@@ -11,3 +11,12 @@ serde = { version = "1.0.204", features = ["derive"] }
 serde_yml = "0.0.11"
 tracing = "0.1.40"
 notify = "6.1.1"
+zip = { version = "2.2.2", default-features = false }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.100"
+js-sys = "0.3.77"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+deno_core = "0.299.0"
+rustyscript = { version = "0.8.0", features = ["fs_import"] }

@@ -27,9 +27,7 @@ impl Plugin for TestPlugin {
     fn build(&mut self, app: &mut Application) {
         let world = app.world();
 
-        world
-            .resource_mut::<SceneManager>()
-            .queue("examples/simple/main.scene");
+        world.resource_mut::<SceneManager>().queue("main.scene");
     }
 }
 

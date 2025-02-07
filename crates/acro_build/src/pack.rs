@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fs::FileType, io::Cursor, path::PathBuf};
 
 use human_bytes::human_bytes;
 use zip::{write::SimpleFileOptions, ZipWriter};
@@ -21,23 +21,18 @@ pub fn pack_project(
         .unix_permissions(0o755);
 
     let files = find_files_by_predicate(&project_base_path, |entry| {
-        if entry
-            .path()
-            .strip_prefix(&project_base_path)
-            .ok()
-            .expect("failed to strip path")
-            .starts_with("build")
-        {
-            Some(false)
-        } else {
-            entry.path().extension().map(|ext| {
-                if !include_script_files {
-                    ext != "ts"
-                } else {
-                    true
-                }
-            })
+        if entry.file_type().is_dir() {
+            return Some(false);
         }
+
+        Some(
+            !entry
+                .path()
+                .strip_prefix(&project_base_path)
+                .ok()
+                .expect("failed to strip path")
+                .starts_with("build"),
+        )
     })?
     .iter()
     .map(|path| {
@@ -57,7 +52,12 @@ pub fn pack_project(
             human_bytes(file.metadata()?.len() as f64)
         );
         zip.start_file(path.to_string_lossy(), options)?;
-        std::io::copy(&mut std::io::BufReader::new(file), &mut zip)?;
+
+        if !include_script_files && path.to_string_lossy().ends_with(".js") {
+            std::io::copy(&mut std::io::BufReader::new(Cursor::new("")), &mut zip)?;
+        } else {
+            std::io::copy(&mut std::io::BufReader::new(file), &mut zip)?;
+        }
     }
 
     let result_file = zip.finish()?;

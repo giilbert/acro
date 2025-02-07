@@ -30,7 +30,13 @@ pub struct UiContextInner {
 impl UiContext {
     pub fn ready(&mut self, renderer: &RendererHandle) {
         if self.inner.borrow().is_none() {
-            let font_system = FontSystem::new();
+            #[allow(unused_mut)]
+            let mut font_system = FontSystem::new();
+            #[cfg(target_arch = "wasm32")]
+            {
+                let font = include_bytes!("./assets/Inter.ttf");
+                font_system.db_mut().load_font_data(font.to_vec());
+            }
             let swash_cache = SwashCache::new();
             let cache = Cache::new(&renderer.device);
             let viewport = glyphon::Viewport::new(&renderer.device, &cache);

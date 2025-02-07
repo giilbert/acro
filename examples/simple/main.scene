@@ -8,11 +8,11 @@ entities:
       - name: Mesh
         geometry:
           type: ObjAsset
-          value: examples/simple/teapot.obj
-        diffuse_texture: examples/simple/textures/ferris.png
-        shader_path: examples/simple/shaders/basic-mesh.wgsl
+          value: teapot.obj
+        diffuse_texture: textures/ferris.png
+        shader_path: shaders/basic-mesh.wgsl
       - name: Behavior
-        source: examples/simple/src/test.ts
+        source: src/test.ts
       - name: Rigidbody3D
     children: []
   - name: Camera

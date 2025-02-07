@@ -1,5 +1,8 @@
 mod asset;
+pub mod fs;
 mod loader;
+#[cfg(target_arch = "wasm32")]
+mod wasm;
 
 use std::{
     any::{Any, TypeId},
@@ -85,55 +88,56 @@ impl Assets {
 
         let queue_clone = queue.clone();
         let data_clone = data.clone();
-        let watcher =
-            if !cfg!(target_arch = "wasm32") {
-                Some(
-                    notify::recommended_watcher(
-                        move |res: Result<notify::Event, notify::Error>| match res {
-                            Ok(event) => {
-                                if matches!(event.kind, EventKind::Access(AccessKind::Close(_))) {
-                                    let mut queue = queue_clone.lock();
-                                    for path in event.paths {
-                                        let mut path = path
-                                    .strip_prefix(
-                                        std::env::current_dir()
-                                            .expect("unable to get working directory"),
-                                    )
-                                    .expect("unable to get relative path from working directory")
-                                    .to_str()
-                                    .expect("unable to convert path to string")
-                                    .to_string();
+        let watcher = if !cfg!(target_arch = "wasm32") {
+            Some(
+                notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+                    match res {
+                        Ok(event) => {
+                            if matches!(event.kind, EventKind::Access(AccessKind::Close(_))) {
+                                let mut queue = queue_clone.lock();
+                                for path in event.paths {
+                                    let mut path = path
+                                        .strip_prefix(
+                                            std::env::current_dir()
+                                                .expect("unable to get working directory"),
+                                        )
+                                        .expect(
+                                            "unable to get relative path from working directory",
+                                        )
+                                        .to_str()
+                                        .expect("unable to convert path to string")
+                                        .to_string();
 
-                                        if path.ends_with(".meta") {
-                                            path = path
-                                                .strip_suffix(".meta")
-                                                .expect("error stripping .meta suffix")
-                                                .to_string();
-                                        }
-
-                                        let data = data_clone.read();
-                                        let asset_data: &AnyAssetData =
-                                            data.get(&path).expect("asset not loaded");
-                                        let id = asset_data.id;
-
-                                        queue.push_back(QueuedAsset {
-                                            type_id: id,
-                                            path,
-                                            queue_type: QueueType::Reload,
-                                        });
+                                    if path.ends_with(".meta") {
+                                        path = path
+                                            .strip_suffix(".meta")
+                                            .expect("error stripping .meta suffix")
+                                            .to_string();
                                     }
+
+                                    let data = data_clone.read();
+                                    let asset_data: &AnyAssetData =
+                                        data.get(&path).expect("asset not loaded");
+                                    let id = asset_data.id;
+
+                                    queue.push_back(QueuedAsset {
+                                        type_id: id,
+                                        path,
+                                        queue_type: QueueType::Reload,
+                                    });
                                 }
                             }
-                            Err(e) => {
-                                error!("watch error: {:?}", e);
-                            }
-                        },
-                    )
-                    .expect("error initializing file watcher"),
-                )
-            } else {
-                None
-            };
+                        }
+                        Err(e) => {
+                            error!("watch error: {:?}", e);
+                        }
+                    }
+                })
+                .expect("error initializing file watcher"),
+            )
+        } else {
+            None
+        };
 
         Self {
             queue,
@@ -177,9 +181,8 @@ impl Assets {
         type_id: TypeId,
         path: &str,
     ) -> eyre::Result<AnyAssetData> {
-        let options_file_content =
-            std::fs::read(&format!("{}.meta", path)).expect("failed to read options file");
-        let asset_file_content = std::fs::read(&path).expect("failed to read asset file");
+        let (options_file_content, asset_file_content) =
+            (fs::read(&format!("{}.meta", path))?, fs::read(path)?);
 
         (self
             .asset_loaders

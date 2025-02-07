@@ -4,7 +4,6 @@ mod context;
 mod panel;
 mod positioning_options;
 mod rect;
-mod rendering;
 mod screen_ui;
 mod text;
 mod ui_element_state;

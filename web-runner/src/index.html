@@ -13,17 +13,28 @@
   <body>
     <script type="module">
       import wasmUrl from "../../crates/acro_web/pkg/acro_web_bg.wasm?url";
-      import init from "../../crates/acro_web/pkg";
+      import init, * as wasm from "../../crates/acro_web/pkg";
+      import assetsUrl from "../../examples/simple/build/assets.zip?url";
+      import "../../examples/simple/build/bundle.js";
 
-      console.log("[acro] loading wasm...");
-      fetch(wasmUrl)
-        .then((response) => {
-          init({ module_or_path: response }).then((module) => {
-            console.log("[acro] wasm loaded");
-            module.run();
-          });
-        })
-        .catch(console.error);
+      async function run() {
+        console.log("[acro] loading assets...");
+        const assetsResponse = await fetch(assetsUrl);
+        const assetsBuffer = await assetsResponse.arrayBuffer();
+        const assetsBytes = new Uint8Array(assetsBuffer);
+        console.log(`[acro] assets loaded - ${assetsBytes.byteLength} bytes`);
+
+        console.log("[acro] loading wasm...");
+        const wasmResponse = await fetch(wasmUrl);
+        const module = await init({ module_or_path: wasmResponse });
+        console.log("[acro] wasm loaded");
+
+        wasm.init();
+        wasm.initAssetsBytes(assetsBytes);
+        wasm.run();
+      }
+
+      run();
     </script>
   </body>
 </html>

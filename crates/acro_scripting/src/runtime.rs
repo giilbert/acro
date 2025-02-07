@@ -193,7 +193,13 @@ mod runtime_impl {
                     op_state.put(Tick::new(0));
                 }
 
-                let init_module = Module::load("lib/core/init.ts")?;
+                // TODO: add a way to reference the lib/core/init.ts module
+                let init_module = Module::load(
+                    env!("CARGO_MANIFEST_DIR")
+                        .to_string()
+                        .replace("crates/acro_scripting", "lib/core/init.ts"),
+                )?;
+
                 let init_module_handle = runtime
                     .load_module(&init_module)
                     .expect("error loading init module");
@@ -239,13 +245,24 @@ mod runtime_impl {
         ) -> Option<Result<deno_core::ModuleSpecifier, deno_core::anyhow::Error>> {
             match specifier.scheme() {
                 "jsr" if specifier.path().starts_with("@acro/") => {
-                    let mut cwd = std::env::current_dir().expect("failed to get current directory");
+                    // let mut cwd = std::env::current_dir().expect("failed to get current directory");
+                    // TODO: allow for a way to reference lib
+                    let mut cwd = std::path::PathBuf::from(
+                        env!("CARGO_MANIFEST_DIR")
+                            .to_string()
+                            .replace("crates/acro_scripting", "lib"),
+                    );
                     cwd.push(&format!(
-                        "lib/{}/mod.ts",
+                        "{}/mod.ts",
                         specifier.path().replace("@acro/", "")
                     ));
-                    cwd.to_str()
-                        .map(|path| Ok(Url::parse(&format!("file://{}", path)).unwrap()))
+
+                    let path = cwd.to_str().expect("failed to convert path to string");
+                    let url = Url::parse(&format!("file://{}", path)).expect("failed to parse url");
+
+                    tracing::info!("resolved: {} -> {}", specifier, url);
+
+                    Some(Ok(url))
                 }
                 _ => None,
             }

@@ -11,4 +11,4 @@ tar = "0.4.43"
 tracing = "0.1.40"
 ureq = "2.10.1"
 walkdir = "2.5.0"
-zip = "2.2.2"
+zip = { version = "2.2.2", default-features = false }
