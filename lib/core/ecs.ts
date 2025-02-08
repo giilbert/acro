@@ -1,4 +1,5 @@
 import { Transform, Vec3 } from "jsr:@acro/math";
+import { createGlobalOp } from "./ops.ts";
 
 export class Entity {
   generation: number;
@@ -62,14 +63,14 @@ export class Behavior {
   update(_deltaTime: number) {}
 }
 
-declare namespace Deno.core.ops {
-  const op_get_entity_by_absolute_path: (path: string) => {
+const getEntityByAbsolutePath = createGlobalOp<
+  [string],
+  {
     generation: number;
     index: number;
-  } | null;
-}
-
+  } | null
+>("op_get_entity_by_absolute_path");
 export const $ = (path: string): Entity | null => {
-  const entity = Deno.core.ops.op_get_entity_by_absolute_path(path);
+  const entity = getEntityByAbsolutePath(path);
   return entity ? new Entity(entity.generation, entity.index) : null;
 };

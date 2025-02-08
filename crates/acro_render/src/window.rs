@@ -3,7 +3,6 @@ use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::Arc};
 use acro_ecs::{Application, World};
 use acro_math::{Float, Vec2};
 use tracing::{info, warn};
-use wasm_bindgen::{prelude::Closure, JsCast};
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
@@ -65,6 +64,7 @@ impl Window {
 
         #[cfg(target_arch = "wasm32")]
         {
+            use wasm_bindgen::{prelude::Closure, JsCast};
             use web_sys::Node;
             use winit::platform::web::WindowExtWebSys;
 

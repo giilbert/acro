@@ -1,4 +1,4 @@
-export * from "./deno.ts";
+export * from "./ops.ts";
 export * from "./globals.ts";
 export * from "./ecs.ts";
 export * from "./events.ts";

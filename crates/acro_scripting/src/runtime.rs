@@ -1,27 +1,26 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_assets::Assets;
-use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
+use acro_ecs::{
+    utils::TimeDeltaExt, Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext,
+    Tick, World,
+};
 use acro_reflect::Reflect;
 
 pub trait Platform {
     fn new() -> Self;
 
-    fn init_source_file(
-        &mut self,
-        component_vtables: &mut ComponentVTables,
-        source_file: &SourceFile,
-    ) -> eyre::Result<()>;
+    fn init_source_file(&mut self, source_file: &SourceFile) -> eyre::Result<()>;
     fn init_behavior(
         &mut self,
         id: u32,
         attached_to: EntityId,
         source_file: &SourceFile,
-        behavior: &mut Behavior,
     ) -> eyre::Result<()>;
     fn update(&mut self, last_update: DateTime<Utc>, tick: Tick) -> eyre::Result<DateTime<Utc>>;
     fn late_init(
         &mut self,
+        component_vtables: &mut ComponentVTables,
         world_handle: Rc<RefCell<World>>,
         name_to_component_id: &HashMap<String, ComponentId>,
     ) -> eyre::Result<()>;
@@ -42,6 +41,12 @@ mod runtime_impl {
         deno_core, json_args, module_loader::ImportProvider, Module, ModuleHandle,
         Runtime as JsRuntime, RuntimeOptions, Undefined,
     };
+    use serde::de::DeserializeOwned;
+    pub use NativePlatform as Platform;
+
+    use crate::SourceFile;
+
+    use super::ComponentVTables;
 
     pub struct NativePlatform {
         ops_dec: Option<Vec<deno_core::OpDecl>>,
@@ -76,22 +81,7 @@ mod runtime_impl {
             }
         }
 
-        fn init_source_file(
-            &mut self,
-            component_vtables: &mut ComponentVTables,
-            source_file: &SourceFile,
-        ) -> eyre::Result<()> {
-            if component_vtables.is_some() {
-                let component_vtables = component_vtables.take().expect("component vtables taken");
-                self.inner_mut()
-                    .deno_runtime()
-                    .op_state()
-                    .borrow_mut()
-                    .put(component_vtables);
-            }
-
-            tracing::info!("initializing source file: {:?}", source_file.config.name);
-
+        fn init_source_file(&mut self, source_file: &SourceFile) -> eyre::Result<()> {
             // TODO: cleanup module after it has been unloaded
             let module_handle = self.inner_mut().load_module(&Module::new(
                 &format!("./lib/{}.ts", source_file.config.name),
@@ -108,10 +98,7 @@ mod runtime_impl {
             id: u32,
             attached_to: EntityId,
             source_file: &SourceFile,
-            behavior: &mut Behavior,
         ) -> eyre::Result<()> {
-            behavior.data = Some(BehaviorData { id });
-
             let module_handle = self.init_module_handle.as_ref().map(|h| h.clone());
             self.inner_mut().call_function(
                 module_handle.as_ref(),
@@ -153,6 +140,7 @@ mod runtime_impl {
 
         fn late_init(
             &mut self,
+            component_vtables: &mut ComponentVTables,
             world_handle: Rc<RefCell<World>>,
             name_to_component_id: &HashMap<String, ComponentId>,
         ) -> eyre::Result<()> {
@@ -160,16 +148,29 @@ mod runtime_impl {
                 return Ok(());
             }
 
+            if component_vtables.is_some() {
+                let component_vtables = component_vtables.take().expect("component vtables taken");
+                self.inner_mut()
+                    .deno_runtime()
+                    .op_state()
+                    .borrow_mut()
+                    .put(component_vtables);
+            }
+
             {
                 let mut registered_ops = self.ops_dec.take().expect("ops already taken");
                 use crate::platform::deno_ops::{
-                    op_call_function, op_get_property_number, op_get_property_string,
-                    op_set_property_number, op_set_property_string,
+                    op_call_function, op_get_property_boolean, op_get_property_number,
+                    op_get_property_string, op_set_property_boolean, op_set_property_number,
+                    op_set_property_string,
                 };
+
                 registered_ops.push(op_get_property_string());
                 registered_ops.push(op_set_property_string());
                 registered_ops.push(op_get_property_number());
                 registered_ops.push(op_set_property_number());
+                registered_ops.push(op_get_property_boolean());
+                registered_ops.push(op_set_property_boolean());
                 registered_ops.push(op_call_function());
 
                 let ext = deno_core::Extension {
@@ -268,34 +269,41 @@ mod runtime_impl {
             }
         }
     }
-
-    use serde::de::DeserializeOwned;
-    pub use NativePlatform as Platform;
-
-    use crate::SourceFile;
-
-    use super::ComponentVTables;
 }
 
 #[cfg(target_arch = "wasm32")]
 mod runtime_impl {
-    use acro_ecs::Tick;
+    use acro_ecs::{utils::TimeDeltaExt, Tick};
     use chrono::{DateTime, Utc};
-    use js_sys::Function;
+    use js_sys::{Object, Reflect};
+    use wasm_bindgen::prelude::*;
 
-    pub struct WasmPlatform {}
+    #[wasm_bindgen]
+    extern "C" {
+        #[wasm_bindgen(js_namespace = acro, js_name = update)]
+        fn js_update(delta_time: f64);
+
+        #[wasm_bindgen(js_namespace = acro, js_name = registerComponents)]
+        // components: Record<string, number>
+        fn js_register_components(components: JsValue);
+
+        #[wasm_bindgen(js_namespace = acro, js_name = createBehavior)]
+        fn js_create_behavior(generation: u32, index: u32, id: u32, name: &str);
+    }
+
+    pub struct WasmPlatform {
+        has_late_init: bool,
+    }
 
     impl super::Platform for WasmPlatform {
         fn new() -> Self {
-            Self {}
+            Self {
+                has_late_init: false,
+            }
         }
 
-        fn init_source_file(
-            &mut self,
-            component_vtables: &mut super::ComponentVTables,
-            source_file: &crate::SourceFile,
-        ) -> eyre::Result<()> {
-            info!("initializing source file: {:?}", source_file.config.name);
+        // This is a no-op for the wasm platform
+        fn init_source_file(&mut self, _source_file: &crate::SourceFile) -> eyre::Result<()> {
             Ok(())
         }
 
@@ -304,12 +312,21 @@ mod runtime_impl {
             id: u32,
             attached_to: acro_ecs::EntityId,
             source_file: &crate::SourceFile,
-            behavior: &mut crate::Behavior,
         ) -> eyre::Result<()> {
-            info!(
-                "initializing behavior: {} attached to {:?}",
-                source_file.config.name, attached_to
+            tracing::info!(
+                "init_behavior({}, {:?}, {})",
+                id,
+                attached_to,
+                source_file.config.name
             );
+
+            js_create_behavior(
+                attached_to.generation,
+                attached_to.index,
+                id,
+                &source_file.config.name,
+            );
+
             Ok(())
         }
 
@@ -318,16 +335,50 @@ mod runtime_impl {
             last_update: DateTime<Utc>,
             tick: Tick,
         ) -> eyre::Result<DateTime<Utc>> {
-            info!("updating behaviors");
+            WASM_OPS_STATE.insert(tick);
+
+            let delta_time = Utc::now()
+                .signed_duration_since(last_update)
+                .get_frac_secs() as f64;
+
+            js_update(delta_time);
+
             Ok(Utc::now())
         }
 
         fn late_init(
             &mut self,
+            component_vtables: &mut super::ComponentVTables,
             world_handle: std::rc::Rc<std::cell::RefCell<acro_ecs::World>>,
             name_to_component_id: &std::collections::HashMap<String, acro_ecs::ComponentId>,
         ) -> eyre::Result<()> {
-            info!("late init");
+            if self.has_late_init {
+                return Ok(());
+            }
+
+            if component_vtables.is_some() {
+                let component_vtables = component_vtables.take().expect("component vtables taken");
+                WASM_OPS_STATE.insert(component_vtables);
+            }
+
+            WASM_OPS_STATE.insert(world_handle);
+            WASM_OPS_STATE.insert(Tick::new(0));
+
+            let components = Object::new().into();
+
+            for (name, id) in name_to_component_id {
+                Reflect::set(
+                    &components,
+                    &JsValue::from_str(name),
+                    &JsValue::from_f64(id.0 as f64),
+                )
+                .expect("failed to set component");
+            }
+
+            js_register_components(components);
+
+            self.has_late_init = true;
+
             Ok(())
         }
 
@@ -336,14 +387,24 @@ mod runtime_impl {
             function: &crate::platform::FunctionHandle,
             arguments: &impl serde::Serialize,
         ) -> eyre::Result<T> {
-            info!("calling function");
+            let ret = Reflect::apply(
+                &function.inner,
+                &JsValue::NULL,
+                &serde_wasm_bindgen::to_value(arguments)
+                    .map_err(|e| eyre::eyre!("failed to serialize function parameters: {:?}", e))?
+                    .into(),
+            )
+            .map_err(|e| eyre::eyre!("failed to call function: {:?}", e))?;
 
-            todo!();
+            serde_wasm_bindgen::from_value(ret)
+                .map_err(|e| eyre::eyre!("failed to deserialize function return value: {:?}", e))
         }
     }
 
     use tracing::info;
     pub use WasmPlatform as Platform;
+
+    use crate::{behavior::BehaviorData, wasm_ops::WASM_OPS_STATE};
 }
 
 use chrono::{DateTime, Utc};
@@ -408,8 +469,7 @@ impl ScriptingRuntime {
     }
 
     pub fn init_source_file(&mut self, source_file: &SourceFile) -> eyre::Result<()> {
-        self.platform
-            .init_source_file(&mut self.component_vtables, source_file)
+        self.platform.init_source_file(source_file)
     }
 
     pub fn init_behavior(
@@ -421,8 +481,8 @@ impl ScriptingRuntime {
         let id = self.behavior_id;
         self.behavior_id += 1;
 
-        self.platform
-            .init_behavior(id, attached_to, source_file, behavior)
+        behavior.data = Some(BehaviorData { id });
+        self.platform.init_behavior(id, attached_to, source_file)
     }
 
     pub fn update(&mut self, tick: Tick) -> eyre::Result<()> {
@@ -432,7 +492,11 @@ impl ScriptingRuntime {
 
     pub fn late_init(&mut self) {
         self.platform
-            .late_init(self.world_handle.clone(), &self.name_to_component_id)
+            .late_init(
+                &mut self.component_vtables,
+                self.world_handle.clone(),
+                &self.name_to_component_id,
+            )
             .expect("failed to late init");
     }
 
@@ -473,9 +537,12 @@ pub fn update_behaviors(
     ctx: SystemRunContext,
     mut runtime: ResMut<ScriptingRuntime>,
 ) -> eyre::Result<()> {
-    // let now = std::time::Instant::now();
+    // let now = Utc::now();
     runtime.update(ctx.tick)?;
-    // info!("update_behaviors: {:?}", now.elapsed());
+    // info!(
+    //     "update_behaviors: {:?}",
+    //     Utc::now().signed_duration_since(now).pretty()
+    // );
     Ok(())
 }
 

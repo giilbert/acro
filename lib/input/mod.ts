@@ -1,22 +1,24 @@
 import { Vec2 } from "jsr:@acro/math";
+import { createGlobalOp } from "jsr:@acro/core";
 
-declare namespace Deno.core.ops {
-  const op_get_key_press: (key: string) => boolean;
-  const op_get_mouse_press: (button: string) => boolean;
-  const op_get_mouse_position: () => [number, number];
-}
-
+const isKeyPressedOp = createGlobalOp<[string], boolean>("op_get_key_press");
 const isKeyPressed = (key: string) => {
-  return Deno.core.ops.op_get_key_press(JSON.stringify(key));
+  return isKeyPressedOp(JSON.stringify(key));
 };
 
 export type MouseButton = "Left" | "Right" | "Middle" | "Back" | "Forward";
+const isMousePressedOp = createGlobalOp<[string], boolean>(
+  "op_get_mouse_press"
+);
 const isMousePressed = (button: MouseButton) => {
-  return Deno.core.ops.op_get_mouse_press(JSON.stringify(button));
+  return isMousePressedOp(JSON.stringify(button));
 };
 
+const getMousePositionOp = createGlobalOp<[], [number, number]>(
+  "op_get_mouse_position"
+);
 const getMousePosition = () => {
-  const [x, y] = Deno.core.ops.op_get_mouse_position();
+  const [x, y] = getMousePositionOp();
   return new Vec2(x, y);
 };
 

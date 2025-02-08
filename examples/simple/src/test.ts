@@ -12,7 +12,9 @@ class TestBehavior extends Behavior {
     this.text = $("/UI/Panel/Text")?.getComponent(Text)!;
     this.button = $("/UI/Panel 2")?.getComponent(Button)!;
 
-    this.button.click.bind(() => (this.transform.position.y += 1));
+    this.button.click.bind(() => {
+      this.transform.position.y += 1;
+    });
   }
 
   update(deltaTime: number) {

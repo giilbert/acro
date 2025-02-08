@@ -65,10 +65,7 @@ impl EventListenerStoreInner {
                 Some(queue) => {
                     while let Some(data) = queue.next() {
                         // TODO: call function with data
-                        // bound_queue
-                        //     .function
-                        //     .call::<()>(runtime.inner_mut(), None, &[()])
-                        //     .expect("call failed");
+                        bound_queue.function.call::<()>(runtime, &[()])?;
                     }
                 }
                 None => dead_listeners.push(*id),

@@ -1,6 +1,6 @@
 use std::{
     any::{Any, TypeId},
-    cell::{LazyCell, RefCell},
+    cell::{LazyCell, RefCell, UnsafeCell},
     collections::HashMap,
     rc::Rc,
 };
@@ -15,28 +15,46 @@ use crate::{platform::FunctionHandle, EventListenerStore};
 
 use super::ops::get_dyn_reflect;
 
-pub static mut WASM_OPS_STATE: LazyCell<WasmOpsState> = LazyCell::new(|| WasmOpsState::default());
+pub static WASM_OPS_STATE: WasmOpsState = WasmOpsState::new();
 
-#[derive(Default)]
 pub struct WasmOpsState {
-    storage: FnvHashMap<TypeId, Box<dyn Any>>,
+    storage: LazyCell<UnsafeCell<FnvHashMap<TypeId, Box<dyn Any>>>>,
 }
 
+// SAFETY: WasmOpsState will only be used on WebAssembly and so it will only be accessed from a
+// single thread.
+unsafe impl Sync for WasmOpsState {}
+
 impl WasmOpsState {
+    pub const fn new() -> Self {
+        Self {
+            storage: LazyCell::new(|| UnsafeCell::new(FnvHashMap::default())),
+        }
+    }
+
     pub fn get<T: Any>(&self) -> Option<&T> {
-        self.storage
-            .get(&TypeId::of::<T>())
-            .and_then(|v| v.downcast_ref())
+        // SAFETY: On WebAssembly, this will only be accessed from a single thread.
+        unsafe {
+            (*self.storage.get())
+                .get(&TypeId::of::<T>())
+                .and_then(|v| v.downcast_ref())
+        }
     }
 
-    pub fn get_mut<T: Any>(&mut self) -> Option<&mut T> {
-        self.storage
-            .get_mut(&TypeId::of::<T>())
-            .and_then(|v| v.downcast_mut())
+    pub fn get_mut<T: Any>(&self) -> Option<&mut T> {
+        // SAFETY: On WebAssembly, this will only be accessed from a single thread.
+        unsafe {
+            (&mut *self.storage.get())
+                .get_mut(&TypeId::of::<T>())
+                .and_then(|v| v.downcast_mut())
+        }
     }
 
-    pub fn insert<T: Any>(&mut self, value: T) {
-        self.storage.insert(TypeId::of::<T>(), Box::new(value));
+    pub fn insert<T: Any>(&self, value: T) {
+        // SAFETY: On WebAssembly, this will only be accessed from a single thread.
+        unsafe {
+            (&mut *self.storage.get()).insert(TypeId::of::<T>(), Box::new(value));
+        }
     }
 }
 
@@ -45,16 +63,20 @@ pub fn get_ecs_state() -> (
     &'static HashMap<ComponentId, *const ()>,
     &'static Tick,
 ) {
-    unsafe {
-        (
-            WASM_OPS_STATE.get().unwrap(),
-            WASM_OPS_STATE.get().unwrap(),
-            WASM_OPS_STATE.get().unwrap(),
-        )
-    }
+    (
+        WASM_OPS_STATE
+            .get()
+            .expect("cannot find Rc<RefCell<World>> in WasmOpsState"),
+        WASM_OPS_STATE
+            .get()
+            .expect("cannot find HashMap<ComponentId, *const ()> in WasmOpsState"),
+        WASM_OPS_STATE
+            .get()
+            .expect("cannot find Tick in WasmOpsState"),
+    )
 }
 
-type JsResult<T> = Result<T, JsError>;
+pub type JsResult<T> = Result<T, JsError>;
 
 pub fn into_js_error(error: impl std::fmt::Debug) -> JsError {
     JsError::new(&format!("{:?}", error))
@@ -106,6 +128,56 @@ pub fn op_set_property_number(
     .map_err(into_js_error)?;
 
     object.set::<f32>(&path, value as f32);
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub fn op_get_property_string(
+    generation: u32,
+    index: u32,
+    component_id: u32,
+    path: &str,
+) -> JsResult<String> {
+    let (world, component_ids_to_vtables, tick) = get_ecs_state();
+    let path = ReflectPath::parse(path);
+    let object = get_dyn_reflect(
+        world,
+        component_ids_to_vtables,
+        tick,
+        generation,
+        index,
+        component_id,
+        false,
+    )
+    .map_err(into_js_error)?;
+
+    Ok(object.get::<String>(&path).clone())
+}
+
+#[wasm_bindgen]
+pub fn op_set_property_string(
+    generation: u32,
+    index: u32,
+    component_id: u32,
+    path: &str,
+    value: String,
+) -> JsResult<()> {
+    let path = ReflectPath::parse(path);
+
+    let (world, component_ids_to_vtables, tick) = get_ecs_state();
+    let object = get_dyn_reflect(
+        world,
+        component_ids_to_vtables,
+        tick,
+        generation,
+        index,
+        component_id,
+        true,
+    )
+    .map_err(into_js_error)?;
+
+    object.set(&path, value);
 
     Ok(())
 }

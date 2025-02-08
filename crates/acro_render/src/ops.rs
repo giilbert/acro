@@ -47,5 +47,44 @@ cfg_if! {
                 .contains(&deno_core::serde_json::from_str::<winit::event::MouseButton>(button)?)
                 && !window_state.ui_processed_click)
         }
+    } else {
+        use wasm_bindgen::prelude::*;
+        use acro_scripting::wasm_ops::{get_ecs_state, JsResult};
+
+        #[wasm_bindgen]
+        pub fn op_get_key_press(
+            key: &str,
+        ) -> JsResult<bool> {
+            let (world, ..) = get_ecs_state();
+            let world = world.borrow();
+            let window_state = world.resources().get::<WindowState>();
+
+            Ok(window_state
+                .keys_pressed
+                .contains(&serde_json::from_str::<KeyCode>(key)?))
+        }
+
+        #[wasm_bindgen]
+        pub fn op_get_mouse_position() -> JsResult<JsValue> {
+            let (world, ..) = get_ecs_state();
+            let world = world.borrow();
+            let window_state = world.resources().get::<WindowState>();
+
+            Ok(serde_wasm_bindgen::to_value(&window_state.mouse_position)?)
+        }
+
+        #[wasm_bindgen]
+        pub fn op_get_mouse_press(
+            button: &str,
+        ) -> JsResult<bool> {
+            let (world, ..) = get_ecs_state();
+            let world = world.borrow();
+            let window_state = world.resources().get::<WindowState>();
+
+            Ok(window_state
+                .mouse_buttons_pressed
+                .contains(&serde_json::from_str::<winit::event::MouseButton>(button)?)
+                && !window_state.ui_processed_click)
+        }
     }
 }

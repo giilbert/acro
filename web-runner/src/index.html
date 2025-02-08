@@ -20,7 +20,7 @@
       import wasmUrl from "../../crates/acro_web/pkg/acro_web_bg.wasm?url";
       import init, * as wasm from "../../crates/acro_web/pkg";
       import assetsUrl from "../../examples/simple/build/assets.zip?url";
-      import "../../examples/simple/build/bundle.js";
+      import bundleUrl from "../../examples/simple/build/bundle.js?url";
 
       async function run() {
         console.log("[acro] loading assets...");
@@ -33,6 +33,13 @@
         const wasmResponse = await fetch(wasmUrl);
         const module = await init({ module_or_path: wasmResponse });
         console.log("[acro] wasm loaded");
+
+        window.wasm = wasm;
+
+        // This is horrifying, but it works
+        const bundleResponse = await fetch(bundleUrl);
+        const bundleText = await bundleResponse.text();
+        eval(bundleText);
 
         wasm.init();
         wasm.initAssetsBytes(assetsBytes);
