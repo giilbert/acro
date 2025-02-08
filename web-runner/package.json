@@ -2,6 +2,9 @@
   "name": "web-runner",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "dev": "vite src --port 3000"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "vite": "^6.0.11"

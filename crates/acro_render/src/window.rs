@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::Arc};
 use acro_ecs::{Application, World};
 use acro_math::{Float, Vec2};
 use tracing::{info, warn};
+use wasm_bindgen::{prelude::Closure, JsCast};
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
@@ -68,16 +69,55 @@ impl Window {
             use winit::platform::web::WindowExtWebSys;
 
             let canvas = window.canvas().expect("canvas not found");
-            canvas.set_width(800);
-            canvas.set_height(600);
+            let html_window = web_sys::window().expect("window not found");
 
-            web_sys::window()
-                .and_then(|window| window.document())
+            // TODO: Let people config their canvas element/size instead of defaulting to fullscreen
+            let update_size = {
+                let canvas = canvas.clone();
+                let html_window = html_window.clone();
+                let state = self.state.clone();
+
+                move || {
+                    let width = html_window
+                        .inner_width()
+                        .map_or(None, |v| v.as_f64())
+                        .expect("unable to set canvas width")
+                        as u32;
+                    let height = html_window
+                        .inner_height()
+                        .map_or(None, |v| v.as_f64())
+                        .expect("unable to set canvas height")
+                        as u32;
+
+                    canvas.set_width(width);
+                    canvas.set_height(height);
+
+                    state
+                        .borrow_mut()
+                        .as_ref()
+                        .map(|state| state.resize(PhysicalSize::new(width, height)));
+                }
+            };
+
+            update_size();
+
+            let event_listener =
+                gloo_events::EventListener::new(&html_window, "resize", move |_| update_size());
+            event_listener.forget();
+
+            // let resize_callback = Closure::<dyn FnMut()>::once_into_js(update_size);
+            // html_window
+            //     .add_event_listener_with_callback("resize", resize_callback)
+            //     .expect("unable to attach resize callback");
+            // resize_callback.forget();
+
+            html_window
+                .document()
                 .and_then(|document| document.body())
                 .and_then(|body| body.append_child(&Node::from(canvas)).ok())
                 .expect("unable to append canvas to body");
 
-            info!("added canvas to DOM")
+            info!("added canvas to DOM");
         }
 
         window
