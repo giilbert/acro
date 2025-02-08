@@ -10,6 +10,7 @@ pub mod resource;
 pub mod schedule;
 pub mod storage;
 pub mod systems;
+pub mod utils;
 pub mod world;
 
 pub use application::Application;

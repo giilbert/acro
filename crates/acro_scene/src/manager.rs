@@ -1,4 +1,4 @@
-use acro_ecs::{ResMut, SystemRunContext};
+use acro_ecs::{utils::TimeDeltaExt, ResMut, SystemRunContext};
 use chrono::Utc;
 use tracing::info;
 
@@ -27,7 +27,7 @@ pub fn load_queued_scene(
             scene.load(world);
             info!(
                 "loading scene took {:?}",
-                Utc::now().signed_duration_since(now)
+                Utc::now().signed_duration_since(now).pretty()
             );
         });
         scene_manager.queued_scene = None;

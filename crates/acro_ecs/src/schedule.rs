@@ -7,6 +7,7 @@ use tracing::{error, info, warn};
 use crate::{
     pointer::change_detection::Tick,
     systems::{SystemData, SystemId, SystemRunContext},
+    utils::TimeDeltaExt,
     world::World,
 };
 
@@ -174,10 +175,12 @@ impl Schedule {
                 > FRAME_TIME_INTERVAL
             {
                 let average_frame_time = self.time_accumulator / self.time_count;
+                info!("{}", average_frame_time.get_frac_secs());
                 info!(
-                    "{FRAME_TIME_INTERVAL:?} average frame time: {:?} (theoretical max = {:.02}fps)",
-                    average_frame_time,
-                    1.0 / average_frame_time.num_seconds() as f64
+                    "{FRAME_TIME_INTERVAL} average frame time: {frame_time} (theoretical max = {max:.02}fps)",
+                    FRAME_TIME_INTERVAL = FRAME_TIME_INTERVAL.pretty(),
+                    frame_time = average_frame_time.pretty(),
+                    max = 1.0 / average_frame_time.get_frac_secs()
                 );
                 self.time_accumulator = TimeDelta::zero();
                 self.time_count = 0;
@@ -185,8 +188,9 @@ impl Schedule {
 
             if elapsed > self.render_interval {
                 warn!(
-                    "frame took too long: {elapsed:?} (target = {:?})",
-                    self.render_interval
+                    "frame took too long: {elapsed} (target = {render_interval})",
+                    elapsed = elapsed.pretty(),
+                    render_interval = self.render_interval.pretty()
                 );
             }
         }
