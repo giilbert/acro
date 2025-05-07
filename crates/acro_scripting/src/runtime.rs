@@ -1,10 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use acro_assets::Assets;
-use acro_ecs::{
-    utils::TimeDeltaExt, Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext,
-    Tick, World,
-};
+use acro_ecs::{Changed, ComponentId, EntityId, Query, Res, ResMut, SystemRunContext, Tick, World};
 use acro_reflect::Reflect;
 
 pub trait Platform {
@@ -100,7 +97,7 @@ mod runtime_impl {
             source_file: &SourceFile,
         ) -> eyre::Result<()> {
             let module_handle = self.init_module_handle.as_ref().map(|h| h.clone());
-            self.inner_mut().call_function(
+            self.inner_mut().call_function::<()>(
                 module_handle.as_ref(),
                 "createBehavior",
                 json_args!(
@@ -129,7 +126,7 @@ mod runtime_impl {
                 - last_update.timestamp_subsec_nanos() as f64 / 1_000_000_000.0;
 
             let module_handle = self.init_module_handle.as_ref().map(|h| h.clone());
-            self.inner_mut().call_function(
+            self.inner_mut().call_function::<()>(
                 module_handle.as_ref(),
                 "update",
                 json_args!(delta_time),
@@ -146,15 +143,6 @@ mod runtime_impl {
         ) -> eyre::Result<()> {
             if self.inner.is_some() {
                 return Ok(());
-            }
-
-            if component_vtables.is_some() {
-                let component_vtables = component_vtables.take().expect("component vtables taken");
-                self.inner_mut()
-                    .deno_runtime()
-                    .op_state()
-                    .borrow_mut()
-                    .put(component_vtables);
             }
 
             {
@@ -205,11 +193,11 @@ mod runtime_impl {
                     .load_module(&init_module)
                     .expect("error loading init module");
 
-                runtime.call_function(Some(&init_module_handle), "init", json_args!())?;
+                runtime.call_function::<()>(Some(&init_module_handle), "init", json_args!())?;
 
                 info!("registered {} component(s)", name_to_component_id.len());
 
-                runtime.call_function(
+                runtime.call_function::<()>(
                     Some(&init_module_handle),
                     "registerComponents",
                     json_args!(name_to_component_id),
@@ -217,6 +205,15 @@ mod runtime_impl {
 
                 self.inner = Some(runtime);
                 self.init_module_handle = Some(init_module_handle);
+            }
+
+            if component_vtables.is_some() {
+                let component_vtables = component_vtables.take().expect("component vtables taken");
+                self.inner_mut()
+                    .deno_runtime()
+                    .op_state()
+                    .borrow_mut()
+                    .put(component_vtables);
             }
 
             Ok(())
