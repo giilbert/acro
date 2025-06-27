@@ -13,7 +13,6 @@ entities:
         shader_path: shaders/basic-mesh.wgsl
       - name: Behavior
         source: src/test.ts
-      - name: Rigidbody3D
     children: []
   - name: Camera
     components:
